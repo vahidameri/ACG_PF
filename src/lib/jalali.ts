@@ -212,3 +212,37 @@ export function timeAgo(isoOrDate: string | Date) {
   if (s < 86400) return en ? `${Math.floor(s / 3600)}h ago` : `${fa(Math.floor(s / 3600))} ساعت پیش`
   return en ? `${Math.floor(s / 86400)}d ago` : `${fa(Math.floor(s / 86400))} روز پیش`
 }
+
+const FA_WEEKDAYS_FULL = ['یکشنبه', 'دوشنبه', 'سه‌شنبه', 'چهارشنبه', 'پنجشنبه', 'جمعه', 'شنبه']
+const EN_WEEKDAYS_FULL = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday']
+const FA_WEEKDAYS_SHORT = ['ی', 'د', 'س', 'چ', 'پ', 'ج', 'ش']
+const EN_WEEKDAYS_SHORT = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
+
+export function fmtWeekday(iso: string, short = false) {
+  const d = parseISO(iso)
+  if (!d) return ''
+  const en = locale.lang === 'en'
+  return (short ? (en ? EN_WEEKDAYS_SHORT : FA_WEEKDAYS_SHORT) : en ? EN_WEEKDAYS_FULL : FA_WEEKDAYS_FULL)[d.getDay()]
+}
+
+/** Day-of-month number in the active calendar. */
+export function dayNum(iso: string) {
+  const d = parseISO(iso)
+  if (!d) return 0
+  return locale.cal === 'jalali' ? toJalali(d.getFullYear(), d.getMonth() + 1, d.getDate()).jd : d.getDate()
+}
+
+/** First name for friendly greetings ("Dr." / "دکتر" titles dropped). */
+export function firstName(full: string) {
+  return String(full || '').replace(/^(دکتر|مهندس|Dr\.?|Eng\.?)\s+/i, '').trim().split(/\s+/)[0] || ''
+}
+
+export function greeting(d = new Date()) {
+  const h = d.getHours()
+  const en = locale.lang === 'en'
+  if (h < 5) return en ? 'Good night' : 'شب بخیر'
+  if (h < 12) return en ? 'Good morning' : 'صبح بخیر'
+  if (h < 15) return en ? 'Good afternoon' : 'ظهر بخیر'
+  if (h < 20) return en ? 'Good evening' : 'عصر بخیر'
+  return en ? 'Good evening' : 'شب بخیر'
+}

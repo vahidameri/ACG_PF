@@ -10,7 +10,9 @@ import { HEALTH, PROJECT_STATUS, RISK_TYPE } from '../lib/labels'
 import { L, lbl, locale } from '../lib/i18n'
 import { money, useProjectName, ProjectCard } from '../components/shared'
 import { useEditor } from '../components/Editor'
-import { tooltipStyle, axisTick } from '../components/widgets'
+import { tooltipStyle, axisTick, ActivityFeed, HealthTrend } from '../components/widgets'
+import { buildActivity } from '../lib/activity'
+import { daysBetween, addDays } from '../lib/jalali'
 import type { Health } from '../lib/types'
 
 export default function Dashboard() {
@@ -147,6 +149,7 @@ export default function Dashboard() {
                   <tr>
                     <th className="th">{L('پروژه', 'Project')}</th>
                     <th className="th">{L('سلامت', 'Health')}</th>
+                    <th className="th">{L('روند', 'Trend')}</th>
                     <th className="th w-60">{L('پیشرفت / زمان', 'Progress / time')}</th>
                     <th className="th">{L('ددلاین', 'Deadline')}</th>
                     <th className="th">{L('بودجه', 'Budget')}</th>
@@ -170,6 +173,9 @@ export default function Dashboard() {
                         </td>
                         <td className="td">
                           <HealthBadge h={m.health} />
+                        </td>
+                        <td className="td">
+                          <HealthTrend projectId={p.id} />
                         </td>
                         <td className="td">
                           <div className="flex items-center gap-3">
@@ -306,6 +312,45 @@ export default function Dashboard() {
           </Card>
         </div>
 
+        <div className="grid gap-4 xl:grid-cols-3">
+          <Card className="xl:col-span-2" eyebrow={L('نبض پورتفولیو', 'Portfolio pulse')} title={L('فعالیت اخیر تیم‌ها', 'Recent activity')}>
+            <ActivityFeed items={buildActivity(db, undefined, 9)} />
+          </Card>
+          <Card eyebrow={L('۷ روز گذشته', 'Last 7 days')} title={L('این هفته چه گذشت؟', 'This week in numbers')}>
+            {(() => {
+              const since = addDays(today, -7)
+              const inWeek = (d: string) => !!d && d.slice(0, 10) >= since && d.slice(0, 10) <= today
+              const rows = [
+                [L('تسک انجام‌شده', 'Tasks completed'), db.Tasks.filter((t) => t.status === 'done' && inWeek(t.completed_at)).length, 'bg-good'],
+                [L('مایلستون محقق‌شده', 'Milestones hit'), db.Milestones.filter((m) => m.status === 'done' && inWeek(m.actual_date)).length, 'bg-ink'],
+                [L('فالوآپ بسته‌شده', 'Follow-ups closed'), db.FollowUps.filter((f) => f.status === 'done' && inWeek(f.done_at)).length, 'bg-warn'],
+                [L('گزارش هفتگی', 'Weekly updates'), db.Updates.filter((u) => inWeek(u.week_date)).length, 'bg-brand'],
+                [L('یادداشت و گفتگو', 'Comments'), db.Comments.filter((c) => inWeek(c.created_at)).length, 'bg-brand-soft'],
+                [L('تسک جدید', 'New tasks'), db.Tasks.filter((t) => inWeek(t.created_at)).length, 'bg-line-strong'],
+              ] as const
+              const max = Math.max(1, ...rows.map((r) => r[1]))
+              return (
+                <div className="space-y-3.5">
+                  {rows.map(([l, n, c]) => (
+                    <div key={l}>
+                      <div className="mb-1 flex items-center justify-between text-sm">
+                        <span className="text-ink/80">{l}</span>
+                        <span className="font-semibold num">{fa(n)}</span>
+                      </div>
+                      <div className="h-1.5 rounded-full bg-muted">
+                        <div className={cx('h-full rounded-full transition-[width] duration-700', c)} style={{ width: `${(n / max) * 100}%` }} />
+                      </div>
+                    </div>
+                  ))}
+                  <div className="border-t border-line pt-3 text-[11px] text-sub">
+                    {L(`میانگین عمر تسک‌های باز: ${fa(Math.round(avgAge(db.Tasks.filter((t) => t.status !== 'done').map((t) => t.created_at), today)))} روز`, `Avg. age of open tasks: ${Math.round(avgAge(db.Tasks.filter((t) => t.status !== 'done').map((t) => t.created_at), today))} days`)}
+                  </div>
+                </div>
+              )
+            })()}
+          </Card>
+        </div>
+
         {attention.length > 0 && (
           <div className="flex items-center gap-2 px-1 text-xs text-sub">
             <AlertTriangle size={13} />
@@ -315,4 +360,9 @@ export default function Dashboard() {
       </Overlap>
     </>
   )
+}
+
+function avgAge(dates: string[], today: string) {
+  const v = dates.filter(Boolean)
+  return v.length ? v.reduce((a, d) => a + daysBetween(d, today), 0) / v.length : 0
 }

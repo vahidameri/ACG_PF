@@ -2,7 +2,7 @@
 // Multi-line fields are translated line by line.
 export const EN: Record<string, string> = {
   // people & teams
-  'مدیر برنامه': 'Program Manager',
+  'وحید عامری': 'Vahid Ameri',
   'سارا محمدی': 'Sara Mohammadi',
   'علی رضایی': 'Ali Rezaei',
   'نگار حسینی': 'Negar Hosseini',
@@ -243,6 +243,24 @@ export const EN: Record<string, string> = {
   'ماژول فروش': 'Sales module',
   'تیکتینگ': 'Ticketing',
 
+  'طراحی معماری تأیید شد و توسعه شروع شد.': 'Architecture approved; build has started.',
+  'نیازسنجی کمی طول کشید؛ برنامه به‌روز شد.': 'Discovery ran long; plan re-baselined.',
+  'طراحی معماری': 'Architecture design',
+  'هماهنگی واحدها': 'Aligning business units',
+  'آلفا با تأخیر تحویل شد؛ ریسک نیرو جدی است.': 'Alpha shipped late; the capacity risk is real.',
+  'بتا': 'Beta',
+  'آلفا': 'Alpha',
+  'پرداخت درون‌برنامه‌ای کامل شد.': 'In-app payments complete.',
+  'طراحی UI نهایی شد.': 'UI design finalised.',
+  'تست موازی با مغایرت داده روبه‌رو شد.': 'Parallel run hit data mismatches.',
+  'مغایرت داده‌ها': 'Data mismatches',
+  'بودجه به سقف نزدیک است.': 'Budget is close to the ceiling.',
+  'مهاجرت داده‌ها طبق برنامه پیش می‌رود.': 'Data migration is on plan.',
+  'مصاحبه با واحدها شروع شد.': 'BU interviews started.',
+  'تعریف KPIها': 'KPI definition',
+  'طراحی صفحات تأیید شد.': 'Page designs approved.',
+  'هویت بصری دو هفته تأخیر داشت.': 'Visual identity slipped two weeks.',
+  'تأیید مدیریت': 'Leadership sign-off',
   // comments
   'تیم ERP گفتند تا پنجشنبه دسترسی تست می‌دهند. اگر نشد باید اسکالیشن کنیم.': 'The ERP team says test access will be ready by Thursday. If not, we escalate.',
   '@دکتر کامرانی لطفاً در جلسه‌ی مدیریت پیگیری بفرمایید.': '@Dr. Kamrani could you raise this in the leadership meeting?',

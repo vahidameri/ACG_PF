@@ -1,13 +1,14 @@
 import { useState } from 'react'
 import { Area, Bar, BarChart, CartesianGrid, Line, ComposedChart, ResponsiveContainer, Tooltip, XAxis, YAxis, Legend } from 'recharts'
-import { Check, Plus, MessageSquare } from 'lucide-react'
+import { Check, Plus, MessageSquare, CheckCircle2, FileText, Flag, BellRing } from 'lucide-react'
 import type { DB, Risk, Sprint, Task, TaskStatus, Update, Milestone } from '../lib/types'
 import { useStore } from '../lib/store'
 import { useEditor } from './Editor'
 import { Avatar, Due, cx, HealthBadge, Chip, StatusIcon, PriorityIcon } from './ui'
-import { TASK_STATUS, TASK_STATUS_ORDER, MILESTONE_STATUS } from '../lib/labels'
+import { TASK_STATUS, TASK_STATUS_ORDER, MILESTONE_STATUS, HEALTH } from '../lib/labels'
+import type { Activity } from '../lib/activity'
 import { burndown, riskScore, sprintCommitted, sprintDonePoints } from '../lib/metrics'
-import { fa, fmtDayMonth, fmtDate, todayISO, daysFromToday } from '../lib/jalali'
+import { fa, fmtDayMonth, fmtDate, todayISO, daysFromToday, timeAgo } from '../lib/jalali'
 import { L, lbl, locale } from '../lib/i18n'
 import { useProjectName } from './shared'
 
@@ -294,4 +295,59 @@ export function SprintHeader({ s, db }: { s: Sprint; db: DB }) {
 export const riskTone = (r: Risk) => {
   const s = riskScore(r)
   return s >= 15 ? 'bg-bad text-white' : s >= 8 ? 'bg-warn text-white' : 'bg-good text-white'
+}
+
+// ---------------- Activity feed ----------------
+export function whenLabel(s: string) {
+  if (!s) return ''
+  if (s.includes(' ')) return timeAgo(new Date(s.replace(' ', 'T')))
+  const d = -daysFromToday(s)
+  if (d <= 0) return L('امروز', 'today')
+  if (d === 1) return L('دیروز', 'yesterday')
+  return L(`${fa(d)} روز پیش`, `${d}d ago`)
+}
+
+const actIcon = { comment: MessageSquare, done: CheckCircle2, update: FileText, milestone: Flag, followup: BellRing, created: Plus }
+const actTone = { comment: 'bg-brand-soft/60 text-ink', done: 'bg-good/10 text-good', update: 'bg-ink/[0.06] text-ink', milestone: 'bg-warn/12 text-warn', followup: 'bg-purple-500/10 text-purple-600 dark:text-purple-300', created: 'bg-muted text-sub' }
+
+export function ActivityFeed({ items, showProject = true }: { items: Activity[]; showProject?: boolean }) {
+  const { db } = useStore()
+  const { open } = useEditor()
+  if (!items.length) return <div className="py-6 text-center text-xs text-sub">{L('فعالیتی ثبت نشده', 'No activity yet')}</div>
+  return (
+    <ol className="relative space-y-4 before:absolute before:inset-y-2 before:start-[15px] before:w-px before:bg-line">
+      {items.map((a) => {
+        const Icon = actIcon[a.kind]
+        const row = a.target && (db[a.target.sheet] as { id: string }[]).find((x) => x.id === a.target!.id)
+        return (
+          <li key={a.id} className="relative flex gap-3">
+            <span className={cx('relative z-10 grid h-8 w-8 shrink-0 place-items-center rounded-full ring-4 ring-surface', actTone[a.kind])}>
+              <Icon size={14} />
+            </span>
+            <button disabled={!row} onClick={() => row && open(a.target!.sheet, row as never)} className="min-w-0 flex-1 pt-1 text-start text-[13px] leading-6 enabled:hover:opacity-80">
+              <span className="font-semibold">{a.who || L('تیم', 'Team')}</span> <span className="text-sub">{a.verb}</span> <span className="font-medium">«{a.what}»</span>
+              <span className="block text-[11px] text-sub">
+                {whenLabel(a.when)}
+                {showProject && a.project_id && ` · ${db.Projects.find((p) => p.id === a.project_id)?.name || ''}`}
+              </span>
+            </button>
+          </li>
+        )
+      })}
+    </ol>
+  )
+}
+
+/** Last N weekly-update health readings as dots (oldest → newest). */
+export function HealthTrend({ projectId, n = 5 }: { projectId: string; n?: number }) {
+  const { db } = useStore()
+  const ups = db.Updates.filter((u) => u.project_id === projectId).sort((a, b) => (a.week_date < b.week_date ? -1 : 1)).slice(-n)
+  if (!ups.length) return <span className="text-[11px] text-sub/60">—</span>
+  return (
+    <span className="inline-flex items-center gap-1" title={L('روند سلامت از گزارش‌های هفتگی', 'Health trend from weekly updates')}>
+      {ups.map((u) => (
+        <span key={u.id} className={cx('h-2.5 w-2.5 rounded-full ring-2 ring-surface', u.health === 'red' ? 'bg-bad' : u.health === 'amber' ? 'bg-warn' : 'bg-good')} title={`${fmtDate(u.week_date)} · ${lbl(HEALTH, u.health)}`} />
+      ))}
+    </span>
+  )
 }

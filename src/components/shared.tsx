@@ -11,6 +11,7 @@ import { projectMetrics } from '../lib/metrics'
 import { usePins } from '../lib/prefs'
 import { PersonPicker, PriorityPicker } from './pickers'
 import { DatePicker } from './DatePicker'
+import { HealthTrend } from './widgets'
 
 export function useProjectName() {
   const { db } = useStore()
@@ -192,6 +193,26 @@ export function ProjectCard({ p }: { p: Project }) {
         </div>
       </div>
       <Progress value={m.progress} h={m.health} marker={m.elapsed} className="mt-3" />
+
+      <div className="mt-4 grid grid-cols-3 divide-x divide-line rounded-2xl border border-line rtl:divide-x-reverse">
+        <div className="px-3 py-2">
+          <div className="text-[10px] text-sub">{L('تسک‌ها', 'Tasks')}</div>
+          <div className="mt-0.5 text-sm font-semibold num">
+            {fa(m.doneTasks)}
+            <span className="font-normal text-sub">/{fa(m.totalTasks)}</span>
+          </div>
+        </div>
+        <div className="px-3 py-2">
+          <div className="text-[10px] text-sub">{L('بودجه', 'Budget')}</div>
+          <div className={cx('mt-0.5 text-sm font-semibold num', m.budgetUse > 100 ? 'text-bad' : m.budgetUse > m.progress + 20 ? 'text-warn' : '')}>{fa(m.budgetUse)}%</div>
+        </div>
+        <div className="px-3 py-2">
+          <div className="text-[10px] text-sub">{L('روند', 'Trend')}</div>
+          <div className="mt-1">
+            <HealthTrend projectId={p.id} n={4} />
+          </div>
+        </div>
+      </div>
 
       {issue && p.status === 'active' ? (
         <div className={cx('mt-4 flex items-start gap-2 rounded-xl px-3 py-2 text-[11px] leading-5', m.health === 'red' ? 'bg-bad/[0.07] text-bad' : 'bg-warn/[0.09] text-warn')}>

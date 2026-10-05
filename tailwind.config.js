@@ -6,9 +6,9 @@ export default {
   theme: {
     extend: {
       fontFamily: {
-        sans: ['"Inter Variable"', '"Vazirmatn Variable"', 'system-ui', 'sans-serif'],
-        fa: ['"Vazirmatn Variable"', '"Inter Variable"', 'system-ui', 'sans-serif'],
-        mono: ['"Geist Mono"', '"Vazirmatn Variable"', 'ui-monospace', 'monospace'],
+        sans: ['"Inter Variable"', 'LatD', 'Peyda', '"Vazirmatn Variable"', 'system-ui', 'sans-serif'],
+        fa: ['LatD', 'Peyda', '"Vazirmatn Variable"', 'Tahoma', 'sans-serif'],
+        mono: ['"Geist Mono"', 'LatD', 'Peyda', 'ui-monospace', 'monospace'],
       },
       colors: {
         bg: c('bg'),
@@ -29,10 +29,10 @@ export default {
         'band-sub': c('band-sub'),
         'band-line': c('band-line'),
       },
-      borderRadius: { xl: '14px', '2xl': '20px', '3xl': '28px' },
+      borderRadius: { xl: '14px', '2xl': '24px', '3xl': '28px' },
       boxShadow: {
-        card: '0 1px 2px rgb(10 12 16 / 0.04), 0 8px 24px -16px rgb(10 12 16 / 0.18)',
-        float: '0 4px 14px -6px rgb(10 12 16 / 0.24)',
+        card: '0 1px 2px rgb(15 26 46 / 0.04), 0 12px 32px -14px rgb(15 26 46 / 0.14)',
+        float: '0 2px 6px rgb(15 26 46 / 0.05), 0 26px 50px -18px rgb(15 26 46 / 0.28)',
         pop: '0 18px 48px -16px rgb(10 12 16 / 0.42)',
       },
       transitionTimingFunction: { spring: 'cubic-bezier(.2,.9,.3,1.2)' },

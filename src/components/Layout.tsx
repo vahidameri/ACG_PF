@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState, type ReactNode } from 'react'
 import { NavLink, useLocation, useNavigate, Link } from 'react-router-dom'
 import {
   LayoutGrid, Briefcase, GanttChartSquare, Zap, ListChecks, BellRing, ShieldAlert, Users, FileText, Settings, Moon, Sun, Search, Plus, RefreshCw, Menu,
-  Sparkles, Printer, CheckCircle2, AlertCircle, Bell, PanelLeftClose, PanelLeftOpen, Languages, Star, AtSign, Flag, Clock, CircleAlert, Ban,
+  Sparkles, Printer, CheckCircle2, AlertCircle, Bell, PanelLeftClose, PanelLeftOpen, Languages, Star, AtSign, Flag, Clock, CircleAlert, Ban, CalendarDays, Keyboard,
 } from 'lucide-react'
 import { useStore } from '../lib/store'
 import { useI18n, L } from '../lib/i18n'
@@ -26,6 +26,7 @@ export function Layout({ children }: { children: ReactNode }) {
   const [dark, setDark] = useState(() => document.documentElement.classList.contains('dark'))
   const [nav, setNav] = useState(false)
   const [palette, setPalette] = useState(false)
+  const [keys, setKeys] = useState(false)
   const loc = useLocation()
   const navigate = useNavigate()
 
@@ -45,6 +46,8 @@ export function Layout({ children }: { children: ReactNode }) {
         e.preventDefault()
         open('FollowUps')
       } else if (!typing && e.key === '[') setCollapsed((c) => !c)
+      else if (!typing && e.key === '?') setKeys(true)
+      else if (e.key === 'Escape') setKeys(false)
     }
     window.addEventListener('keydown', h)
     return () => window.removeEventListener('keydown', h)
@@ -62,16 +65,19 @@ export function Layout({ children }: { children: ReactNode }) {
   const inbox = useMemo(() => buildInbox(db, me), [db, me])
   const myCount = inbox.filter((i) => i.kind === 'overdue' || i.kind === 'followup' || i.kind === 'mention').length
 
-  const groups: { label: string; links: { to: string; label: string; icon: typeof LayoutGrid; badge?: number }[] }[] = [
+  const groups: { label: string; links: { to: string; label: string; icon: typeof LayoutGrid; badge?: number; count?: number }[] }[] = [
     {
       label: L('فضای کار', 'Workspace'),
-      links: [{ to: '/my', label: L('میز کار من', 'My desk'), icon: Sparkles, badge: myCount }],
+      links: [
+        { to: '/my', label: L('میز کار من', 'My desk'), icon: Sparkles, badge: myCount },
+        { to: '/calendar', label: L('تقویم', 'Calendar'), icon: CalendarDays },
+      ],
     },
     {
       label: L('پورتفولیو', 'Portfolio'),
       links: [
         { to: '/', label: L('نمای کلی', 'Overview'), icon: LayoutGrid },
-        { to: '/projects', label: L('پروژه‌ها', 'Projects'), icon: Briefcase },
+        { to: '/projects', label: L('پروژه‌ها', 'Projects'), icon: Briefcase, count: db.Projects.filter((p) => p.status === 'active').length },
         { to: '/roadmap', label: L('رودمپ', 'Roadmap'), icon: GanttChartSquare },
         { to: '/report', label: L('گزارش مدیریتی', 'Exec report'), icon: Printer },
       ],
@@ -79,10 +85,10 @@ export function Layout({ children }: { children: ReactNode }) {
     {
       label: L('اجرا', 'Execution'),
       links: [
-        { to: '/tasks', label: L('تسک‌ها', 'Tasks'), icon: ListChecks },
-        { to: '/followups', label: L('فالوآپ‌ها', 'Follow-ups'), icon: BellRing },
+        { to: '/tasks', label: L('تسک‌ها', 'Tasks'), icon: ListChecks, count: db.Tasks.filter((t) => t.status !== 'done').length },
+        { to: '/followups', label: L('فالوآپ‌ها', 'Follow-ups'), icon: BellRing, count: db.FollowUps.filter((f) => f.status !== 'done').length },
         { to: '/sprints', label: L('اسپرینت‌ها', 'Sprints'), icon: Zap },
-        { to: '/risks', label: L('ریسک‌ها و تصمیم‌ها', 'Risks & decisions'), icon: ShieldAlert },
+        { to: '/risks', label: L('ریسک‌ها و تصمیم‌ها', 'Risks & decisions'), icon: ShieldAlert, count: db.Risks.filter((r) => r.status !== 'closed').length },
         { to: '/team', label: L('تیم و منابع', 'Team & capacity'), icon: Users },
         { to: '/updates', label: L('گزارش‌های هفتگی', 'Weekly updates'), icon: FileText },
       ],
@@ -129,6 +135,7 @@ export function Layout({ children }: { children: ReactNode }) {
                       {isActive && <span className="absolute inset-y-2 start-0 w-[3px] rounded-full bg-brand-soft" />}
                       <l.icon size={18} strokeWidth={1.7} />
                       {wide && <span className="flex-1 truncate">{l.label}</span>}
+                      {wide && !l.badge && !!l.count && <span className="font-mono text-[11px] text-white/35 num">{fa(l.count)}</span>}
                       {!!l.badge && (
                         <span className={cx('rounded-full bg-[#c4314b] text-[10px] font-semibold text-white num leading-[18px]', wide ? 'px-1.5' : 'absolute end-2 top-1.5 h-2 w-2 overflow-hidden text-transparent')}>{fa(l.badge)}</span>
                       )}
@@ -189,6 +196,9 @@ export function Layout({ children }: { children: ReactNode }) {
               </MenuItem>
               <MenuItem icon={wide ? <PanelLeftClose size={15} /> : <PanelLeftOpen size={15} />} hint="[" onClick={() => { setCollapsed(!collapsed); close() }}>
                 {collapsed ? L('باز کردن منو', 'Expand sidebar') : L('جمع کردن منو', 'Collapse sidebar')}
+              </MenuItem>
+              <MenuItem icon={<Keyboard size={15} />} hint="?" onClick={() => { close(); setKeys(true) }}>
+                {L('میانبرهای صفحه‌کلید', 'Keyboard shortcuts')}
               </MenuItem>
               <MenuItem icon={<Settings size={15} />} onClick={() => { close(); navigate('/settings') }}>
                 {L('تنظیمات و اتصال', 'Settings & connection')}
@@ -295,6 +305,7 @@ export function Layout({ children }: { children: ReactNode }) {
       </div>
 
       <CommandPalette open={palette} onClose={() => setPalette(false)} />
+      {keys && <Shortcuts onClose={() => setKeys(false)} />}
 
       <div className="pointer-events-none fixed inset-x-0 bottom-5 z-[80] flex flex-col items-center gap-2 px-4 no-print">
         {toasts.map((t) => (
@@ -393,5 +404,43 @@ function InboxButton({ items }: { items: InboxItem[] }) {
         </div>
       )}
     </Popover>
+  )
+}
+
+function Shortcuts({ onClose }: { onClose: () => void }) {
+  const rows: [string, string][] = [
+    ['Ctrl K', L('جستجو و فرمان‌ها', 'Search & commands')],
+    ['N', L('تسک جدید', 'New task')],
+    ['F', L('فالوآپ جدید', 'New follow-up')],
+    ['[', L('جمع / باز کردن منو', 'Toggle sidebar')],
+    ['Ctrl Enter', L('ارسال یادداشت / ذخیره فرم', 'Send note / save form')],
+    ['Esc', L('بستن پنل', 'Close panel')],
+    ['?', L('همین راهنما', 'This help')],
+  ]
+  return (
+    <div className="fixed inset-0 z-[78] grid place-items-center p-4 no-print">
+      <div className="absolute inset-0 bg-[#0a0d12]/50 backdrop-blur-sm fade-in" onClick={onClose} />
+      <div className="relative w-full max-w-md rounded-3xl bg-surface p-6 shadow-pop pop-in">
+        <div className="eyebrow">{L('راهنما', 'Help')}</div>
+        <h2 className="mt-1 text-lg font-bold">{L('میانبرهای صفحه‌کلید', 'Keyboard shortcuts')}</h2>
+        <div className="mt-5 divide-y divide-line">
+          {rows.map(([k, l]) => (
+            <div key={k} className="flex items-center justify-between py-2.5 text-sm">
+              <span>{l}</span>
+              <span className="flex gap-1" dir="ltr">
+                {k.split(' ').map((x) => (
+                  <kbd key={x} className="kbd h-6 min-w-6 text-[11px]">
+                    {x}
+                  </kbd>
+                ))}
+              </span>
+            </div>
+          ))}
+        </div>
+        <button className="btn-primary mt-5 w-full" onClick={onClose}>
+          {L('متوجه شدم', 'Got it')}
+        </button>
+      </div>
+    </div>
   )
 }

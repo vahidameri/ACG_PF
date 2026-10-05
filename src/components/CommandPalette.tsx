@@ -52,6 +52,7 @@ export function CommandPalette({ open, onClose }: { open: boolean; onClose: () =
     const navs: Item[] = (
       [
         ['/my', L('میز کار من', 'My desk')],
+        ['/calendar', L('تقویم', 'Calendar')],
         ['/', L('نمای کلی پورتفولیو', 'Portfolio overview')],
         ['/projects', L('پروژه‌ها', 'Projects')],
         ['/roadmap', L('رودمپ', 'Roadmap')],

@@ -9,7 +9,8 @@ import { fa, fmtDate, relDays, timeAgo } from '../lib/jalali'
 import { PROJECT_STATUS, RISK_STATUS, RISK_TYPE, SCOPE_STATUS, SPRINT_STATUS, PRIORITY } from '../lib/labels'
 import { L, lbl } from '../lib/i18n'
 import { money, TaskRow, FollowUpRow, PinButton } from '../components/shared'
-import { BurndownChart, Kanban, MilestoneList, RiskMatrix, SprintHeader, UpdateCard, VelocityChart, riskTone } from '../components/widgets'
+import { BurndownChart, Kanban, MilestoneList, RiskMatrix, SprintHeader, UpdateCard, VelocityChart, riskTone, ActivityFeed, HealthTrend } from '../components/widgets'
+import { buildActivity } from '../lib/activity'
 import { renderMentions, stampToDate } from '../components/ItemSheet'
 import { uid } from '../lib/api'
 import { todayISO } from '../lib/jalali'
@@ -115,7 +116,7 @@ export default function ProjectDetail() {
           items={[
             { label: L('پیشرفت', 'Progress'), value: `${fa(m.progress)}%`, tone: m.health },
             { label: L('زمان سپری‌شده', 'Time elapsed'), value: `${fa(m.elapsed)}%` },
-            { label: L('تا ددلاین', 'To deadline'), value: m.daysLeft >= 0 ? fa(m.daysLeft) : `−${fa(-m.daysLeft)}`, tone: m.daysLeft < 0 ? 'red' : undefined, sub: L('روز', 'days') },
+            { label: m.daysLeft >= 0 ? L('تا ددلاین', 'To deadline') : L('از ددلاین گذشته', 'Past deadline'), value: fa(Math.abs(m.daysLeft)), tone: m.daysLeft < 0 ? 'red' : undefined, sub: L('روز', 'days') },
             { label: L('مصرف بودجه', 'Budget used'), value: `${fa(m.budgetUse)}%`, tone: m.budgetUse > 100 ? 'red' : undefined, sub: `${money(p.spent)} / ${money(p.budget)}` },
             { label: L('تسک باز', 'Open tasks'), value: fa(m.openTasks), sub: L(`${fa(m.overdueTasks)} معوق · ${fa(m.blockedTasks)} مسدود`, `${m.overdueTasks} overdue · ${m.blockedTasks} blocked`) },
             { label: L('ریسک باز', 'Open risks'), value: fa(m.openRisks), tone: m.highRisks ? 'red' : undefined, sub: L(`${fa(m.highRisks)} بحرانی`, `${m.highRisks} critical`) },
@@ -226,6 +227,42 @@ export default function ProjectDetail() {
                       </div>
                     </div>
                   ))}
+                </div>
+              </Card>
+              <Card className="xl:col-span-2" eyebrow={L('فعالیت', 'Activity')} title={L('آنچه اخیراً در این پروژه گذشت', 'What happened recently')}>
+                <ActivityFeed items={buildActivity(db, p.id, 10)} showProject={false} />
+              </Card>
+              <Card eyebrow={L('مشخصات', 'Key facts')} title={L('پروژه در یک نگاه', 'At a glance')}>
+                <dl className="space-y-3 text-sm">
+                  {[
+                    [L('دسته', 'Category'), p.category],
+                    [L('فاز', 'Phase'), p.phase],
+                    [L('اولویت', 'Priority'), lbl(PRIORITY, p.priority)],
+                    [L('شروع', 'Start'), fmtDate(p.start_date, 'long')],
+                    [L('ددلاین', 'Deadline'), `${fmtDate(p.end_date, 'long')} · ${relDays(p.end_date)}`],
+                    [L('مایلستون بعدی', 'Next milestone'), m.nextMilestone ? `${m.nextMilestone.title} · ${relDays(m.nextMilestone.planned_date)}` : '—'],
+                    [L('اسپرینت جاری', 'Current sprint'), m.activeSprint ? m.activeSprint.name : '—'],
+                  ].map(([k, v]) => (
+                    <div key={k} className="flex items-start justify-between gap-4 border-b border-line pb-3 last:border-0 last:pb-0">
+                      <dt className="shrink-0 text-sub">{k}</dt>
+                      <dd className="text-end font-medium num">{v || '—'}</dd>
+                    </div>
+                  ))}
+                </dl>
+                <div className="mt-5">
+                  <div className="mb-1.5 flex justify-between text-[11px] text-sub">
+                    <span>{L('هزینه‌شده', 'Spent')} {money(p.spent)}</span>
+                    <span>{L('بودجه', 'Budget')} {money(p.budget)}</span>
+                  </div>
+                  <div className="relative h-2.5 overflow-hidden rounded-full bg-muted">
+                    <div className={cx('h-full rounded-full', m.budgetUse > 100 ? 'bg-bad' : 'bg-ink')} style={{ width: `${Math.min(100, m.budgetUse)}%` }} />
+                    <div className="absolute inset-y-0 w-[2px] bg-good" style={{ insetInlineStart: `${m.progress}%` }} title={L('پیشرفت', 'Progress')} />
+                  </div>
+                  <div className="mt-1.5 text-[11px] text-sub">{L('خط سبز = پیشرفت کار؛ اگر نوار از آن جلوتر باشد، هزینه از کار جلو افتاده.', 'Green line = progress; if the bar runs past it, spend is ahead of delivery.')}</div>
+                </div>
+                <div className="mt-5 flex items-center justify-between rounded-2xl bg-muted/60 px-4 py-3">
+                  <span className="text-xs text-sub">{L('روند سلامت (گزارش‌ها)', 'Health trend (updates)')}</span>
+                  <HealthTrend projectId={p.id} n={6} />
                 </div>
               </Card>
             </div>

@@ -1,12 +1,12 @@
 import { useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { Send, Copy, Lightbulb, UserCheck, ListChecks, BellRing, Hourglass, CalendarRange, Sparkles } from 'lucide-react'
+import { Send, Copy, Lightbulb, UserCheck, ListChecks, BellRing, Hourglass, CalendarRange, Sparkles, CalendarDays, Target } from 'lucide-react'
 import { useStore } from '../lib/store'
 import { useEditor } from '../components/Editor'
-import { Band, Card, Empty, Overlap, Avatar, cx, Segmented, StatStrip, Chip } from '../components/ui'
+import { Band, Card, Empty, Overlap, Avatar, cx, Segmented, StatStrip, Chip, Ring, PriorityIcon, Due } from '../components/ui'
 import { FollowUpRow, TaskRow, useProjectName } from '../components/shared'
 import { PersonPicker, ProjectPicker } from '../components/pickers'
-import { addDays, daysFromToday, fa, fmtDate, todayISO, daysBetween } from '../lib/jalali'
+import { addDays, daysFromToday, fa, fmtDate, todayISO, daysBetween, firstName, greeting, fmtWeekday, relDays, dayNum, parseISO } from '../lib/jalali'
 import { isTaskOverdue, projectMetrics, riskScore } from '../lib/metrics'
 import { uid } from '../lib/api'
 import { PRIORITY_ORDER } from '../lib/labels'
@@ -63,6 +63,10 @@ export default function MyDesk() {
   const myWeek = myOpen.filter((t) => t.due_date > today && t.due_date <= weekEnd).sort(byDue)
   const myLater = myOpen.filter((t) => !t.due_date || t.due_date > weekEnd).sort(byDue)
   const doneToday = db.Tasks.filter((t) => t.assignee === me && t.status === 'done' && t.completed_at?.slice(0, 10) === today)
+
+  const [tab, setTab] = useState<'today' | 'week' | 'later'>('today')
+  const [day, setDay] = useState('')
+  const list = day ? myOpen.filter((t) => t.due_date === day).sort(byDue) : tab === 'today' ? myToday : tab === 'week' ? myWeek : myLater
 
   const fuOpen = db.FollowUps.filter((f) => f.status !== 'done')
   const fuDue = fuOpen.filter((f) => f.status === 'open' && f.due_date <= today).sort(byDue)
@@ -131,16 +135,50 @@ export default function MyDesk() {
     return out.slice(0, 8)
   }, [db, today, open, fuWaiting])
 
-  const [tab, setTab] = useState<'today' | 'week' | 'later'>('today')
-  const list = tab === 'today' ? myToday : tab === 'week' ? myWeek : myLater
-  const hour = new Date().getHours()
-  const greet = hour < 12 ? L('صبح بخیر', 'Good morning') : hour < 17 ? L('روز بخیر', 'Good afternoon') : L('عصر بخیر', 'Good evening')
+  const first = firstName(me)
+  const hello = me ? L(`${greeting()}، ${first} جان`, `${greeting()}, ${first}`) : greeting()
   const overdue = myToday.filter((t) => t.due_date < today).length + fuDue.filter((f) => f.due_date < today).length
+
+  // Focus: the three things that matter most today (overdue critical first).
+  const focus = [...myToday, ...myWeek]
+    .sort((a, b) => (PRIORITY_ORDER[a.priority] - PRIORITY_ORDER[b.priority]) || (a.due_date < b.due_date ? -1 : 1))
+    .slice(0, 3)
+  const dueTodayTotal = myToday.length + doneToday.length
+  const dayPct = dueTodayTotal ? Math.round((doneToday.length / dueTodayTotal) * 100) : 100
+  const nextMs = db.Milestones.filter((m) => m.status !== 'done' && m.planned_date >= today).sort((a, b) => (a.planned_date < b.planned_date ? -1 : 1))[0]
+  const headline = (() => {
+    const parts: string[] = []
+    if (myToday.length) parts.push(L(`${fa(myToday.length)} کار`, `${myToday.length} task${myToday.length > 1 ? 's' : ''}`))
+    if (fuDue.length) parts.push(L(`${fa(fuDue.length)} پیگیری`, `${fuDue.length} follow-up${fuDue.length > 1 ? 's' : ''}`))
+    const base = parts.length ? L(`امروز ${parts.join(' و ')} منتظر شماست`, `${parts.join(' and ')} need you today`) : L('امروز کار سررسیدشده‌ای ندارید', 'Nothing is due today')
+    return overdue ? `${base}${L(` — ${fa(overdue)} مورد عقب افتاده.`, ` — ${overdue} overdue.`)}` : `${base}.`
+  })()
 
   return (
     <>
-      <Band eyebrow={<><span>{L('فضای کار', 'Workspace')}</span><span className="opacity-40">/</span><span className="num">{fmtDate(today, 'long')}</span></>} title={<>{greet}{me ? <span className="text-band-sub">{L('، ', ', ')}{me}</span> : null}</>}
-        sub={L('هرچه امروز نیاز به اقدام شما دارد، اینجاست.', 'Everything that needs you today, in one place.')}>
+      <Band
+        eyebrow={<><span>{L('فضای کار', 'Workspace')}</span><span className="opacity-40">/</span><span>{fmtWeekday(today)}</span><span className="num">{fmtDate(today, 'long')}</span></>}
+        title={hello}
+        sub={
+          <>
+            {headline}
+            {nextMs && (
+              <span className="mt-1 block text-[13px] text-[#9fb3d9]">
+                {L('مایلستون بعدی پورتفولیو', 'Next portfolio milestone')}: {nextMs.title} · {relDays(nextMs.planned_date)}
+              </span>
+            )}
+          </>
+        }
+        actions={
+          <div className="hidden items-center gap-4 rounded-3xl border border-white/10 bg-white/[0.04] px-5 py-3 md:flex">
+            <Ring value={dayPct} size={64} stroke={6} h={dayPct === 100 ? 'green' : dayPct >= 50 ? 'amber' : undefined} light />
+            <div className="text-xs leading-5 text-[#b9c3d6]">
+              <div className="text-sm font-semibold text-white">{L('پیشرفت امروز', 'Today’s progress')}</div>
+              {L(`${fa(doneToday.length)} از ${fa(dueTodayTotal)} کار امروز`, `${doneToday.length} of ${dueTodayTotal} done`)}
+            </div>
+          </div>
+        }
+      >
         <StatStrip
           items={[
             { label: L('تسک امروز و معوق', 'Tasks today & overdue'), value: fa(myToday.length) },
@@ -183,16 +221,82 @@ export default function MyDesk() {
           </div>
         )}
 
+        <div className="grid gap-4 lg:grid-cols-5">
+          <Card className="lg:col-span-3" eyebrow={<span className="flex items-center gap-1.5"><CalendarDays size={12} /> {L('هفته‌ی پیش رو', 'The week ahead')}</span>} title={day ? `${fmtWeekday(day)} ${fmtDate(day, 'long')}` : L('برنامه‌ی ۷ روز آینده', 'Next 7 days')} action={day ? <button className="btn-ghost btn-sm" onClick={() => setDay('')}>{L('همه', 'All')} ×</button> : undefined}>
+            <div className="grid grid-cols-7 gap-1.5">
+              {Array.from({ length: 7 }, (_, i) => addDays(today, i)).map((d) => {
+                const tasksN = myOpen.filter((t) => t.due_date === d).length + (d === today ? myToday.filter((t) => t.due_date < today).length : 0)
+                const fuN = fuOpen.filter((f) => f.due_date === d || (d === today && f.due_date < today && f.status === 'open')).length
+                const msN = db.Milestones.filter((m) => m.status !== 'done' && m.planned_date === d).length
+                const weekend = parseISO(d)!.getDay() === 5
+                const sel = day === d
+                return (
+                  <button
+                    key={d}
+                    onClick={() => setDay(sel ? '' : d)}
+                    className={cx(
+                      'group flex flex-col items-center rounded-2xl border px-1 py-3 transition',
+                      sel ? 'border-ink bg-ink text-surface shadow-float' : d === today ? 'border-ink/20 bg-ink/[0.03]' : 'border-line hover:border-line-strong hover:bg-muted/50',
+                      weekend && !sel && 'opacity-70',
+                    )}
+                  >
+                    <span className={cx('text-[11px]', sel ? 'text-surface/70' : 'text-sub')}>{d === today ? L('امروز', 'Today') : fmtWeekday(d, true)}</span>
+                    <span className="display mt-1 text-2xl num">{fa(dayNum(d))}</span>
+                    <span className="mt-2 flex h-2 items-center gap-1">
+                      {tasksN > 0 && <span className={cx('h-1.5 rounded-full', sel ? 'bg-surface' : 'bg-ink')} style={{ width: Math.min(18, 4 + tasksN * 3) }} />}
+                      {fuN > 0 && <span className="h-1.5 w-1.5 rounded-full bg-warn" />}
+                      {msN > 0 && <span className="h-1.5 w-1.5 rotate-45 rounded-[1px] bg-bad" />}
+                    </span>
+                    <span className={cx('mt-1.5 text-[10px] num', sel ? 'text-surface/70' : 'text-sub')}>{tasksN + fuN ? fa(tasksN + fuN) : '—'}</span>
+                  </button>
+                )
+              })}
+            </div>
+            <div className="mt-3 flex flex-wrap items-center gap-4 text-[11px] text-sub">
+              <span className="flex items-center gap-1.5"><span className="h-1.5 w-3 rounded-full bg-ink" /> {L('تسک', 'Tasks')}</span>
+              <span className="flex items-center gap-1.5"><span className="h-1.5 w-1.5 rounded-full bg-warn" /> {L('فالوآپ', 'Follow-ups')}</span>
+              <span className="flex items-center gap-1.5"><span className="h-1.5 w-1.5 rotate-45 rounded-[1px] bg-bad" /> {L('مایلستون', 'Milestone')}</span>
+              <span className="ms-auto">{L('روی هر روز بزنید تا کارهای همان روز را ببینید', 'Tap a day to see what’s due')}</span>
+            </div>
+          </Card>
+
+          <Card className="lg:col-span-2" eyebrow={<span className="flex items-center gap-1.5"><Target size={12} /> {L('تمرکز', 'Focus')}</span>} title={L('سه کار مهم امروز', 'Your top three today')}>
+            {focus.length === 0 ? (
+              <Empty text={L('کار مهمی باقی نمانده', 'Nothing urgent left')} icon={<Sparkles size={22} />} />
+            ) : (
+              <ol className="space-y-2">
+                {focus.map((t, i) => (
+                  <li key={t.id}>
+                    <button onClick={() => open('Tasks', t as never)} className="group flex w-full items-center gap-3 rounded-2xl border border-line p-3 text-start transition hover:border-line-strong hover:shadow-card">
+                      <span className="display grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-ink text-base text-surface num">{fa(i + 1)}</span>
+                      <span className="min-w-0 flex-1">
+                        <span className="block truncate text-sm font-medium">{t.title}</span>
+                        <span className="mt-0.5 flex items-center gap-2 text-[11px] text-sub">
+                          <PriorityIcon p={t.priority} /> {pname(t.project_id) || L('بدون پروژه', 'No project')}
+                        </span>
+                      </span>
+                      <Due iso={t.due_date} />
+                    </button>
+                  </li>
+                ))}
+              </ol>
+            )}
+          </Card>
+        </div>
+
         <div className="grid gap-4 xl:grid-cols-5">
           <div className="min-w-0 space-y-4 xl:col-span-3">
             <Card
               pad={false}
               eyebrow={<span className="flex items-center gap-1.5"><ListChecks size={12} /> {L('کارهای من', 'My work')}</span>}
-              title={L(`${fa(myOpen.length)} تسک باز`, `${myOpen.length} open tasks`)}
+              title={day ? L(`کارهای ${fmtWeekday(day)}`, `Due ${fmtWeekday(day)}`) : L(`${fa(myOpen.length)} تسک باز`, `${myOpen.length} open tasks`)}
               action={
                 <Segmented
-                  value={tab}
-                  onChange={setTab}
+                  value={day ? ('' as never) : tab}
+                  onChange={(v) => {
+                    setTab(v)
+                    setDay('')
+                  }}
                   options={[
                     { value: 'today', label: `${L('امروز', 'Today')} · ${fa(myToday.length)}` },
                     { value: 'week', label: `${L('این هفته', 'Week')} · ${fa(myWeek.length)}` },

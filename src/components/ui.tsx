@@ -42,13 +42,13 @@ export function Card({
 /** ACG-style black band with grid texture; page content overlaps its bottom edge. */
 export function Band({ eyebrow, title, sub, actions, children }: { eyebrow?: ReactNode; title: ReactNode; sub?: ReactNode; actions?: ReactNode; children?: ReactNode }) {
   return (
-    <div className="band -mx-4 sm:-mx-6 lg:-mx-8 px-4 sm:px-6 lg:px-8 pt-8 pb-20 no-print">
+    <div className="band -mx-4 sm:-mx-6 lg:-mx-8 px-4 sm:px-6 lg:px-8 pt-9 pb-24 no-print">
       <div className="relative z-10 mx-auto max-w-[1440px] rise">
         <div className="flex flex-wrap items-end justify-between gap-4">
           <div className="min-w-0">
-            {eyebrow && <div className="eyebrow !text-band-sub mb-3 flex items-center gap-2">{eyebrow}</div>}
-            <h1 className="display text-3xl sm:text-[40px] leading-[1.1]">{title}</h1>
-            {sub && <p className="mt-3 max-w-2xl text-sm text-band-sub leading-6">{sub}</p>}
+            {eyebrow && <div className="band-eye mb-4"><span className="eyebrow !text-[#c3d0e8] flex items-center gap-2">{eyebrow}</span></div>}
+            <h1 className="display text-3xl sm:text-[42px] leading-[1.15]">{title}</h1>
+            {sub && <div className="mt-3 max-w-2xl text-[15px] leading-7 text-[#b9c3d6]">{sub}</div>}
           </div>
           {actions && <div className="flex flex-wrap items-center gap-2">{actions}</div>}
         </div>
@@ -60,7 +60,7 @@ export function Band({ eyebrow, title, sub, actions, children }: { eyebrow?: Rea
 
 /** Content panel that overlaps the band above it. */
 export function Overlap({ children, className }: { children: ReactNode; className?: string }) {
-  return <div className={cx('relative z-10 mx-auto -mt-12 max-w-[1440px] stagger', className)}>{children}</div>
+  return <div className={cx('relative z-10 mx-auto -mt-16 max-w-[1440px] stagger', className)}>{children}</div>
 }
 
 /** ACG stats strip: big numbers separated by hairlines. */

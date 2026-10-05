@@ -1,3 +1,11 @@
+/* Peyda (from the Karma prototype) + LatD: Peyda has no Latin digits, so ASCII digits come from LatD. */
+@font-face { font-family: LatD; src: url('./assets/fonts/LatD-400.woff2') format('woff2'); font-weight: 400; unicode-range: U+0030-0039; font-display: swap; }
+@font-face { font-family: LatD; src: url('./assets/fonts/LatD-500.woff2') format('woff2'); font-weight: 500 600; unicode-range: U+0030-0039; font-display: swap; }
+@font-face { font-family: LatD; src: url('./assets/fonts/LatD-700.woff2') format('woff2'); font-weight: 700 900; unicode-range: U+0030-0039; font-display: swap; }
+@font-face { font-family: Peyda; src: url('./assets/fonts/Peyda-400.woff2') format('woff2'); font-weight: 300 400; font-display: swap; }
+@font-face { font-family: Peyda; src: url('./assets/fonts/Peyda-500.woff2') format('woff2'); font-weight: 500 600; font-display: swap; }
+@font-face { font-family: Peyda; src: url('./assets/fonts/Peyda-700.woff2') format('woff2'); font-weight: 700 900; font-display: swap; }
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -10,10 +18,10 @@
   soft elevated cards, state layers.
 */
 :root {
-  --bg: 243 244 246;
+  --bg: 243 245 249;
   --surface: 255 255 255;
   --muted: 241 243 246;
-  --line: 229 231 235;
+  --line: 226 230 237;
   --line-strong: 208 213 220;
   --ink: 10 10 10;
   --sub: 95 102 114;
@@ -23,10 +31,10 @@
   --good: 22 122 77;
   --warn: 176 118 0;
   --bad: 190 32 56;
-  --band: 10 10 10;
+  --band: 27 28 31;
   --on-band: 255 255 255;
   --band-sub: 150 156 166;
-  --band-line: 38 40 44;
+  --band-line: 52 55 61;
   color-scheme: light;
 }
 
@@ -44,10 +52,10 @@
   --good: 70 196 138;
   --warn: 236 178 60;
   --bad: 246 98 116;
-  --band: 0 0 0;
+  --band: 11 12 14;
   --on-band: 255 255 255;
   --band-sub: 140 146 156;
-  --band-line: 30 32 36;
+  --band-line: 32 34 39;
   color-scheme: dark;
 }
 
@@ -63,6 +71,8 @@ body {
 }
 html[lang='fa'] body {
   @apply font-fa;
+  /* Peyda's stylistic sets swap in alternate letterforms (e.g. final yeh) — keep defaults */
+  font-feature-settings: normal;
 }
 
 * {
@@ -96,10 +106,10 @@ select:focus-visible {
 @layer components {
   /* ---------- surfaces ---------- */
   .card {
-    @apply bg-surface border border-line rounded-2xl shadow-card;
+    @apply bg-surface border border-[rgb(15_26_46/0.06)] rounded-2xl shadow-card dark:border-line;
   }
   .card-hover {
-    @apply transition duration-200 hover:-translate-y-0.5 hover:shadow-float hover:border-line-strong;
+    @apply transition duration-300 ease-[cubic-bezier(.2,.8,.2,1)] hover:-translate-y-[3px] hover:shadow-float;
   }
   .hairline {
     @apply border-line;
@@ -116,7 +126,12 @@ select:focus-visible {
     @apply font-medium tracking-[-0.035em];
   }
   html[lang='fa'] .display {
-    @apply font-bold tracking-[-0.01em];
+    @apply font-bold tracking-[-0.015em];
+  }
+  html[lang='fa'] h1,
+  html[lang='fa'] h2,
+  html[lang='fa'] h3 {
+    letter-spacing: -0.005em;
   }
   .num {
     font-variant-numeric: tabular-nums;
@@ -124,7 +139,7 @@ select:focus-visible {
 
   /* ---------- buttons (pill, with state layer) ---------- */
   .btn {
-    @apply relative inline-flex items-center justify-center gap-2 overflow-hidden rounded-full px-4 h-10 text-sm font-medium transition duration-150 select-none whitespace-nowrap disabled:opacity-40 disabled:pointer-events-none active:scale-[.97];
+    @apply relative inline-flex items-center justify-center gap-2 overflow-hidden rounded-full px-4 h-10 text-sm font-semibold transition duration-150 select-none whitespace-nowrap disabled:opacity-40 disabled:pointer-events-none active:scale-[.97];
   }
   .btn::before {
     content: '';
@@ -137,7 +152,7 @@ select:focus-visible {
     opacity: 0.12;
   }
   .btn-primary {
-    @apply btn bg-ink text-surface;
+    @apply btn bg-ink text-surface shadow-[0_6px_16px_-6px_rgb(17_18_20/0.5)];
   }
   .btn-accent {
     @apply btn bg-brand text-surface;
@@ -200,20 +215,24 @@ select:focus-visible {
   /* ---------- page band (ACG black with grid) ---------- */
   .band {
     @apply relative overflow-hidden bg-band text-on-band;
-    background-image: linear-gradient(rgb(var(--band-line)) 1px, transparent 1px), linear-gradient(90deg, rgb(var(--band-line)) 1px, transparent 1px),
-      radial-gradient(900px 380px at 85% -20%, rgb(29 79 97 / 0.55), transparent 70%), radial-gradient(600px 300px at 0% 120%, rgb(106 4 33 / 0.28), transparent 70%);
+    background-image: linear-gradient(rgb(255 255 255 / 0.045) 1px, transparent 1px), linear-gradient(90deg, rgb(255 255 255 / 0.045) 1px, transparent 1px),
+      radial-gradient(900px 600px at 18% 35%, rgb(58 85 133 / 0.5) 0%, transparent 62%), radial-gradient(700px 400px at 95% 110%, rgb(245 179 27 / 0.08) 0%, transparent 60%),
+      linear-gradient(160deg, #1b1c1f 0%, #24262a 55%, #2c2f35 100%);
     background-size:
       56px 56px,
       56px 56px,
       100% 100%,
+      100% 100%,
       100% 100%;
     background-position: -1px -1px;
   }
-  .band::after {
-    content: '';
-    @apply pointer-events-none absolute inset-0;
-    background: linear-gradient(180deg, transparent 40%, rgb(var(--band)) 100%);
-    opacity: 0.6;
+  .dark .band {
+    background-image: linear-gradient(rgb(255 255 255 / 0.035) 1px, transparent 1px), linear-gradient(90deg, rgb(255 255 255 / 0.035) 1px, transparent 1px),
+      radial-gradient(900px 600px at 18% 35%, rgb(58 85 133 / 0.42) 0%, transparent 62%), radial-gradient(700px 400px at 95% 110%, rgb(245 179 27 / 0.06) 0%, transparent 60%),
+      linear-gradient(160deg, #0b0c0e 0%, #121316 60%, #16181c 100%);
+  }
+  .band-eye {
+    @apply inline-flex items-center gap-2 rounded-full border border-[rgb(195_208_232/0.25)] px-3 py-1 text-[12px] text-[#c3d0e8];
   }
   .kbd {
     @apply inline-flex h-5 min-w-5 items-center justify-center rounded-md border border-line bg-surface px-1.5 font-mono text-[10px] text-sub;
