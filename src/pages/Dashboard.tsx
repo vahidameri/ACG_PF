@@ -50,7 +50,7 @@ export default function Dashboard() {
           </>
         }
         sub={L(
-          `${fa(s.live.length)} پروژه‌ی جاری · ${fa(s.counts.red)} در خطر، ${fa(s.counts.amber)} نیازمند توجه. سلامت هر پروژه خودکار از زمان، مایلستون، ریسک و بودجه محاسبه می‌شود.`,
+          `${fa(s.live.length)} پروژه‌ی جاری؛ ${fa(s.counts.red)} در خطر و ${fa(s.counts.amber)} نیازمند توجه. سلامت هر پروژه خودکار از زمان، مایلستون، ریسک و بودجه محاسبه می‌شود.`,
           `${s.live.length} live projects · ${s.counts.red} off track, ${s.counts.amber} at risk. Health is computed from schedule, milestones, risks and budget.`,
         )}
         actions={
