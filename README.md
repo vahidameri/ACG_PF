@@ -17,7 +17,9 @@ Google Sheet (دیتابیس)  ⇄  Apps Script Web App (API رایگان)  ⇄ 
 | **میز کار من** | مدیر برنامه | ثبت سریع تسک یا فالوآپ در یک خط، کارهای امروز و معوق، فالوآپ‌های سررسیدشده، موارد «منتظر پاسخ»، **پیشنهادهای دستیار**، و **«از چه کسی پیگیری کنم؟»** همراه با کپی متن یادآوری برای پیام‌رسان |
 | **پروژه‌ها** | همه | کارت هر پروژه با پیشرفت در برابر زمان، ددلاین، ریسک و مایلستون بعدی؛ فیلتر بر اساس وضعیت، سلامت، اولویت، دسته و مدیر پروژه |
 | **صفحه‌ی پروژه** | همه | تحلیل خودکار «چرا این وضعیت؟»، اسکوپ (داخل و خارج) با لاگ تغییرات، مایلستون‌ها، اسپرینت‌ها با Burndown و Velocity، کانبان تسک‌ها، ماتریس ریسک، گزارش‌های هفتگی، تیم و درصد تخصیص |
-| **رودمپ** | لیدرشیپ | گانت شمسی همه‌ی پروژه‌ها با مایلستون‌ها و خط «امروز»؛ نمای سه‌ماهه، شش‌ماهه، سالانه و کل |
+| **رودمپ** | لیدرشیپ | گانت همه‌ی پروژه‌ها با مایلستون‌ها؛ نشانگر زمانِ کشیدنی برای دیدن وضعیت در هر تاریخ (نمای لحظه‌ای: برنامه در برابر واقعیت)، جابه‌جایی بازه و زوم سه‌ماهه، شش‌ماهه، سالانه و کل |
+| **وضعیت تصویری** | لیدرشیپ | دیوار وضعیت (حلقه‌ی پیشرفت با نشانگر زمان، تایم‌لاین مایلستون‌ها، پیشرفت پروداکت و تک)، ماتریس زمان در برابر هزینه، مسابقه‌ی پیشرفت، سهم بودجه و نقشه‌ی حرارتی سلامت هفته‌به‌هفته |
+| **پروداکت و تک** | مدیر برنامه و لیدرشیپ | پیگیری جداگانه‌ی دو تیم (باز، معوق، مسدود، منتظر تیم دیگر)، جریان تحویل کار بین تیم‌ها با وابستگی تسک‌ها، و مقایسه‌ی پیشرفت هر تیم در هر پروژه |
 | **اسپرینت‌ها** | مدیر برنامه و تیم فنی | اسپرینت‌های فعال، Burndown، Velocity، بورد اسپرینت و تاریخچه‌ی نرخ تحقق |
 | **تسک‌ها** | همه | لیست و کانبان با کشیدن و رها کردن، فیلترهای قابل اشتراک از طریق لینک (پروژه، فرد، وضعیت، اولویت، سررسید) |
 | **فالوآپ‌ها** | مدیر برنامه | گروه‌بندی بر اساس زمان (معوق، امروز، منتظر پاسخ، این هفته) یا بر اساس فرد؛ دکمه‌های یک‌کلیکی «انجام شد»، «منتظر پاسخ» و «تعویق» |
@@ -116,10 +118,10 @@ npm run build      # خروجی استاتیک در dist/
 | `Scope` | id, project_id, item, type (in/out), status, change_note, date |
 | `Milestones` | id, project_id, title, planned_date, actual_date, status, owner, weight |
 | `Sprints` | id, project_id, name, start_date, end_date, goal, committed_points, completed_points, status |
-| `Tasks` | id, project_id, sprint_id, title, description, assignee, reporter, status, priority, due_date, points, tags, created_at, completed_at |
+| `Tasks` | id, project_id, sprint_id, title, description, assignee, reporter, status, priority, due_date, points, tags, created_at, completed_at, track (`product`/`tech`؛ خالی = از تیم مسئول), depends_on (شناسه‌ی تسک‌های پیش‌نیاز، با کاما) |
 | `FollowUps` | id, project_id, subject, person, channel, due_date, status, priority, notes, created_at, done_at |
 | `Risks` | id, project_id, title, type (risk/issue/dependency/decision), probability (۱–۵), impact (۱–۵), owner, mitigation, status, due_date |
-| `Team` | id, name, role, email, team |
+| `Team` | id, name, role, email, team, track (`product`/`tech`) |
 | `Allocations` | id, member_id, project_id, percent |
 | `Updates` | id, project_id, week_date, author, health, summary, done, next, blockers |
 | `Comments` | id, entity (Tasks/FollowUps/Projects/Risks), entity_id, author, body, created_at (`YYYY-MM-DD HH:mm`) |

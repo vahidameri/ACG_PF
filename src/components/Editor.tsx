@@ -40,8 +40,9 @@ export const SCHEMAS: Record<Exclude<SheetName, 'Comments'>, { title: T2; prefix
       { key: 'priority', label: ['اولویت', 'Priority'], type: 'select', options: PRIORITY, half: true },
       { key: 'points', label: ['استوری‌پوینت', 'Story points'], type: 'number', half: true },
       { key: 'tags', label: ['برچسب‌ها', 'Tags'], type: 'text', half: true, placeholder: ['با کاما جدا کنید', 'Comma separated'] },
+      { key: 'track', label: ['تیم (ترک)', 'Track'], type: 'select', options: { '': ['خودکار از روی مسئول', 'Auto (from assignee)'], product: ['پروداکت', 'Product'], tech: ['تک', 'Tech'] }, half: true },
     ],
-    defaults: () => ({ status: 'todo', priority: 'medium', points: 0, created_at: todayISO() }),
+    defaults: () => ({ status: 'todo', priority: 'medium', points: 0, created_at: todayISO(), track: '', depends_on: '' }),
   },
   FollowUps: {
     title: ['فالوآپ', 'Follow-up'],
@@ -161,6 +162,7 @@ export const SCHEMAS: Record<Exclude<SheetName, 'Comments'>, { title: T2; prefix
       { key: 'name', label: ['نام', 'Name'], type: 'text', required: true },
       { key: 'role', label: ['نقش', 'Role'], type: 'text', half: true },
       { key: 'team', label: ['تیم', 'Team'], type: 'text', half: true },
+      { key: 'track', label: ['ترک', 'Track'], type: 'select', options: { '': ['—', '—'], product: ['پروداکت', 'Product'], tech: ['تک', 'Tech'] }, half: true },
       { key: 'email', label: ['ایمیل', 'Email'], type: 'text' },
     ],
     defaults: () => ({}),

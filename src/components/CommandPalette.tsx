@@ -54,6 +54,8 @@ export function CommandPalette({ open, onClose }: { open: boolean; onClose: () =
         ['/my', L('میز کار من', 'My desk')],
         ['/calendar', L('تقویم', 'Calendar')],
         ['/', L('نمای کلی پورتفولیو', 'Portfolio overview')],
+        ['/pulse', L('وضعیت تصویری پروژه‌ها', 'Visual status')],
+        ['/teams', L('پروداکت و تک', 'Product & Tech')],
         ['/projects', L('پروژه‌ها', 'Projects')],
         ['/roadmap', L('رودمپ', 'Roadmap')],
         ['/tasks', L('تسک‌ها', 'Tasks')],

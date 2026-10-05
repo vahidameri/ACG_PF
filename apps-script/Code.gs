@@ -21,10 +21,10 @@ var SCHEMA = {
   Scope: ['id', 'project_id', 'item', 'type', 'status', 'change_note', 'date'],
   Milestones: ['id', 'project_id', 'title', 'planned_date', 'actual_date', 'status', 'owner', 'weight'],
   Sprints: ['id', 'project_id', 'name', 'start_date', 'end_date', 'goal', 'committed_points', 'completed_points', 'status'],
-  Tasks: ['id', 'project_id', 'sprint_id', 'title', 'description', 'assignee', 'reporter', 'status', 'priority', 'due_date', 'points', 'tags', 'created_at', 'completed_at'],
+  Tasks: ['id', 'project_id', 'sprint_id', 'title', 'description', 'assignee', 'reporter', 'status', 'priority', 'due_date', 'points', 'tags', 'created_at', 'completed_at', 'track', 'depends_on'],
   FollowUps: ['id', 'project_id', 'subject', 'person', 'channel', 'due_date', 'status', 'priority', 'notes', 'created_at', 'done_at'],
   Risks: ['id', 'project_id', 'title', 'type', 'probability', 'impact', 'owner', 'mitigation', 'status', 'due_date'],
-  Team: ['id', 'name', 'role', 'email', 'team'],
+  Team: ['id', 'name', 'role', 'email', 'team', 'track'],
   Allocations: ['id', 'member_id', 'project_id', 'percent'],
   Updates: ['id', 'project_id', 'week_date', 'author', 'health', 'summary', 'done', 'next', 'blockers'],
   // Comments on tasks / follow-ups / projects. created_at is "YYYY-MM-DD HH:mm".

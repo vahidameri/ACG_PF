@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState, type ReactNode } from 'react'
 import { NavLink, useLocation, useNavigate, Link } from 'react-router-dom'
 import {
   LayoutGrid, Briefcase, GanttChartSquare, Zap, ListChecks, BellRing, ShieldAlert, Users, FileText, Settings, Moon, Sun, Search, Plus, RefreshCw, Menu,
-  Sparkles, Printer, CheckCircle2, AlertCircle, Bell, PanelLeftClose, PanelLeftOpen, Languages, Star, AtSign, Flag, Clock, CircleAlert, Ban, CalendarDays, Keyboard,
+  Sparkles, Printer, CheckCircle2, AlertCircle, Bell, PanelLeftClose, PanelLeftOpen, Languages, Star, AtSign, Flag, Clock, CircleAlert, Ban, CalendarDays, Keyboard, Radar, Workflow,
 } from 'lucide-react'
 import { useStore } from '../lib/store'
 import { useI18n, L } from '../lib/i18n'
@@ -80,6 +80,7 @@ export function Layout({ children }: { children: ReactNode }) {
       label: L('پورتفولیو', 'Portfolio'),
       links: [
         { to: '/', label: L('نمای کلی', 'Overview'), icon: LayoutGrid },
+        { to: '/pulse', label: L('وضعیت تصویری', 'Visual status'), icon: Radar },
         { to: '/projects', label: L('پروژه‌ها', 'Projects'), icon: Briefcase, count: db.Projects.filter((p) => p.status === 'active').length },
         { to: '/roadmap', label: L('رودمپ', 'Roadmap'), icon: GanttChartSquare },
         { to: '/report', label: L('گزارش مدیریتی', 'Exec report'), icon: Printer },
@@ -88,6 +89,7 @@ export function Layout({ children }: { children: ReactNode }) {
     {
       label: L('اجرا', 'Execution'),
       links: [
+        { to: '/teams', label: L('پروداکت و تک', 'Product & Tech'), icon: Workflow },
         { to: '/tasks', label: L('تسک‌ها', 'Tasks'), icon: ListChecks, count: db.Tasks.filter((t) => t.status !== 'done').length },
         { to: '/followups', label: L('فالوآپ‌ها', 'Follow-ups'), icon: BellRing, count: db.FollowUps.filter((f) => f.status !== 'done').length },
         { to: '/sprints', label: L('اسپرینت‌ها', 'Sprints'), icon: Zap },

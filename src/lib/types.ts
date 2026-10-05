@@ -74,7 +74,13 @@ export interface Task {
   tags: string
   created_at: string
   completed_at: string
+  /** 'product' | 'tech' — blank = inferred from the assignee's team */
+  track: Track | ''
+  /** comma-separated task ids this task waits on (cross-team handoffs) */
+  depends_on: string
 }
+
+export type Track = 'product' | 'tech'
 
 export type FollowUpStatus = 'open' | 'waiting' | 'done'
 
@@ -111,6 +117,7 @@ export interface Member {
   role: string
   email: string
   team: string
+  track: Track | ''
 }
 
 export interface Allocation {

@@ -18,17 +18,17 @@ function buildDemoFa(): DB {
   const t = todayISO()
   const d = (n: number) => addDays(t, n)
 
-  const Team = [
-    { id: 'm1', name: DEMO_ME, role: 'Program Manager', email: 'pm@acg.example', team: 'PMO' },
-    { id: 'm2', name: 'سارا محمدی', role: 'Product Owner', email: 'sara@acg.example', team: 'محصول' },
-    { id: 'm3', name: 'علی رضایی', role: 'Tech Lead', email: 'ali@acg.example', team: 'فنی' },
-    { id: 'm4', name: 'نگار حسینی', role: 'UX Designer', email: 'negar@acg.example', team: 'طراحی' },
-    { id: 'm5', name: 'رضا کریمی', role: 'Backend Developer', email: 'reza@acg.example', team: 'فنی' },
-    { id: 'm6', name: 'مریم احمدی', role: 'Frontend Developer', email: 'maryam@acg.example', team: 'فنی' },
-    { id: 'm7', name: 'امیر نوری', role: 'QA Engineer', email: 'amir@acg.example', team: 'فنی' },
-    { id: 'm8', name: 'الهام صادقی', role: 'Business Analyst', email: 'elham@acg.example', team: 'محصول' },
-    { id: 'm9', name: 'حمید جعفری', role: 'DevOps Engineer', email: 'hamid@acg.example', team: 'فنی' },
-    { id: 'm10', name: 'دکتر کامرانی', role: 'CEO', email: 'ceo@acg.example', team: 'مدیریت' },
+  const Team: DB['Team'] = [
+    { id: 'm1', name: DEMO_ME, role: 'Program Manager', email: 'pm@acg.example', team: 'PMO', track: '' },
+    { id: 'm2', name: 'سارا محمدی', role: 'Product Owner', email: 'sara@acg.example', team: 'محصول', track: 'product' },
+    { id: 'm3', name: 'علی رضایی', role: 'Tech Lead', email: 'ali@acg.example', team: 'فنی', track: 'tech' },
+    { id: 'm4', name: 'نگار حسینی', role: 'UX Designer', email: 'negar@acg.example', team: 'طراحی', track: 'product' },
+    { id: 'm5', name: 'رضا کریمی', role: 'Backend Developer', email: 'reza@acg.example', team: 'فنی', track: 'tech' },
+    { id: 'm6', name: 'مریم احمدی', role: 'Frontend Developer', email: 'maryam@acg.example', team: 'فنی', track: 'tech' },
+    { id: 'm7', name: 'امیر نوری', role: 'QA Engineer', email: 'amir@acg.example', team: 'فنی', track: 'tech' },
+    { id: 'm8', name: 'الهام صادقی', role: 'Business Analyst', email: 'elham@acg.example', team: 'محصول', track: 'product' },
+    { id: 'm9', name: 'حمید جعفری', role: 'DevOps Engineer', email: 'hamid@acg.example', team: 'فنی', track: 'tech' },
+    { id: 'm10', name: 'دکتر کامرانی', role: 'CEO', email: 'ceo@acg.example', team: 'مدیریت', track: '' },
   ]
 
   const Projects = [
@@ -92,7 +92,7 @@ function buildDemoFa(): DB {
   let tid = 0
   const T = (project_id: string, sprint_id: string, title: string, assignee: string, status: Task['status'], priority: Task['priority'], due: number | null, points: number, completed?: number, tags = '', description = ''): Task => ({
     id: `t${++tid}`, project_id, sprint_id, title, description, assignee, reporter: DEMO_ME, status, priority,
-    due_date: due === null ? '' : d(due), points, tags, created_at: d(-20), completed_at: completed !== undefined ? d(completed) : '',
+    due_date: due === null ? '' : d(due), points, tags, created_at: d(-20), completed_at: completed !== undefined ? d(completed) : '', track: '', depends_on: '',
   })
   const Tasks: Task[] = [
     // CRM active sprint
@@ -141,6 +141,28 @@ function buildDemoFa(): DB {
     // HR
     T('p7', '', 'بازنگری اولویت پروژه در کمیته', DEMO_ME, 'todo', 'low', 12, 0),
   ]
+  // Product-team work that hands off to engineering (tech tasks depend on these).
+  Tasks.push(
+    T('p1', 's3', 'تعریف سیاست‌های SLA با واحد پشتیبانی', 'سارا محمدی', 'done', 'high', -6, 3, -7, 'spec'),
+    T('p1', 's3', 'نیازمندی‌های اسکالیشن و سطوح دسترسی', 'الهام صادقی', 'in_progress', 'high', 1, 3, undefined, 'spec'),
+    T('p1', '', 'طراحی UX صف تیکت', 'نگار حسینی', 'done', 'medium', -9, 3, -8, 'design'),
+    T('p2', 's6', 'اولویت‌بندی باگ‌های بتا با تیم پشتیبانی', 'سارا محمدی', 'done', 'high', -1, 2, -1, 'triage'),
+    T('p2', 's6', 'طراحی UX اعلان‌های سفارش', 'نگار حسینی', 'review', 'high', 2, 3, undefined, 'design'),
+    T('p3', '', 'سند نیازمندی داشبورد فروش', 'الهام صادقی', 'in_progress', 'high', 7, 0, undefined, 'spec'),
+    T('p5', 's7', 'نقشه‌ی سایت و معماری اطلاعات', 'نگار حسینی', 'done', 'medium', -6, 3, -6, 'design'),
+  )
+  const dep = (taskTitle: string, ...needs: string[]) => {
+    const t = Tasks.find((x) => x.title === taskTitle)
+    if (t) t.depends_on = needs.map((n) => Tasks.find((x) => x.title === n)?.id).filter(Boolean).join(',')
+  }
+  dep('طراحی موتور SLA تیکت', 'تعریف سیاست‌های SLA با واحد پشتیبانی')
+  dep('قوانین اسکالیشن خودکار', 'نیازمندی‌های اسکالیشن و سطوح دسترسی')
+  dep('UI صف تیکت‌ها', 'طراحی UX صف تیکت')
+  dep('رفع باگ‌های گزارش‌شده‌ی بتا (۱۲ مورد)', 'اولویت‌بندی باگ‌های بتا با تیم پشتیبانی')
+  dep('Push Notification سفارش', 'طراحی UX اعلان‌های سفارش')
+  dep('مدل داده‌ی ستاره‌ای فروش', 'سند نیازمندی داشبورد فروش', 'انتخاب ابزار BI (Power BI / Metabase)')
+  dep('قالب صفحه‌ی خدمات', 'نقشه‌ی سایت و معماری اطلاعات')
+  dep('تنظیم ریدایرکت‌های سئو', 'نقشه‌ی سایت و معماری اطلاعات')
   // Closed sprints' tasks for velocity realism are represented by committed/completed points.
 
   let fid = 0

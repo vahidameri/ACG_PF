@@ -45,7 +45,7 @@ export default function MyDesk() {
     if (kind === 'task') {
       await upsert('Tasks', {
         id: uid('T'), project_id: proj, sprint_id: '', title: t, description: '', assignee: who || me, reporter: me, status: 'todo', priority: 'medium',
-        due_date: dueDate, points: 0, tags: '', created_at: today, completed_at: '',
+        due_date: dueDate, points: 0, tags: '', created_at: today, completed_at: '', track: '', depends_on: '',
       })
       toast(L(`تسک برای ${who || 'شما'} ثبت شد`, `Task added for ${who || 'you'}`))
     } else {

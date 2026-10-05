@@ -12,7 +12,12 @@ import { L, lbl } from '../lib/i18n'
 import { CHANNEL, FOLLOWUP_STATUS } from '../lib/labels'
 import { Avatar, Sheet, cx, Chip, MenuItem, Popover } from './ui'
 import { DatePicker } from './DatePicker'
+import { useEditor } from './Editor'
 import { PersonPicker, PriorityPicker, ProjectPicker, StatusPicker } from './pickers'
+import { TRACK, trackOf, depsOf, dependentsOf, depIds, trackSoft, memberTrack } from '../lib/tracks'
+import type { Track } from '../lib/types'
+import { StatusIcon } from './ui'
+import { Link2, X, Plus, ArrowLeftRight } from 'lucide-react'
 
 function nowStamp() {
   const d = new Date()
@@ -137,6 +142,8 @@ export function ItemSheet({ sheet, id, onClose }: { sheet: 'Tasks' | 'FollowUps'
             </div>
           )}
 
+          {isTask && <Dependencies task={item as unknown as Task} onChange={(ids) => patch({ depends_on: ids.join(',') })} />}
+
           <div className="mt-8">
             <div className="eyebrow mb-4 flex items-center gap-2">
               <MessageSquare size={13} /> {L('گفتگو و فعالیت', 'Activity')}
@@ -219,6 +226,9 @@ export function ItemSheet({ sheet, id, onClose }: { sheet: 'Tasks' | 'FollowUps'
                   className="h-8 w-16 rounded-full bg-transparent px-2.5 text-xs outline-none hover:bg-muted focus:bg-surface focus:ring-1 focus:ring-line-strong num"
                   placeholder="—"
                 />
+              </Prop>
+              <Prop label={L('ترک', 'Track')}>
+                <TrackPicker task={item as unknown as Task} onChange={(v) => patch({ track: v })} />
               </Prop>
               <Prop label={L('برچسب', 'Tags')}>
                 <input
@@ -431,4 +441,135 @@ export function renderMentions(text: string, people: string[]) {
     }
   }
   return parts
+}
+
+export function TrackBadge({ track, inferred }: { track: Track | ''; inferred?: boolean }) {
+  if (!track) return <span className="text-[0.6875rem] text-sub/60">—</span>
+  return (
+    <span className={cx('chip', trackSoft[track])} title={inferred ? L('از روی تیم مسئول', 'Inferred from assignee') : undefined}>
+      {lbl(TRACK, track)}
+      {inferred && <span className="opacity-60">·{L('خودکار', 'auto')}</span>}
+    </span>
+  )
+}
+
+function TrackPicker({ task, onChange }: { task: Task; onChange: (v: Track | '') => void }) {
+  const { db, canEdit } = useStore()
+  const eff = trackOf(task, db)
+  return (
+    <Popover
+      width={220}
+      trigger={({ toggle }) => (
+        <button onClick={toggle} disabled={!canEdit} className="inline-flex h-8 items-center rounded-full px-1.5 hover:bg-muted">
+          <TrackBadge track={eff} inferred={!task.track && !!eff} />
+        </button>
+      )}
+    >
+      {(close) => (
+        <>
+          <MenuItem active={!task.track} hint={memberTrack(db, task.assignee) ? lbl(TRACK, memberTrack(db, task.assignee) as Track) : ''} onClick={() => { onChange(''); close() }}>
+            {L('خودکار (تیم مسئول)', 'Auto (assignee’s team)')}
+          </MenuItem>
+          {(['product', 'tech'] as Track[]).map((t) => (
+            <MenuItem key={t} active={task.track === t} onClick={() => { onChange(t); close() }}>
+              {lbl(TRACK, t)}
+            </MenuItem>
+          ))}
+        </>
+      )}
+    </Popover>
+  )
+}
+
+/** Cross-team links: what this task waits on, and what waits on it. */
+function Dependencies({ task, onChange }: { task: Task; onChange: (ids: string[]) => void }) {
+  const { db, canEdit } = useStore()
+  const { open } = useEditorLite()
+  const [q, setQ] = useState('')
+  const deps = depsOf(task, db)
+  const blocking = dependentsOf(task, db)
+  const waiting = deps.filter((d) => d.status !== 'done')
+  const ids = depIds(task)
+  const candidates = db.Tasks.filter((t) => t.id !== task.id && !ids.includes(t.id) && (!q || t.title.includes(q)) && (t.project_id === task.project_id || q)).slice(0, 8)
+  const RowT = ({ t, onRemove }: { t: Task; onRemove?: () => void }) => {
+    const tr = trackOf(t, db)
+    return (
+      <div className="group flex items-center gap-2.5 rounded-xl border border-line px-3 py-2">
+        <StatusIcon s={t.status} size={14} />
+        <button onClick={() => open(t)} className={cx('min-w-0 flex-1 truncate text-start text-sm hover:underline', t.status === 'done' && 'text-sub line-through')}>
+          {t.title}
+        </button>
+        <TrackBadge track={tr} />
+        <Avatar name={t.assignee} size="xs" />
+        {onRemove && canEdit && (
+          <button className="icon-btn h-6 w-6 opacity-0 group-hover:opacity-100" onClick={onRemove} title={L('حذف وابستگی', 'Remove link')}>
+            <X size={12} />
+          </button>
+        )}
+      </div>
+    )
+  }
+  return (
+    <div className="mt-8">
+      <div className="eyebrow mb-3 flex items-center gap-2">
+        <ArrowLeftRight size={13} /> {L('وابستگی‌ها و تحویل بین تیم‌ها', 'Dependencies & handoffs')}
+      </div>
+      {waiting.length > 0 && (
+        <div className="mb-3 flex items-center gap-2 rounded-xl bg-warn/[0.09] px-3 py-2 text-xs text-warn">
+          <Link2 size={13} />
+          {L(`منتظر ${waiting.length === 1 ? 'یک کار' : `${fa(waiting.length)} کار`} از ${Array.from(new Set(waiting.map((w) => lbl(TRACK, trackOf(w, db) || 'tech')))).join(' و ')} است`, `Waiting on ${waiting.length} item(s) from ${Array.from(new Set(waiting.map((w) => lbl(TRACK, trackOf(w, db) || 'tech')))).join(' & ')}`)}
+        </div>
+      )}
+      <div className="space-y-4">
+        <div>
+          <div className="mb-1.5 text-xs text-sub">{L('وابسته به (پیش‌نیازها)', 'Waits on')}</div>
+          <div className="space-y-1.5">
+            {deps.map((d) => (
+              <RowT key={d.id} t={d} onRemove={() => onChange(ids.filter((x) => x !== d.id))} />
+            ))}
+            {canEdit && (
+              <Popover
+                width={360}
+                trigger={({ toggle }) => (
+                  <button onClick={toggle} className="flex w-full items-center gap-2 rounded-xl border border-dashed border-line-strong px-3 py-2 text-xs text-sub hover:border-ink/30 hover:text-ink">
+                    <Plus size={13} /> {L('افزودن پیش‌نیاز', 'Add dependency')}
+                  </button>
+                )}
+              >
+                {(close) => (
+                  <>
+                    <input autoFocus value={q} onChange={(e) => setQ(e.target.value)} placeholder={L('جستجوی تسک…', 'Search tasks…')} className="mb-1 h-9 w-full border-b border-line bg-transparent px-2.5 text-sm outline-none" />
+                    <div className="max-h-72 overflow-y-auto">
+                      {candidates.map((t) => (
+                        <MenuItem key={t.id} icon={<StatusIcon s={t.status} size={13} />} hint={trackOf(t, db) ? lbl(TRACK, trackOf(t, db) as Track) : undefined} onClick={() => { onChange([...ids, t.id]); close(); setQ('') }}>
+                          {t.title}
+                        </MenuItem>
+                      ))}
+                      {!candidates.length && <div className="px-3 py-4 text-center text-xs text-sub">{L('موردی پیدا نشد', 'No matches')}</div>}
+                    </div>
+                  </>
+                )}
+              </Popover>
+            )}
+          </div>
+        </div>
+        {blocking.length > 0 && (
+          <div>
+            <div className="mb-1.5 text-xs text-sub">{L('این کار پیش‌نیازِ', 'Unblocks')}</div>
+            <div className="space-y-1.5">
+              {blocking.map((d) => (
+                <RowT key={d.id} t={d} />
+              ))}
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  )
+}
+
+// Opening another task from inside the sheet goes through the editor context.
+function useEditorLite() {
+  const { open } = useEditor()
+  return { open: (t: Task) => open('Tasks', t as never) }
 }

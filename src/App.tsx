@@ -17,6 +17,8 @@ import Updates from './pages/Updates'
 import Report from './pages/Report'
 import Settings from './pages/Settings'
 import CalendarPage from './pages/Calendar'
+import Teams from './pages/Teams'
+import Pulse from './pages/Pulse'
 import { Skeleton } from './components/ui'
 import { SignIn } from './components/SignIn'
 
@@ -53,6 +55,8 @@ export default function App() {
                 <Route path="/projects/:id" element={<ProjectDetail />} />
                 <Route path="/roadmap" element={<Roadmap />} />
                 <Route path="/calendar" element={<CalendarPage />} />
+                <Route path="/teams" element={<Teams />} />
+                <Route path="/pulse" element={<Pulse />} />
                 <Route path="/sprints" element={<Sprints />} />
                 <Route path="/tasks" element={<Tasks />} />
                 <Route path="/followups" element={<FollowUps />} />

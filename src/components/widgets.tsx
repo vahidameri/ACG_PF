@@ -1,6 +1,8 @@
 import { useState } from 'react'
 import { Area, Bar, BarChart, CartesianGrid, Line, ComposedChart, ResponsiveContainer, Tooltip, XAxis, YAxis, Legend } from 'recharts'
-import { Check, Plus, MessageSquare, CheckCircle2, FileText, Flag, BellRing } from 'lucide-react'
+import { Check, Plus, MessageSquare, CheckCircle2, FileText, Flag, BellRing, Link2 } from 'lucide-react'
+import { trackOf, trackDot, waitingOn, TRACK } from '../lib/tracks'
+import type { Track } from '../lib/types'
 import type { DB, Risk, Sprint, Task, TaskStatus, Update, Milestone } from '../lib/types'
 import { useStore } from '../lib/store'
 import { useEditor } from './Editor'
@@ -70,6 +72,8 @@ export function Kanban({ tasks, defaults, showProject = true }: { tasks: Task[];
                     {t.status === 'blocked' && t.description && <div className="mt-2 rounded-lg bg-bad/[0.07] px-2 py-1 text-[0.6875rem] leading-5 text-bad">{t.description}</div>}
                     <div className="mt-3 flex items-center gap-2">
                       <PriorityIcon p={t.priority} />
+                      {trackOf(t, db) && <span className={cx('h-2 w-2 rounded-full', trackDot[trackOf(t, db) as Track])} title={lbl(TRACK, trackOf(t, db) as Track)} />}
+                      {waitingOn(t, db).length > 0 && <Link2 size={12} className="text-warn" />}
                       {Number(t.points) > 0 && <Chip className="font-mono">{fa(t.points)}</Chip>}
                       {nC > 0 && (
                         <span className="inline-flex items-center gap-0.5 text-[0.6875rem] text-sub">

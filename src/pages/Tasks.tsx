@@ -1,6 +1,8 @@
 import { useMemo, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
-import { Plus, ArrowUpDown, MessageSquare } from 'lucide-react'
+import { Plus, ArrowUpDown, MessageSquare, Link2 } from 'lucide-react'
+import { trackOf, waitingOn } from '../lib/tracks'
+import { TrackBadge } from '../components/ItemSheet'
 import { useStore } from '../lib/store'
 import { useEditor } from '../components/Editor'
 import { Band, Card, Empty, FilterSelect, Overlap, Segmented, Toolbar, Due, cx, SearchInput, StatusIcon } from '../components/ui'
@@ -37,6 +39,7 @@ export default function Tasks() {
   const status = get('status') || (view === 'list' ? 'open' : '')
   const prio = get('priority')
   const due = get('due')
+  const track = get('track')
   const today = todayISO()
   const assignees = Array.from(new Set(db.Tasks.map((t) => t.assignee).filter(Boolean)))
 
@@ -46,6 +49,7 @@ export default function Tasks() {
       if (assignee && t.assignee !== assignee) return false
       if (status === 'open' ? t.status === 'done' : status && status !== 'all' && t.status !== status) return false
       if (prio && t.priority !== prio) return false
+      if (track && trackOf(t, db) !== track) return false
       if (due === 'overdue' && !isTaskOverdue(t)) return false
       if (due === 'today' && t.due_date !== today) return false
       if (due === 'week' && !(t.due_date >= today && t.due_date <= addDays(today, 7))) return false
@@ -60,7 +64,7 @@ export default function Tasks() {
       assignee: (a, b) => a.assignee.localeCompare(b.assignee, 'fa'),
     }
     return out.sort(cmp[sort])
-  }, [db.Tasks, project, assignee, status, prio, due, q, sort, today])
+  }, [db, project, assignee, status, prio, due, q, sort, today, track])
 
   const patch = (t: Task, p: Partial<Task>) => upsert('Tasks', { ...t, ...p, ...(p.status ? { completed_at: p.status === 'done' ? todayISO() : '' } : {}) })
   const SortTh = ({ k, children, className }: { k: SortKey; children: React.ReactNode; className?: string }) => (
@@ -95,6 +99,7 @@ export default function Tasks() {
             <FilterSelect value={project} onChange={(v) => set('project', v)} placeholder={L('همه‌ی پروژه‌ها', 'All projects')} options={db.Projects.map((p) => ({ value: p.id, label: p.name }))} />
             <FilterSelect value={assignee} onChange={(v) => set('assignee', v)} placeholder={L('همه‌ی افراد', 'Everyone')} options={assignees.map((a) => ({ value: a, label: a === me ? `${a} (${L('من', 'me')})` : a }))} />
             {view === 'list' && <FilterSelect value={get('status')} onChange={(v) => set('status', v)} placeholder={L('باز', 'Open')} options={[{ value: 'all', label: L('همه', 'All') }, ...options(TASK_STATUS, lang)]} />}
+            <Segmented value={(track || 'all') as 'all' | 'product' | 'tech'} onChange={(v) => set('track', v === 'all' ? '' : v)} options={[{ value: 'all', label: L('هر دو تیم', 'Both teams') }, { value: 'product', label: L('پروداکت', 'Product') }, { value: 'tech', label: L('تک', 'Tech') }]} />
             <FilterSelect value={prio} onChange={(v) => set('priority', v)} placeholder={L('اولویت', 'Priority')} options={options(PRIORITY, lang)} />
             <FilterSelect
               value={due}
@@ -131,6 +136,7 @@ export default function Tasks() {
                       </SortTh>
                       <th className="th">{L('عنوان', 'Title')}</th>
                       <th className="th">{L('پروژه', 'Project')}</th>
+                      <th className="th">{L('ترک', 'Track')}</th>
                       <SortTh k="priority">{L('اولویت', 'Priority')}</SortTh>
                       <SortTh k="assignee">{L('مسئول', 'Assignee')}</SortTh>
                       <SortTh k="due_date">{L('سررسید', 'Due')}</SortTh>
@@ -161,6 +167,16 @@ export default function Tasks() {
                             </div>
                           </td>
                           <td className="td text-xs text-sub">{pname(t.project_id) || '—'}</td>
+                          <td className="td">
+                            <span className="flex items-center gap-1.5">
+                              <TrackBadge track={trackOf(t, db)} />
+                              {waitingOn(t, db).length > 0 && (
+                                <span title={L('منتظر پیش‌نیاز', 'Waiting on a dependency')} className="text-warn">
+                                  <Link2 size={13} />
+                                </span>
+                              )}
+                            </span>
+                          </td>
                           <td className="px-2" onClick={(e) => e.stopPropagation()}>
                             <PriorityPicker value={t.priority} onChange={(p) => patch(t, { priority: p })} />
                           </td>

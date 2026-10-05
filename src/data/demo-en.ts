@@ -174,6 +174,13 @@ export const EN: Record<string, string> = {
   'تشکیل کمیته‌ی امنیت': 'Form the security committee',
   'بازنگری اولویت پروژه در کمیته': 'Re-prioritise the project in committee',
 
+  'تعریف سیاست‌های SLA با واحد پشتیبانی': 'Define SLA policies with Support',
+  'نیازمندی‌های اسکالیشن و سطوح دسترسی': 'Escalation & permission requirements',
+  'طراحی UX صف تیکت': 'Ticket queue UX',
+  'اولویت‌بندی باگ‌های بتا با تیم پشتیبانی': 'Triage beta bugs with Support',
+  'طراحی UX اعلان‌های سفارش': 'Order notification UX',
+  'سند نیازمندی داشبورد فروش': 'Sales dashboard PRD',
+  'نقشه‌ی سایت و معماری اطلاعات': 'Sitemap & information architecture',
   // follow-ups
   'دسترسی API سرویس‌های ERP': 'ERP service API access',
   'ایمیل اول ارسال شد، پاسخی نیامده': 'First email sent, no reply yet',
