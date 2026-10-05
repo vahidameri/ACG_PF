@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { Send, Copy, Lightbulb, UserCheck, ListChecks, BellRing, Hourglass, CalendarRange, Sparkles, CalendarDays, Target } from 'lucide-react'
+import { Send, Copy, Lightbulb, UserCheck, ListChecks, BellRing, Hourglass, Sparkles, CalendarDays, Target } from 'lucide-react'
 import { useStore } from '../lib/store'
 import { useEditor } from '../components/Editor'
 import { Band, Card, Empty, Overlap, Avatar, cx, Segmented, StatStrip, Chip, Ring, PriorityIcon, Due } from '../components/ui'
@@ -71,7 +71,6 @@ export default function MyDesk() {
   const fuOpen = db.FollowUps.filter((f) => f.status !== 'done')
   const fuDue = fuOpen.filter((f) => f.status === 'open' && f.due_date <= today).sort(byDue)
   const fuWaiting = fuOpen.filter((f) => f.status === 'waiting').sort(byDue)
-  const fuUpcoming = fuOpen.filter((f) => f.status === 'open' && f.due_date > today).sort(byDue)
 
   const nudge = useMemo(() => {
     const map = new Map<string, Task[]>()
@@ -183,9 +182,8 @@ export default function MyDesk() {
           items={[
             { label: L('تسک امروز و معوق', 'Tasks today & overdue'), value: fa(myToday.length) },
             { label: L('فالوآپ سررسیدشده', 'Follow-ups due'), value: fa(fuDue.length), tone: fuDue.length ? 'amber' : undefined },
-            { label: L('منتظر پاسخ', 'Waiting on others'), value: fa(fuWaiting.length) },
             { label: L('عقب‌افتاده', 'Overdue'), value: fa(overdue), tone: overdue ? 'red' : 'green' },
-            { label: L('این هفته', 'This week'), value: fa(myWeek.length) },
+            { label: L('منتظر پاسخ دیگران', 'Waiting on others'), value: fa(fuWaiting.length) },
             { label: L('انجام‌شده امروز', 'Done today'), value: fa(doneToday.length), tone: doneToday.length ? 'green' : undefined },
           ]}
         />
@@ -322,14 +320,9 @@ export default function MyDesk() {
               <div className="px-2 pb-2">{fuDue.length === 0 ? <Empty text={L('فالوآپ سررسیدشده‌ای ندارید', 'No follow-ups due')} /> : fuDue.map((f) => <FollowUpRow key={f.id} f={f} />)}</div>
             </Card>
 
-            <div className="grid gap-4 @md:grid-cols-2">
-              <Card pad={false} eyebrow={<span className="flex items-center gap-1.5"><Hourglass size={12} /> {L('منتظر', 'Waiting')}</span>} title={L('منتظر پاسخ دیگران', 'Waiting on others')}>
-                <div className="px-2 pb-2">{fuWaiting.length === 0 ? <Empty /> : fuWaiting.map((f) => <FollowUpRow key={f.id} f={f} compact />)}</div>
-              </Card>
-              <Card pad={false} eyebrow={<span className="flex items-center gap-1.5"><CalendarRange size={12} /> {L('پیش رو', 'Upcoming')}</span>} title={L('فالوآپ‌های بعدی', 'Next follow-ups')}>
-                <div className="px-2 pb-2">{fuUpcoming.length === 0 ? <Empty /> : fuUpcoming.slice(0, 6).map((f) => <FollowUpRow key={f.id} f={f} compact />)}</div>
-              </Card>
-            </div>
+            <Card pad={false} eyebrow={<span className="flex items-center gap-1.5"><Hourglass size={12} /> {L('منتظر', 'Waiting')}</span>} title={L('منتظر پاسخ دیگران', 'Waiting on others')}>
+              <div className="px-2 pb-2">{fuWaiting.length === 0 ? <Empty /> : fuWaiting.map((f) => <FollowUpRow key={f.id} f={f} compact />)}</div>
+            </Card>
           </div>
 
           <div className="min-w-0 space-y-4 @xl:col-span-2">

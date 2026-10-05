@@ -80,21 +80,26 @@ export function Layout({ children }: { children: ReactNode }) {
       label: L('پورتفولیو', 'Portfolio'),
       links: [
         { to: '/', label: L('نمای کلی', 'Overview'), icon: LayoutGrid },
-        { to: '/pulse', label: L('وضعیت تصویری', 'Visual status'), icon: Radar },
+        { to: '/pulse', label: L('برد وضعیت', 'Status board'), icon: Radar },
         { to: '/projects', label: L('پروژه‌ها', 'Projects'), icon: Briefcase, count: db.Projects.filter((p) => p.status === 'active').length },
         { to: '/roadmap', label: L('رودمپ', 'Roadmap'), icon: GanttChartSquare },
         { to: '/report', label: L('گزارش مدیریتی', 'Exec report'), icon: Printer },
       ],
     },
     {
-      label: L('اجرا', 'Execution'),
+      label: L('تحویل', 'Delivery'),
       links: [
         { to: '/teams', label: L('پروداکت و تک', 'Product & Tech'), icon: Workflow },
         { to: '/tasks', label: L('تسک‌ها', 'Tasks'), icon: ListChecks, count: db.Tasks.filter((t) => t.status !== 'done').length },
         { to: '/followups', label: L('فالوآپ‌ها', 'Follow-ups'), icon: BellRing, count: db.FollowUps.filter((f) => f.status !== 'done').length },
         { to: '/sprints', label: L('اسپرینت‌ها', 'Sprints'), icon: Zap },
+      ],
+    },
+    {
+      label: L('راهبری', 'Governance'),
+      links: [
         { to: '/risks', label: L('ریسک‌ها و تصمیم‌ها', 'Risks & decisions'), icon: ShieldAlert, count: db.Risks.filter((r) => r.status !== 'closed').length },
-        { to: '/team', label: L('تیم و منابع', 'Team & capacity'), icon: Users },
+        { to: '/team', label: L('ظرفیت تیم', 'Capacity'), icon: Users },
         { to: '/updates', label: L('گزارش‌های هفتگی', 'Weekly updates'), icon: FileText },
       ],
     },

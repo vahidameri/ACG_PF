@@ -7,6 +7,9 @@ import { HEALTH, RISK_TYPE } from '../lib/labels'
 import { L, lbl } from '../lib/i18n'
 import { money, useProjectName } from '../components/shared'
 import { AcgLogo } from '../components/Brand'
+import { RagStrip } from '../components/widgets'
+import { assess, DIM, DIMS } from '../lib/rag'
+import { tr } from '../lib/i18n'
 
 export default function Report() {
   const { db, toast } = useStore()
@@ -93,6 +96,7 @@ export default function Report() {
                   <tr className="border-b-2 border-ink">
                     <th className="th !px-0">{L('پروژه', 'Project')}</th>
                     <th className="th">{L('سلامت', 'Health')}</th>
+                    <th className="th">{L('ابعاد', 'Dimensions')}</th>
                     <th className="th w-40">{L('پیشرفت', 'Progress')}</th>
                     <th className="th">{L('ددلاین', 'Deadline')}</th>
                     <th className="th">{L('مهم‌ترین نکته', 'Key signal')}</th>
@@ -109,6 +113,9 @@ export default function Report() {
                         </td>
                         <td className="td">
                           <HealthBadge h={m.health} />
+                        </td>
+                        <td className="td">
+                          <RagStrip a={assess(p, db)} compact />
                         </td>
                         <td className="td">
                           <div className="flex items-center gap-2">
@@ -199,7 +206,7 @@ export default function Report() {
                   <HealthDot h={h} /> {lbl(HEALTH, h)}
                 </span>
               ))}
-              <span className="ms-auto">{L('سلامت خودکار از زمان، مایلستون، ریسک، بودجه و اسپرینت محاسبه شده است.', 'Health is computed from schedule, milestones, risks, budget and sprints.')}</span>
+              <span className="ms-auto">{L('ترتیب ابعاد', 'Dimension order')}: {DIMS.map((d) => tr(DIM[d])).join(' · ')}</span>
             </footer>
           </div>
         </article>

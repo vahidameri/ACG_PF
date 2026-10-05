@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom'
-import { Check, Clock, AlarmClockOff, MessageSquare, Phone, Mail, Users2, MoreHorizontal, AlertTriangle, Star, ArrowUpRight } from 'lucide-react'
+import { Check, Clock, AlarmClockOff, MessageSquare, Phone, Mail, Users2, MoreHorizontal, AlertTriangle, Star } from 'lucide-react'
 import type { FollowUp, Project, Task } from '../lib/types'
 import { useStore } from '../lib/store'
 import { useEditor } from './Editor'
@@ -159,7 +159,6 @@ export function PinButton({ id, className }: { id: string; className?: string })
 export function ProjectCard({ p }: { p: Project }) {
   const { db } = useStore()
   const m = projectMetrics(p, db)
-  const team = db.Allocations.filter((a) => a.project_id === p.id).map((a) => db.Team.find((x) => x.id === a.member_id)?.name || '').filter(Boolean)
   const issue = m.reasons.find((r) => r.level !== 'green')
   return (
     <Link to={`/projects/${p.id}`} className="card card-hover group flex flex-col p-5">
@@ -175,7 +174,7 @@ export function ProjectCard({ p }: { p: Project }) {
         <PinButton id={p.id} className="-me-2 -mt-1.5" />
       </div>
       <h3 className="mt-3 text-[1.0625rem] font-semibold leading-snug tracking-tight">{p.name}</h3>
-      <p className="mt-1 line-clamp-2 text-xs leading-5 text-sub">{p.description}</p>
+      <p className="mt-1 line-clamp-1 text-xs leading-5 text-sub">{p.description}</p>
 
       <div className="mt-5 flex items-end justify-between">
         <div>
@@ -231,25 +230,12 @@ export function ProjectCard({ p }: { p: Project }) {
         <span className="flex items-center gap-2">
           <Avatar name={p.owner} size="xs" /> {p.owner}
         </span>
-        <span className="flex items-center gap-3">
-          {team.length > 0 && <AvatarStackLite names={team} />}
-          <ArrowUpRight size={15} className="text-sub/50 transition group-hover:text-ink rtl:-scale-x-100" />
-        </span>
+        <span className="text-[0.6875rem]">{lbl(PROJECT_STATUS, p.status)}</span>
       </div>
     </Link>
   )
 }
 
-function AvatarStackLite({ names }: { names: string[] }) {
-  return (
-    <span className="flex -space-x-1.5 rtl:space-x-reverse">
-      {names.slice(0, 3).map((n) => (
-        <Avatar key={n} name={n} size="xs" ring />
-      ))}
-      {names.length > 3 && <span className="grid h-5 min-w-5 place-items-center rounded-full bg-muted px-1 text-[0.5625rem] ring-2 ring-surface">+{fa(names.length - 3)}</span>}
-    </span>
-  )
-}
 
 /** Compact money: 8.5B / ۸٫۵ میلیارد (values are in IRR in the sheet). */
 export function money(n: number) {

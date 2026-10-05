@@ -9,9 +9,10 @@ import { useEditor } from './Editor'
 import { Avatar, Due, cx, HealthBadge, Chip, StatusIcon, PriorityIcon } from './ui'
 import { TASK_STATUS, TASK_STATUS_ORDER, MILESTONE_STATUS, HEALTH } from '../lib/labels'
 import type { Activity } from '../lib/activity'
+import { DIM, DIMS, type Assessment } from '../lib/rag'
 import { burndown, riskScore, sprintCommitted, sprintDonePoints } from '../lib/metrics'
 import { fa, fmtDayMonth, fmtDate, todayISO, daysFromToday, timeAgo } from '../lib/jalali'
-import { L, lbl, locale } from '../lib/i18n'
+import { L, lbl, locale, tr } from '../lib/i18n'
 import { useProjectName } from './shared'
 
 export const tooltipStyle = { background: 'rgb(var(--surface))', border: '1px solid rgb(var(--line))', borderRadius: 14, fontSize: 12, boxShadow: '0 12px 32px -12px rgb(0 0 0 / .3)' }
@@ -353,5 +354,28 @@ export function HealthTrend({ projectId, n = 5 }: { projectId: string; n?: numbe
         <span key={u.id} className={cx('h-2.5 w-2.5 rounded-full ring-2 ring-surface', u.health === 'red' ? 'bg-bad' : u.health === 'amber' ? 'bg-warn' : 'bg-good')} title={`${fmtDate(u.week_date)} · ${lbl(HEALTH, u.health)}`} />
       ))}
     </span>
+  )
+}
+
+/** Six-dimension RAG strip (schedule, budget, scope, risk, resourcing, delivery). */
+export function RagStrip({ a, compact }: { a: Assessment; compact?: boolean }) {
+  const tone: Record<string, string> = { red: 'bg-bad text-white', amber: 'bg-warn text-white', green: 'bg-good/12 text-good' }
+  if (compact)
+    return (
+      <span className="inline-flex gap-0.5">
+        {DIMS.map((d) => (
+          <span key={d} title={`${tr(DIM[d])}: ${a.dims[d].why}`} className={cx('h-3 w-3 rounded-[3px]', a.dims[d].h === 'red' ? 'bg-bad' : a.dims[d].h === 'amber' ? 'bg-warn' : 'bg-good/40')} />
+        ))}
+      </span>
+    )
+  return (
+    <div className="grid grid-cols-2 gap-1.5 @md:grid-cols-3">
+      {DIMS.map((d) => (
+        <div key={d} title={a.dims[d].why} className={cx('rounded-xl px-2.5 py-2', tone[a.dims[d].h])}>
+          <div className="text-[0.6875rem] font-semibold">{tr(DIM[d])}</div>
+          <div className="truncate text-[0.625rem] opacity-90">{a.dims[d].why}</div>
+        </div>
+      ))}
+    </div>
   )
 }

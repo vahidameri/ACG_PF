@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
-import { ArrowRight, Pencil, Plus, Target, CheckCircle2, AlertTriangle, Send, Crown, User } from 'lucide-react'
+import { ArrowRight, Pencil, Plus, Target, Send, Crown, User } from 'lucide-react'
 import { useStore } from '../lib/store'
 import { useEditor, type EditableSheet } from '../components/Editor'
 import { Band, Card, Empty, HealthBadge, Overlap, Progress, StatStrip, Tabs, cx, healthText, Avatar, Chip, Segmented } from '../components/ui'
@@ -9,8 +9,9 @@ import { fa, fmtDate, relDays, timeAgo } from '../lib/jalali'
 import { PROJECT_STATUS, RISK_STATUS, RISK_TYPE, SCOPE_STATUS, SPRINT_STATUS, PRIORITY } from '../lib/labels'
 import { L, lbl } from '../lib/i18n'
 import { money, TaskRow, FollowUpRow, PinButton } from '../components/shared'
-import { BurndownChart, Kanban, MilestoneList, RiskMatrix, SprintHeader, UpdateCard, VelocityChart, riskTone, ActivityFeed, HealthTrend } from '../components/widgets'
+import { BurndownChart, Kanban, MilestoneList, RiskMatrix, SprintHeader, UpdateCard, VelocityChart, riskTone, ActivityFeed, HealthTrend, RagStrip } from '../components/widgets'
 import { buildActivity } from '../lib/activity'
+import { assess } from '../lib/rag'
 import { renderMentions, stampToDate } from '../components/ItemSheet'
 import { uid } from '../lib/api'
 import { todayISO } from '../lib/jalali'
@@ -107,10 +108,6 @@ export default function ProjectDetail() {
           <span className="num">
             {fmtDate(p.start_date)} → {fmtDate(p.end_date)}
           </span>
-          <span className="chip bg-white/10 text-white">
-            <span className={cx('h-1.5 w-1.5 rounded-full', m.health === 'red' ? 'bg-[#ff8a9a]' : m.health === 'amber' ? 'bg-[#f5c565]' : 'bg-[#7fe0b0]')} />
-            {lbl(PRIORITY, p.priority)} · {m.health === 'red' ? L('در خطر', 'Off track') : m.health === 'amber' ? L('نیازمند توجه', 'At risk') : L('سالم', 'On track')}
-          </span>
         </div>
         <StatStrip
           items={[
@@ -156,14 +153,9 @@ export default function ProjectDetail() {
                     <HealthBadge h={m.health} />
                   </div>
                 </div>
-                <ul className="space-y-2">
-                  {m.reasons.map((r, i) => (
-                    <li key={i} className={cx('flex items-start gap-2.5 rounded-xl px-3 py-2.5 text-sm leading-6', r.level === 'red' ? 'bg-bad/[0.07] text-bad' : r.level === 'amber' ? 'bg-warn/[0.09] text-warn' : 'bg-good/[0.07] text-good')}>
-                      {r.level === 'green' ? <CheckCircle2 size={15} className="mt-1 shrink-0" /> : <AlertTriangle size={15} className="mt-1 shrink-0" />}
-                      {r.text}
-                    </li>
-                  ))}
-                </ul>
+                <div className="mb-4">
+                  <RagStrip a={assess(p, db)} />
+                </div>
                 <div className="mt-5">
                   <div className="mb-1.5 flex justify-between text-[0.6875rem] text-sub">
                     <span>{L('پیشرفت', 'Progress')} {fa(m.progress)}%</span>
