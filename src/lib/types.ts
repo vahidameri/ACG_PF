@@ -132,6 +132,15 @@ export interface Update {
   blockers: string
 }
 
+export interface Comment {
+  id: string
+  entity: 'Tasks' | 'FollowUps' | 'Projects' | 'Risks'
+  entity_id: string
+  author: string
+  body: string
+  created_at: string // ISO datetime
+}
+
 export interface DB {
   Projects: Project[]
   Scope: ScopeItem[]
@@ -143,6 +152,7 @@ export interface DB {
   Team: Member[]
   Allocations: Allocation[]
   Updates: Update[]
+  Comments: Comment[]
 }
 
 export type SheetName = keyof DB

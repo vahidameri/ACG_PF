@@ -1,9 +1,11 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import type { DB, Role, Row, SheetName } from './types'
 import { fetchAll, loadConfig, remoteDelete, remoteUpsert, saveConfig, type Config } from './api'
-import { buildDemo, DEMO_ME } from '../data/demo'
+import { buildDemo, demoMe } from '../data/demo'
+import { L, locale } from './i18n'
 
-const DEMO_KEY = 'acg.demo.db'
+// Demo edits are kept per language so switching language shows sample data in that language.
+const demoKey = () => `acg.demo.db.${locale.lang}`
 const ME_KEY = 'acg.me'
 
 const NUMERIC: Partial<Record<SheetName, string[]>> = {
@@ -16,7 +18,7 @@ const NUMERIC: Partial<Record<SheetName, string[]>> = {
 }
 
 function emptyDB(): DB {
-  return { Projects: [], Scope: [], Milestones: [], Sprints: [], Tasks: [], FollowUps: [], Risks: [], Team: [], Allocations: [], Updates: [] }
+  return { Projects: [], Scope: [], Milestones: [], Sprints: [], Tasks: [], FollowUps: [], Risks: [], Team: [], Allocations: [], Updates: [], Comments: [] }
 }
 
 // Sheets return numbers as numbers or strings, dates as ISO strings. Normalize once here.
@@ -47,6 +49,7 @@ interface Toast {
   id: number
   text: string
   kind: 'ok' | 'err'
+  action?: { label: string; run: () => void }
 }
 
 interface Store {
@@ -66,14 +69,15 @@ interface Store {
   resetDemo: () => void
   canEdit: boolean
   toasts: Toast[]
-  toast: (text: string, kind?: Toast['kind']) => void
+  toast: (text: string, kind?: Toast['kind'], action?: Toast['action']) => void
+  dismissToast: (id: number) => void
 }
 
 const Ctx = createContext<Store | null>(null)
 
 function loadDemo(): DB {
   try {
-    const raw = localStorage.getItem(DEMO_KEY)
+    const raw = localStorage.getItem(demoKey())
     if (raw) return normalize(JSON.parse(raw))
   } catch {}
   return buildDemo()
@@ -99,15 +103,16 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   const dbRef = useRef(db)
   dbRef.current = db
 
-  const toast = useCallback((text: string, kind: Toast['kind'] = 'ok') => {
+  const dismissToast = useCallback((id: number) => setToasts((t) => t.filter((x) => x.id !== id)), [])
+  const toast = useCallback((text: string, kind: Toast['kind'] = 'ok', action?: Toast['action']) => {
     const id = Date.now() + Math.random()
-    setToasts((t) => [...t, { id, text, kind }])
-    setTimeout(() => setToasts((t) => t.filter((x) => x.id !== id)), 3200)
+    setToasts((t) => [...t.slice(-2), { id, text, kind, action }])
+    setTimeout(() => setToasts((t) => t.filter((x) => x.id !== id)), action ? 6000 : 3200)
   }, [])
 
   const persistDemo = (next: DB) => {
     try {
-      localStorage.setItem(DEMO_KEY, JSON.stringify(next))
+      localStorage.setItem(demoKey(), JSON.stringify(next))
     } catch {}
   }
 
@@ -146,6 +151,17 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     return () => clearInterval(iv)
   }, [mode, refresh])
 
+  // In demo mode, swap sample data when the interface language changes.
+  const [, bump] = useState(0)
+  useEffect(() => {
+    const h = () => {
+      if (mode === 'demo') setDb(loadDemo())
+      bump((n) => n + 1)
+    }
+    window.addEventListener('acg-lang', h)
+    return () => window.removeEventListener('acg-lang', h)
+  }, [mode])
+
   const setConfig = (c: Config) => {
     saveConfig(c)
     setConfigState(c)
@@ -167,7 +183,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         setLastSync(new Date())
       } catch (e) {
         setDb(prev)
-        toast(`ذخیره نشد: ${e instanceof Error ? e.message : e}`, 'err')
+        toast(`${L('ذخیره نشد', 'Not saved')}: ${e instanceof Error ? e.message : e}`, 'err')
         throw e
       }
     },
@@ -187,7 +203,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         await remoteDelete(config, sheet, id)
       } catch (e) {
         setDb(prev)
-        toast(`حذف نشد: ${e instanceof Error ? e.message : e}`, 'err')
+        toast(`${L('حذف نشد', 'Not deleted')}: ${e instanceof Error ? e.message : e}`, 'err')
         throw e
       }
     },
@@ -196,10 +212,10 @@ export function StoreProvider({ children }: { children: ReactNode }) {
 
   const resetDemo = () => {
     try {
-      localStorage.removeItem(DEMO_KEY)
+      localStorage.removeItem(demoKey())
     } catch {}
     setDb(buildDemo())
-    toast('داده‌های نمونه بازنشانی شد')
+    toast(L('داده‌های نمونه بازنشانی شد', 'Sample data reset'))
   }
 
   const setMe = (n: string) => {
@@ -209,12 +225,12 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     } catch {}
   }
 
-  const me = meLocal || remoteName || (mode === 'demo' ? DEMO_ME : '')
+  const me = meLocal || remoteName || (mode === 'demo' ? demoMe() : '')
 
   const value = useMemo<Store>(
-    () => ({ db, mode, role, me, setMe, loading, error, lastSync, config, setConfig, refresh, upsert, remove, resetDemo, canEdit: role !== 'viewer', toasts, toast }),
+    () => ({ db, mode, role, me, setMe, loading, error, lastSync, config, setConfig, refresh, upsert, remove, resetDemo, canEdit: role !== 'viewer', toasts, toast, dismissToast }),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [db, mode, role, me, loading, error, lastSync, config, refresh, upsert, remove, toasts, toast],
+    [db, mode, role, me, loading, error, lastSync, config, refresh, upsert, remove, toasts, toast, dismissToast],
   )
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>
 }

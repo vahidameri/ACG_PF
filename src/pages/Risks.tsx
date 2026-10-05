@@ -2,16 +2,17 @@ import { useState } from 'react'
 import { Plus } from 'lucide-react'
 import { useStore } from '../lib/store'
 import { useEditor } from '../components/Editor'
-import { Card, Empty, FilterSelect, PageHeader, Toolbar, Person, Chip, cx, Stat } from '../components/ui'
+import { Band, Card, Empty, FilterSelect, Overlap, Toolbar, Person, Chip, cx, StatStrip } from '../components/ui'
 import { RiskMatrix, riskTone } from '../components/widgets'
 import { riskScore } from '../lib/metrics'
-import { RISK_STATUS, RISK_TYPE } from '../lib/labels'
+import { RISK_STATUS, RISK_TYPE, options } from '../lib/labels'
 import { fa, todayISO, fmtDate } from '../lib/jalali'
+import { L, lbl, useI18n } from '../lib/i18n'
 import { useProjectName } from '../components/shared'
-import { ShieldAlert, AlertOctagon, Link2, Gavel } from 'lucide-react'
 
 export default function Risks() {
   const { db, canEdit } = useStore()
+  const { lang } = useI18n()
   const { open } = useEditor()
   const pname = useProjectName()
   const [project, setProject] = useState('')
@@ -19,84 +20,94 @@ export default function Risks() {
   const [status, setStatus] = useState('active')
   const today = todayISO()
 
-  const list = db.Risks.filter(
-    (r) => (!project || r.project_id === project) && (!type || r.type === type) && (status === 'active' ? r.status !== 'closed' : !status || r.status === status),
-  ).sort((a, b) => riskScore(b) - riskScore(a))
+  const list = db.Risks.filter((r) => (!project || r.project_id === project) && (!type || r.type === type) && (status === 'active' ? r.status !== 'closed' : !status || r.status === status)).sort((a, b) => riskScore(b) - riskScore(a))
   const openAll = db.Risks.filter((r) => r.status !== 'closed')
   const count = (t: string) => openAll.filter((r) => r.type === t).length
 
   return (
     <>
-      <PageHeader
-        title="ریسک‌ها، مسائل، وابستگی‌ها و تصمیم‌ها"
-        sub="لاگ RAID کل پورتفولیو — امتیاز = احتمال × اثر"
+      <Band
+        eyebrow={<span>RAID</span>}
+        title={L('ریسک‌ها، مسائل و تصمیم‌ها', 'Risks, issues & decisions')}
+        sub={L('لاگ RAID کل پورتفولیو. امتیاز = احتمال × اثر (۱ تا ۲۵).', 'Portfolio-wide RAID log. Score = probability × impact (1–25).')}
         actions={
           canEdit && (
-            <button className="btn-primary" onClick={() => open('Risks', { project_id: project })}>
-              <Plus size={16} /> مورد جدید
+            <button className="btn h-10 bg-white text-band" onClick={() => open('Risks', { project_id: project })}>
+              <Plus size={16} /> {L('مورد جدید', 'New item')}
             </button>
           )
         }
-      />
-      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4 mb-6">
-        <Stat label="ریسک‌های باز" value={fa(count('risk'))} sub={`${fa(openAll.filter((r) => r.type === 'risk' && riskScore(r) >= 15).length)} بحرانی`} icon={<ShieldAlert size={18} />} tone="amber" />
-        <Stat label="مسائل (Issue)" value={fa(count('issue'))} icon={<AlertOctagon size={18} />} tone="red" />
-        <Stat label="وابستگی‌ها" value={fa(count('dependency'))} icon={<Link2 size={18} />} tone="brand" />
-        <Stat label="تصمیم‌های معوق" value={fa(count('decision'))} icon={<Gavel size={18} />} tone="brand" />
-      </div>
-      <Toolbar>
-        <FilterSelect value={project} onChange={setProject} placeholder="همه‌ی پروژه‌ها" options={db.Projects.map((p) => ({ value: p.id, label: p.name }))} />
-        <FilterSelect value={type} onChange={setType} placeholder="همه‌ی انواع" options={Object.entries(RISK_TYPE).map(([value, label]) => ({ value, label }))} />
-        <FilterSelect value={status} onChange={setStatus} placeholder="همه‌ی وضعیت‌ها" options={[{ value: 'active', label: 'فعال (باز + در حال کاهش)' }, ...Object.entries(RISK_STATUS).map(([value, label]) => ({ value, label }))]} />
-      </Toolbar>
-      <div className="grid gap-4 xl:grid-cols-3">
-        <Card title="ماتریس احتمال × اثر">
-          <RiskMatrix risks={list} onPick={(r) => open('Risks', r as never)} />
-          <p className="mt-3 text-xs text-sub">اعداد روی ماتریس، شماره‌ی ردیف در جدول کناری است.</p>
-        </Card>
-        <Card className="xl:col-span-2" pad={false}>
-          {list.length === 0 ? (
-            <Empty />
-          ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full min-w-[760px]">
-                <thead className="border-b border-line bg-muted/40">
-                  <tr>
-                    <th className="th">#</th>
-                    <th className="th">امتیاز</th>
-                    <th className="th">عنوان و اقدام</th>
-                    <th className="th">نوع</th>
-                    <th className="th">پروژه</th>
-                    <th className="th">مالک</th>
-                    <th className="th">مهلت</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-line">
-                  {list.map((r, i) => (
-                    <tr key={r.id} onClick={() => open('Risks', r as never)} className="cursor-pointer hover:bg-muted/40">
-                      <td className="td text-sub num">{fa(i + 1)}</td>
-                      <td className="td">
-                        <span className={cx('inline-flex h-7 w-7 items-center justify-center rounded-lg text-xs font-bold num', riskTone(r))}>{fa(riskScore(r))}</span>
-                      </td>
-                      <td className="td max-w-sm">
-                        <div className="font-medium">{r.title}</div>
-                        <div className="text-xs text-sub line-clamp-1">{r.mitigation}</div>
-                      </td>
-                      <td className="td">
-                        <Chip>{RISK_TYPE[r.type]}</Chip>
-                        {r.status === 'mitigating' && <Chip className="mr-1 bg-brand/10 text-brand">{RISK_STATUS.mitigating}</Chip>}
-                      </td>
-                      <td className="td text-xs text-sub">{pname(r.project_id)}</td>
-                      <td className="td"><Person name={r.owner} /></td>
-                      <td className={cx('td text-xs num', r.status !== 'closed' && r.due_date && r.due_date < today ? 'text-bad font-semibold' : 'text-sub')}>{fmtDate(r.due_date)}</td>
+      >
+        <StatStrip
+          items={[
+            { label: L('ریسک باز', 'Open risks'), value: fa(count('risk')) },
+            { label: L('بحرانی (≥۱۵)', 'Critical (≥15)'), value: fa(openAll.filter((r) => riskScore(r) >= 15).length), tone: 'red' },
+            { label: L('مسئله', 'Issues'), value: fa(count('issue')), tone: count('issue') ? 'amber' : undefined },
+            { label: L('وابستگی', 'Dependencies'), value: fa(count('dependency')) },
+            { label: L('تصمیم معوق', 'Pending decisions'), value: fa(count('decision')) },
+            { label: L('مهلت گذشته', 'Past action date'), value: fa(openAll.filter((r) => r.due_date && r.due_date < today).length), tone: 'red' },
+          ]}
+        />
+      </Band>
+      <Overlap>
+        <div className="card mb-4 p-3">
+          <Toolbar className="!mb-0">
+            <FilterSelect value={project} onChange={setProject} placeholder={L('همه‌ی پروژه‌ها', 'All projects')} options={db.Projects.map((p) => ({ value: p.id, label: p.name }))} />
+            <FilterSelect value={type} onChange={setType} placeholder={L('همه‌ی انواع', 'All types')} options={options(RISK_TYPE, lang)} />
+            <FilterSelect value={status} onChange={setStatus} placeholder={L('همه‌ی وضعیت‌ها', 'Any status')} options={[{ value: 'active', label: L('فعال', 'Active') }, ...options(RISK_STATUS, lang)]} />
+          </Toolbar>
+        </div>
+        <div className="grid gap-4 xl:grid-cols-3">
+          <Card eyebrow={L('ماتریس', 'Matrix')} title={L('احتمال × اثر', 'Probability × impact')}>
+            <RiskMatrix risks={list} onPick={(r) => open('Risks', r as never)} />
+            <p className="mt-3 text-xs text-sub">{L('شماره‌ها همان ردیف جدول هستند.', 'Numbers match the table rows.')}</p>
+          </Card>
+          <Card className="xl:col-span-2" pad={false}>
+            {list.length === 0 ? (
+              <Empty />
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full min-w-[780px]">
+                  <thead className="border-b border-line">
+                    <tr>
+                      <th className="th">#</th>
+                      <th className="th">{L('امتیاز', 'Score')}</th>
+                      <th className="th">{L('عنوان و اقدام', 'Item & action')}</th>
+                      <th className="th">{L('نوع', 'Type')}</th>
+                      <th className="th">{L('پروژه', 'Project')}</th>
+                      <th className="th">{L('مالک', 'Owner')}</th>
+                      <th className="th">{L('مهلت', 'Due')}</th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
-        </Card>
-      </div>
+                  </thead>
+                  <tbody className="divide-y divide-line">
+                    {list.map((r, i) => (
+                      <tr key={r.id} onClick={() => open('Risks', r as never)} className="cursor-pointer transition hover:bg-muted/40">
+                        <td className="td text-sub num">{fa(i + 1)}</td>
+                        <td className="td">
+                          <span className={cx('inline-grid h-8 w-8 place-items-center rounded-xl text-xs font-bold num', riskTone(r))}>{fa(riskScore(r))}</span>
+                        </td>
+                        <td className="td max-w-sm">
+                          <div className="font-medium">{r.title}</div>
+                          <div className="line-clamp-1 text-xs text-sub">{r.mitigation}</div>
+                        </td>
+                        <td className="td">
+                          <Chip>{lbl(RISK_TYPE, r.type)}</Chip>
+                          {r.status === 'mitigating' && <Chip className="ms-1 bg-brand-soft/50 text-ink">{lbl(RISK_STATUS, 'mitigating')}</Chip>}
+                        </td>
+                        <td className="td text-xs text-sub">{pname(r.project_id)}</td>
+                        <td className="td">
+                          <Person name={r.owner} />
+                        </td>
+                        <td className={cx('td text-xs num', r.status !== 'closed' && r.due_date && r.due_date < today ? 'font-semibold text-bad' : 'text-sub')}>{fmtDate(r.due_date)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </Card>
+        </div>
+      </Overlap>
     </>
   )
 }

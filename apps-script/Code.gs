@@ -27,6 +27,8 @@ var SCHEMA = {
   Team: ['id', 'name', 'role', 'email', 'team'],
   Allocations: ['id', 'member_id', 'project_id', 'percent'],
   Updates: ['id', 'project_id', 'week_date', 'author', 'health', 'summary', 'done', 'next', 'blockers'],
+  // Comments on tasks / follow-ups / projects. created_at is "YYYY-MM-DD HH:mm".
+  Comments: ['id', 'entity', 'entity_id', 'author', 'body', 'created_at'],
 };
 
 var USERS_SHEET = 'Users';
@@ -96,7 +98,7 @@ function readSheet_(sh) {
     var o = {};
     for (var c = 0; c < headers.length; c++) {
       var v = row[c];
-      if (v instanceof Date) v = Utilities.formatDate(v, tz, 'yyyy-MM-dd');
+      if (v instanceof Date) v = Utilities.formatDate(v, tz, v.getHours() || v.getMinutes() ? 'yyyy-MM-dd HH:mm' : 'yyyy-MM-dd');
       o[headers[c]] = v;
     }
     rows.push(o);
@@ -127,6 +129,7 @@ function upsert_(name, row, user) {
   } else {
     sh.appendRow(values);
     log_(user, 'create', name, row.id);
+    if (name === 'Comments') notifyMentions_(row, user);
   }
   return row;
 }
@@ -171,6 +174,24 @@ function auth_(token) {
 function log_(user, action, sheet, id) {
   var sh = ensureSheet_(LOG_SHEET, ['time', 'user', 'action', 'sheet', 'id']);
   sh.appendRow([new Date(), user.name, action, sheet, id]);
+}
+
+/** Emails team members @mentioned in a new comment (Team tab must have their email). */
+function notifyMentions_(c, user) {
+  try {
+    var team = readSheet_(SpreadsheetApp.getActive().getSheetByName('Team'));
+    team.forEach(function (m) {
+      if (m.email && m.name && String(c.body).indexOf('@' + m.name) !== -1) {
+        MailApp.sendEmail({
+          to: m.email,
+          subject: 'ACG Portfolio · ' + user.name + ' mentioned you',
+          htmlBody: '<div dir="auto" style="font-family:Tahoma,sans-serif;line-height:1.8"><b>' + user.name + '</b>:<br>' + String(c.body).replace(/</g, '&lt;') + '</div>',
+        });
+      }
+    });
+  } catch (e) {
+    Logger.log('mention mail failed: ' + e);
+  }
 }
 
 function json_(o) {

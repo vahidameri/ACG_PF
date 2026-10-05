@@ -1,18 +1,28 @@
 import { useEffect, useMemo, useState, type ReactNode } from 'react'
-import { NavLink, useLocation, useNavigate } from 'react-router-dom'
+import { NavLink, useLocation, useNavigate, Link } from 'react-router-dom'
 import {
-  LayoutDashboard, Briefcase, GanttChartSquare, Zap, ListChecks, BellRing, ShieldAlert, Users, FileText, Settings, Moon, Sun, Search, Plus, RefreshCw, Menu, X, Sparkles, Printer, CheckCircle2, AlertCircle,
+  LayoutGrid, Briefcase, GanttChartSquare, Zap, ListChecks, BellRing, ShieldAlert, Users, FileText, Settings, Moon, Sun, Search, Plus, RefreshCw, Menu,
+  Sparkles, Printer, CheckCircle2, AlertCircle, Bell, PanelLeftClose, PanelLeftOpen, Languages, Star, AtSign, Flag, Clock, CircleAlert, Ban,
 } from 'lucide-react'
 import { useStore } from '../lib/store'
+import { useI18n, L } from '../lib/i18n'
+import { usePins, usePref } from '../lib/prefs'
+import { buildInbox, type InboxItem } from '../lib/inbox'
+import { projectMetrics } from '../lib/metrics'
 import { useEditor } from './Editor'
-import { cx } from './ui'
-import { fa, todayISO } from '../lib/jalali'
-import { isTaskOverdue } from '../lib/metrics'
+import { cx, Avatar, HealthDot, Popover, MenuItem } from './ui'
+import { fa, fmtDayMonth } from '../lib/jalali'
 import { CommandPalette } from './CommandPalette'
+import { AcgMark } from './Brand'
+import { ROLE } from '../lib/labels'
+import { lbl } from '../lib/i18n'
 
 export function Layout({ children }: { children: ReactNode }) {
-  const { db, me, mode, loading, error, refresh, lastSync, toasts, canEdit, role } = useStore()
+  const { db, me, mode, loading, error, refresh, lastSync, toasts, canEdit, role, dismissToast } = useStore()
+  const { lang, setLang } = useI18n()
   const { open } = useEditor()
+  const { pins } = usePins()
+  const [collapsed, setCollapsed] = usePref('acg.sidebar.collapsed', false)
   const [dark, setDark] = useState(() => document.documentElement.classList.contains('dark'))
   const [nav, setNav] = useState(false)
   const [palette, setPalette] = useState(false)
@@ -23,21 +33,22 @@ export function Layout({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     const h = (e: KeyboardEvent) => {
-      const typing = ['INPUT', 'TEXTAREA', 'SELECT'].includes((e.target as HTMLElement)?.tagName)
+      const el = e.target as HTMLElement
+      const typing = ['INPUT', 'TEXTAREA', 'SELECT'].includes(el?.tagName) || el?.isContentEditable
       if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') {
         e.preventDefault()
         setPalette(true)
-      } else if (!typing && canEdit && (e.key === 'n' || e.key === 'ن')) {
+      } else if (!typing && !e.metaKey && !e.ctrlKey && canEdit && (e.key === 'n' || e.key === 'د')) {
         e.preventDefault()
         open('Tasks', { assignee: me })
-      } else if (!typing && canEdit && (e.key === 'f' || e.key === 'ب')) {
+      } else if (!typing && !e.metaKey && !e.ctrlKey && canEdit && (e.key === 'f' || e.key === 'ب')) {
         e.preventDefault()
         open('FollowUps')
-      }
+      } else if (!typing && e.key === '[') setCollapsed((c) => !c)
     }
     window.addEventListener('keydown', h)
     return () => window.removeEventListener('keydown', h)
-  }, [canEdit, me, open])
+  }, [canEdit, me, open, setCollapsed])
 
   const toggleTheme = () => {
     const d = !dark
@@ -48,144 +59,236 @@ export function Layout({ children }: { children: ReactNode }) {
     } catch {}
   }
 
-  const badges = useMemo(() => {
-    const myOverdue = db.Tasks.filter((t) => t.assignee === me && t.status !== 'done' && isTaskOverdue(t)).length
-    const fuDue = db.FollowUps.filter((f) => f.status !== 'done' && f.due_date && f.due_date <= todayISO()).length
-    return { my: myOverdue + fuDue, fu: fuDue }
-  }, [db, me])
+  const inbox = useMemo(() => buildInbox(db, me), [db, me])
+  const myCount = inbox.filter((i) => i.kind === 'overdue' || i.kind === 'followup' || i.kind === 'mention').length
 
-  const links = [
-    { to: '/', label: 'نمای کلی پورتفولیو', icon: LayoutDashboard },
-    { to: '/my', label: 'میز کار من', icon: Sparkles, badge: badges.my },
-    { to: '/projects', label: 'پروژه‌ها', icon: Briefcase },
-    { to: '/roadmap', label: 'رودمپ', icon: GanttChartSquare },
-    { to: '/sprints', label: 'اسپرینت‌ها', icon: Zap },
-    { to: '/tasks', label: 'تسک‌ها', icon: ListChecks },
-    { to: '/followups', label: 'فالوآپ‌ها', icon: BellRing, badge: badges.fu },
-    { to: '/risks', label: 'ریسک‌ها و مسائل', icon: ShieldAlert },
-    { to: '/team', label: 'تیم و منابع', icon: Users },
-    { to: '/updates', label: 'گزارش‌های هفتگی', icon: FileText },
-    { to: '/report', label: 'گزارش مدیریتی', icon: Printer },
+  const groups: { label: string; links: { to: string; label: string; icon: typeof LayoutGrid; badge?: number }[] }[] = [
+    {
+      label: L('فضای کار', 'Workspace'),
+      links: [{ to: '/my', label: L('میز کار من', 'My desk'), icon: Sparkles, badge: myCount }],
+    },
+    {
+      label: L('پورتفولیو', 'Portfolio'),
+      links: [
+        { to: '/', label: L('نمای کلی', 'Overview'), icon: LayoutGrid },
+        { to: '/projects', label: L('پروژه‌ها', 'Projects'), icon: Briefcase },
+        { to: '/roadmap', label: L('رودمپ', 'Roadmap'), icon: GanttChartSquare },
+        { to: '/report', label: L('گزارش مدیریتی', 'Exec report'), icon: Printer },
+      ],
+    },
+    {
+      label: L('اجرا', 'Execution'),
+      links: [
+        { to: '/tasks', label: L('تسک‌ها', 'Tasks'), icon: ListChecks },
+        { to: '/followups', label: L('فالوآپ‌ها', 'Follow-ups'), icon: BellRing },
+        { to: '/sprints', label: L('اسپرینت‌ها', 'Sprints'), icon: Zap },
+        { to: '/risks', label: L('ریسک‌ها و تصمیم‌ها', 'Risks & decisions'), icon: ShieldAlert },
+        { to: '/team', label: L('تیم و منابع', 'Team & capacity'), icon: Users },
+        { to: '/updates', label: L('گزارش‌های هفتگی', 'Weekly updates'), icon: FileText },
+      ],
+    },
   ]
 
-  const syncText = loading ? 'در حال همگام‌سازی…' : error ? 'خطا در اتصال' : lastSync ? `به‌روز شده ${fa(lastSync.toLocaleTimeString('fa-IR', { hour: '2-digit', minute: '2-digit' }))}` : ''
+  const pinned = db.Projects.filter((p) => pins.includes(p.id))
+  const wide = !collapsed || nav
 
   const sidebar = (
-    <aside className="flex h-full w-64 flex-col border-l border-line bg-surface">
-      <div className="flex h-16 items-center gap-2.5 px-5 border-b border-line">
-        <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-brand to-violet-500 text-white text-[11px] font-black tracking-tight shadow-sm">ACG</div>
-        <div className="leading-tight">
-          <div className="text-sm font-bold">پورتفولیو پروژه‌ها</div>
-          <div className="text-[11px] text-sub">دفتر مدیریت برنامه</div>
-        </div>
+    <aside className={cx('flex h-full flex-col bg-band text-on-band transition-[width] duration-300', wide ? 'w-64' : 'w-[72px]')}>
+      <div className={cx('flex h-16 shrink-0 items-center border-b border-band-line', wide ? 'gap-3 px-5' : 'justify-center')}>
+        <Link to="/" className="flex items-center gap-3">
+          <AcgMark className="h-7 text-white" />
+          {wide && (
+            <div className="leading-tight">
+              <div className="text-sm font-semibold tracking-tight">{L('پورتفولیو', 'Portfolio')}</div>
+              <div className="font-mono text-[10px] uppercase tracking-[0.18em] text-band-sub">ACG · PMO</div>
+            </div>
+          )}
+        </Link>
       </div>
-      <nav className="flex-1 overflow-y-auto p-3 space-y-0.5">
-        {links.map((l) => (
-          <NavLink
-            key={l.to}
-            to={l.to}
-            end={l.to === '/'}
-            className={({ isActive }) =>
-              cx('flex items-center gap-3 rounded-xl px-3 h-10 text-sm transition', isActive ? 'bg-brand/10 text-brand font-semibold' : 'text-ink/75 hover:bg-muted hover:text-ink')
-            }
-          >
-            <l.icon size={18} strokeWidth={1.8} />
-            <span className="flex-1">{l.label}</span>
-            {!!l.badge && <span className="rounded-full bg-bad px-1.5 text-[11px] font-semibold text-white num leading-5">{fa(l.badge)}</span>}
-          </NavLink>
+      <nav className="flex-1 space-y-5 overflow-y-auto px-3 py-4">
+        {groups.map((g) => (
+          <div key={g.label}>
+            {wide && <div className="mb-1.5 px-3 font-mono text-[10px] uppercase tracking-[0.18em] text-band-sub/80">{g.label}</div>}
+            <div className="space-y-0.5">
+              {g.links.map((l) => (
+                <NavLink
+                  key={l.to}
+                  to={l.to}
+                  end={l.to === '/'}
+                  title={!wide ? l.label : undefined}
+                  className={({ isActive }) =>
+                    cx(
+                      'group relative flex h-10 items-center gap-3 rounded-xl text-sm transition',
+                      wide ? 'px-3' : 'justify-center',
+                      isActive ? 'bg-white/[0.09] text-white' : 'text-white/60 hover:bg-white/[0.05] hover:text-white',
+                    )
+                  }
+                >
+                  {({ isActive }) => (
+                    <>
+                      {isActive && <span className="absolute inset-y-2 start-0 w-[3px] rounded-full bg-brand-soft" />}
+                      <l.icon size={18} strokeWidth={1.7} />
+                      {wide && <span className="flex-1 truncate">{l.label}</span>}
+                      {!!l.badge && (
+                        <span className={cx('rounded-full bg-[#c4314b] text-[10px] font-semibold text-white num leading-[18px]', wide ? 'px-1.5' : 'absolute end-2 top-1.5 h-2 w-2 overflow-hidden text-transparent')}>{fa(l.badge)}</span>
+                      )}
+                    </>
+                  )}
+                </NavLink>
+              ))}
+            </div>
+          </div>
         ))}
+        {wide && pinned.length > 0 && (
+          <div>
+            <div className="mb-1.5 flex items-center gap-1.5 px-3 font-mono text-[10px] uppercase tracking-[0.18em] text-band-sub/80">
+              <Star size={10} /> {L('پین‌شده', 'Pinned')}
+            </div>
+            <div className="space-y-0.5">
+              {pinned.map((p) => (
+                <NavLink
+                  key={p.id}
+                  to={`/projects/${p.id}`}
+                  className={({ isActive }) => cx('flex h-9 items-center gap-3 rounded-xl px-3 text-[13px] transition', isActive ? 'bg-white/[0.09] text-white' : 'text-white/60 hover:bg-white/[0.05] hover:text-white')}
+                >
+                  <HealthDot h={projectMetrics(p, db).health} />
+                  <span className="truncate">{p.name}</span>
+                </NavLink>
+              ))}
+            </div>
+          </div>
+        )}
       </nav>
-      <div className="border-t border-line p-3 space-y-0.5">
-        <NavLink to="/settings" className={({ isActive }) => cx('flex items-center gap-3 rounded-xl px-3 h-10 text-sm', isActive ? 'bg-brand/10 text-brand font-semibold' : 'text-ink/75 hover:bg-muted')}>
-          <Settings size={18} strokeWidth={1.8} />
-          تنظیمات و اتصال
-        </NavLink>
-        <div className="px-3 pt-2 text-[11px] text-sub flex items-center gap-1.5">
-          <span className={cx('h-1.5 w-1.5 rounded-full', mode === 'demo' ? 'bg-warn' : error ? 'bg-bad' : 'bg-good')} />
-          {mode === 'demo' ? 'حالت نمایشی (داده‌ی نمونه)' : `متصل به Google Sheets · ${role === 'viewer' ? 'فقط مشاهده' : role === 'admin' ? 'مدیر' : 'ویرایشگر'}`}
-        </div>
+      <div className="border-t border-band-line p-3">
+        <Popover
+          width={260}
+          trigger={({ toggle }) => (
+            <button onClick={toggle} className={cx('flex w-full items-center gap-3 rounded-xl p-2 text-start transition hover:bg-white/[0.06]', !wide && 'justify-center')}>
+              <Avatar name={me || 'ACG'} size="md" />
+              {wide && (
+                <div className="min-w-0 flex-1">
+                  <div className="truncate text-sm font-medium">{me || L('مهمان', 'Guest')}</div>
+                  <div className="truncate text-[11px] text-band-sub">{mode === 'demo' ? L('حالت نمایشی', 'Demo mode') : lbl(ROLE, role)}</div>
+                </div>
+              )}
+            </button>
+          )}
+        >
+          {(close) => (
+            <>
+              <div className="px-2.5 py-2">
+                <div className="text-sm font-medium">{me}</div>
+                <div className="text-xs text-sub">{mode === 'demo' ? L('حالت نمایشی با داده‌ی نمونه', 'Demo mode with sample data') : L('متصل به Google Sheets', 'Connected to Google Sheets')}</div>
+              </div>
+              <div className="my-1 h-px bg-line" />
+              <MenuItem icon={<Languages size={15} />} hint={lang === 'fa' ? 'EN' : 'فا'} onClick={() => { setLang(lang === 'fa' ? 'en' : 'fa'); close() }}>
+                {L('English', 'فارسی')}
+              </MenuItem>
+              <MenuItem icon={dark ? <Sun size={15} /> : <Moon size={15} />} onClick={() => { toggleTheme(); close() }}>
+                {dark ? L('حالت روشن', 'Light mode') : L('حالت تیره', 'Dark mode')}
+              </MenuItem>
+              <MenuItem icon={wide ? <PanelLeftClose size={15} /> : <PanelLeftOpen size={15} />} hint="[" onClick={() => { setCollapsed(!collapsed); close() }}>
+                {collapsed ? L('باز کردن منو', 'Expand sidebar') : L('جمع کردن منو', 'Collapse sidebar')}
+              </MenuItem>
+              <MenuItem icon={<Settings size={15} />} onClick={() => { close(); navigate('/settings') }}>
+                {L('تنظیمات و اتصال', 'Settings & connection')}
+              </MenuItem>
+            </>
+          )}
+        </Popover>
       </div>
     </aside>
   )
 
+  const syncText = loading ? L('همگام‌سازی…', 'Syncing…') : error ? L('خطا در اتصال', 'Connection error') : lastSync ? fa(lastSync.toLocaleTimeString(lang === 'fa' ? 'fa-IR' : 'en-GB', { hour: '2-digit', minute: '2-digit' })) : ''
+
   return (
     <div className="flex h-full">
-      <div className="hidden lg:block shrink-0 no-print">{sidebar}</div>
+      <div className="hidden shrink-0 lg:block no-print">{sidebar}</div>
       {nav && (
         <div className="fixed inset-0 z-40 lg:hidden no-print">
-          <div className="absolute inset-0 bg-black/30" onClick={() => setNav(false)} />
-          <div className="absolute inset-y-0 right-0 slide-in">{sidebar}</div>
+          <div className="absolute inset-0 bg-black/40 fade-in" onClick={() => setNav(false)} />
+          <div className="absolute inset-y-0 start-0 sheet-in">{sidebar}</div>
         </div>
       )}
 
       <div className="flex min-w-0 flex-1 flex-col">
-        <header className="sticky top-0 z-20 flex h-16 items-center gap-2 border-b border-line bg-surface/80 px-4 backdrop-blur-md sm:px-6 no-print">
-          <button className="btn-ghost h-9 w-9 px-0 lg:hidden" onClick={() => setNav(true)}>
+        <header className="sticky top-0 z-30 flex h-16 shrink-0 items-center gap-2 border-b border-band-line bg-band/95 px-4 text-on-band backdrop-blur-md sm:px-6 no-print">
+          <button className="icon-btn text-white/80 hover:bg-white/10 hover:text-white lg:hidden" onClick={() => setNav(true)}>
             <Menu size={20} />
           </button>
-          <button onClick={() => setPalette(true)} className="flex h-9 flex-1 max-w-md items-center gap-2 rounded-xl border border-line bg-muted/60 px-3 text-sm text-sub hover:border-brand/40 transition">
+          <button
+            onClick={() => setPalette(true)}
+            className="flex h-10 max-w-md flex-1 items-center gap-2.5 rounded-full border border-white/10 bg-white/[0.06] px-4 text-sm text-white/55 transition hover:border-white/20 hover:bg-white/[0.09]"
+          >
             <Search size={16} />
-            <span className="flex-1 truncate text-right">جستجو…<span className="hidden sm:inline"> پروژه‌ها، تسک‌ها، افراد</span></span>
-            <kbd className="hidden sm:inline rounded-md border border-line bg-surface px-1.5 text-[10px] font-sans" dir="ltr">
+            <span className="flex-1 truncate text-start">{L('جستجو یا فرمان…', 'Search or jump to…')}</span>
+            <kbd className="hidden rounded-md border border-white/15 px-1.5 font-mono text-[10px] text-white/50 sm:inline" dir="ltr">
               Ctrl K
             </kbd>
           </button>
           <div className="flex-1" />
-          <span className={cx('hidden md:inline text-xs', error ? 'text-bad' : 'text-sub')} title={error}>
-            {syncText}
+          <span className={cx('hidden items-center gap-1.5 font-mono text-[11px] md:flex', error ? 'text-[#ff8a9a]' : 'text-white/45')} title={error}>
+            <span className={cx('h-1.5 w-1.5 rounded-full', mode === 'demo' ? 'bg-[#f5c565]' : error ? 'bg-[#ff8a9a]' : 'bg-[#7fe0b0]')} />
+            {mode === 'demo' ? L('نمایشی', 'DEMO') : syncText}
           </span>
-          <button className="btn-ghost h-9 w-9 px-0" onClick={() => refresh()} title="همگام‌سازی">
+          <button className="icon-btn text-white/75 hover:bg-white/10 hover:text-white" onClick={() => refresh()} title={L('همگام‌سازی', 'Sync')}>
             <RefreshCw size={17} className={loading ? 'animate-spin' : ''} />
           </button>
-          <button className="btn-ghost h-9 w-9 px-0" onClick={toggleTheme} title="تم">
+          <div className="hidden rounded-full border border-white/10 p-0.5 sm:flex">
+            {(['fa', 'en'] as const).map((l) => (
+              <button key={l} onClick={() => setLang(l)} className={cx('h-7 rounded-full px-2.5 text-[11px] font-semibold transition', lang === l ? 'bg-white text-band' : 'text-white/60 hover:text-white')}>
+                {l === 'fa' ? 'فا' : 'EN'}
+              </button>
+            ))}
+          </div>
+          <button className="icon-btn text-white/75 hover:bg-white/10 hover:text-white" onClick={toggleTheme} title={L('تم', 'Theme')}>
             {dark ? <Sun size={17} /> : <Moon size={17} />}
           </button>
+          <InboxButton items={inbox} />
           {canEdit && (
-            <div className="relative group">
-              <button className="btn-primary" onClick={() => open('Tasks', { assignee: me })}>
-                <Plus size={16} />
-                <span className="hidden sm:inline">ایجاد</span>
-              </button>
-              <div className="invisible absolute left-0 top-full pt-1.5 opacity-0 transition group-hover:visible group-hover:opacity-100">
-                <div className="w-52 rounded-2xl border border-line bg-surface p-1.5 shadow-pop">
-                  {(
-                    [
-                      ['Tasks', 'تسک جدید', 'N'],
-                      ['FollowUps', 'فالوآپ جدید', 'F'],
-                      ['Updates', 'گزارش هفتگی'],
-                      ['Risks', 'ریسک / مسئله'],
-                      ['Milestones', 'مایلستون'],
-                      ['Projects', 'پروژه‌ی جدید'],
-                    ] as const
-                  ).map(([s, l, k]) => (
-                    <button key={s} className="flex w-full items-center justify-between rounded-xl px-3 h-9 text-sm hover:bg-muted" onClick={() => open(s, s === 'Tasks' ? { assignee: me } : undefined)}>
-                      {l}
-                      {k && <kbd className="text-[10px] text-sub">{k}</kbd>}
-                    </button>
-                  ))}
-                </div>
-              </div>
-            </div>
+            <Popover
+              align="end"
+              width={230}
+              trigger={({ toggle }) => (
+                <button className="btn h-9 bg-white px-3.5 text-band" onClick={toggle}>
+                  <Plus size={16} />
+                  <span className="hidden sm:inline">{L('جدید', 'New')}</span>
+                </button>
+              )}
+            >
+              {(close) =>
+                (
+                  [
+                    ['Tasks', L('تسک', 'Task'), 'N', ListChecks],
+                    ['FollowUps', L('فالوآپ', 'Follow-up'), 'F', BellRing],
+                    ['Updates', L('گزارش هفتگی', 'Weekly update'), '', FileText],
+                    ['Risks', L('ریسک / تصمیم', 'Risk / decision'), '', ShieldAlert],
+                    ['Milestones', L('مایلستون', 'Milestone'), '', Flag],
+                    ['Projects', L('پروژه', 'Project'), '', Briefcase],
+                  ] as const
+                ).map(([s, l, k, Icon]) => (
+                  <MenuItem
+                    key={s}
+                    icon={<Icon size={15} />}
+                    hint={k ? <span className="kbd">{k}</span> : undefined}
+                    onClick={() => {
+                      close()
+                      open(s, s === 'Tasks' ? { assignee: me } : undefined)
+                    }}
+                  >
+                    {l}
+                  </MenuItem>
+                ))
+              }
+            </Popover>
           )}
         </header>
 
-        {mode === 'demo' && (
-          <div className="no-print flex flex-wrap items-center justify-center gap-2 bg-warn/10 px-4 py-2 text-xs text-warn">
-            داشبورد در حالت نمایشی با داده‌ی نمونه است. برای اتصال به Google Sheet شرکت به
-            <button className="font-semibold underline" onClick={() => navigate('/settings')}>
-              تنظیمات
-            </button>
-            بروید.
-          </div>
-        )}
-        {error && mode === 'live' && (
-          <div className="no-print bg-bad/10 px-4 py-2 text-center text-xs text-bad">
-            اتصال به Google Sheet برقرار نشد: {error}
-          </div>
-        )}
+        {error && mode === 'live' && <div className="bg-bad px-4 py-2 text-center text-xs text-white no-print">{L('اتصال به Google Sheet برقرار نشد', 'Could not reach Google Sheet')}: {error}</div>}
 
         <main className="flex-1 overflow-y-auto">
-          <div className="mx-auto max-w-[1440px] px-4 py-6 sm:px-6 lg:px-8 print-full fade-in" key={loc.pathname}>
+          <div className="px-4 pb-16 sm:px-6 lg:px-8 print-full" key={loc.pathname}>
             {children}
           </div>
         </main>
@@ -193,11 +296,22 @@ export function Layout({ children }: { children: ReactNode }) {
 
       <CommandPalette open={palette} onClose={() => setPalette(false)} />
 
-      <div className="fixed bottom-4 left-4 z-[60] flex flex-col gap-2 no-print">
+      <div className="pointer-events-none fixed inset-x-0 bottom-5 z-[80] flex flex-col items-center gap-2 px-4 no-print">
         {toasts.map((t) => (
-          <div key={t.id} className={cx('flex items-center gap-2 rounded-xl px-4 py-2.5 text-sm shadow-pop fade-in', t.kind === 'err' ? 'bg-bad text-white' : 'bg-ink text-bg')}>
-            {t.kind === 'err' ? <AlertCircle size={16} /> : <CheckCircle2 size={16} />}
-            {t.text}
+          <div key={t.id} className={cx('pointer-events-auto flex items-center gap-3 rounded-2xl px-4 py-3 text-sm shadow-pop rise', t.kind === 'err' ? 'bg-bad text-white' : 'bg-[#111214] text-white')}>
+            {t.kind === 'err' ? <AlertCircle size={16} /> : <CheckCircle2 size={16} className="text-[#7fe0b0]" />}
+            <span>{t.text}</span>
+            {t.action && (
+              <button
+                className="ms-2 font-semibold text-brand-soft hover:underline dark:text-[#C1D6DE]"
+                onClick={() => {
+                  t.action!.run()
+                  dismissToast(t.id)
+                }}
+              >
+                {t.action.label}
+              </button>
+            )}
           </div>
         ))}
       </div>
@@ -205,10 +319,79 @@ export function Layout({ children }: { children: ReactNode }) {
   )
 }
 
-export function MobileClose({ onClick }: { onClick: () => void }) {
+const kindIcon = { mention: AtSign, overdue: Clock, followup: BellRing, milestone: Flag, risk: CircleAlert, blocked: Ban }
+
+function InboxButton({ items }: { items: InboxItem[] }) {
+  const [read, setRead] = usePref<string[]>('acg.inbox.read', [])
+  const { open } = useEditor()
+  const { db } = useStore()
+  const navigate = useNavigate()
+  const unread = items.filter((i) => !read.includes(i.id))
+  const go = (i: InboxItem) => {
+    setRead((r) => Array.from(new Set([...r, i.id])))
+    if ('href' in i.target) navigate(i.target.href)
+    else {
+      const t = i.target
+      const row = (db[t.sheet] as { id: string }[]).find((x) => x.id === t.id)
+      if (row) open(t.sheet, row as never)
+    }
+  }
   return (
-    <button className="btn-ghost h-8 w-8 px-0" onClick={onClick}>
-      <X size={18} />
-    </button>
+    <Popover
+      align="end"
+      width={380}
+      className="!p-0"
+      trigger={({ toggle }) => (
+        <button className="icon-btn text-white/75 hover:bg-white/10 hover:text-white" onClick={toggle} title={L('اعلان‌ها', 'Inbox')}>
+          <Bell size={17} />
+          {unread.length > 0 && <span className="absolute end-1 top-1 grid h-4 min-w-4 place-items-center rounded-full bg-[#c4314b] px-1 text-[9px] font-bold text-white num">{fa(unread.length > 9 ? '9+' : unread.length)}</span>}
+        </button>
+      )}
+    >
+      {(close) => (
+        <div>
+          <div className="flex items-center justify-between border-b border-line px-4 py-3">
+            <div>
+              <div className="text-sm font-semibold">{L('صندوق اعلان‌ها', 'Inbox')}</div>
+              <div className="text-[11px] text-sub">{L(`${fa(unread.length)} مورد خوانده‌نشده`, `${unread.length} unread`)}</div>
+            </div>
+            {unread.length > 0 && (
+              <button className="text-xs font-medium text-brand hover:underline" onClick={() => setRead(items.map((i) => i.id))}>
+                {L('همه خوانده شد', 'Mark all read')}
+              </button>
+            )}
+          </div>
+          <div className="max-h-[60vh] overflow-y-auto p-1.5">
+            {items.length === 0 && <div className="py-10 text-center text-sm text-sub">{L('همه‌چیز مرتب است ✨', 'All clear ✨')}</div>}
+            {items.slice(0, 40).map((i) => {
+              const Icon = kindIcon[i.kind]
+              const isUnread = !read.includes(i.id)
+              return (
+                <button
+                  key={i.id}
+                  onClick={() => {
+                    close()
+                    go(i)
+                  }}
+                  className="flex w-full items-start gap-3 rounded-xl px-2.5 py-2.5 text-start transition hover:bg-muted"
+                >
+                  <span className={cx('mt-0.5 grid h-7 w-7 shrink-0 place-items-center rounded-full', i.tone === 'bad' ? 'bg-bad/10 text-bad' : i.tone === 'warn' ? 'bg-warn/12 text-warn' : 'bg-brand-soft/60 text-ink')}>
+                    <Icon size={14} />
+                  </span>
+                  <span className="min-w-0 flex-1">
+                    <span className={cx('block truncate text-sm', isUnread && 'font-semibold')}>{i.title}</span>
+                    <span className="block truncate text-xs text-sub">{i.sub}</span>
+                  </span>
+                  <span className="flex flex-col items-end gap-1.5">
+                    <span className="text-[10px] text-sub num">{fmtDayMonth(i.when.slice(0, 10))}</span>
+                    {isUnread && <span className="h-1.5 w-1.5 rounded-full bg-brand" />}
+                  </span>
+                </button>
+              )
+            })}
+          </div>
+        </div>
+      )}
+    </Popover>
   )
 }

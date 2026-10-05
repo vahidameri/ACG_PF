@@ -1,24 +1,28 @@
 import { useMemo, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
-import { Plus, Search, ArrowUpDown } from 'lucide-react'
+import { Plus, ArrowUpDown, MessageSquare } from 'lucide-react'
 import { useStore } from '../lib/store'
 import { useEditor } from '../components/Editor'
-import { Card, Empty, FilterSelect, PageHeader, Segmented, Toolbar, Due, PriorityBadge, TaskStatusBadge, Person, cx } from '../components/ui'
+import { Band, Card, Empty, FilterSelect, Overlap, Segmented, Toolbar, Due, cx, SearchInput, StatusIcon } from '../components/ui'
 import { Kanban } from '../components/widgets'
-import { PRIORITY, PRIORITY_ORDER, TASK_STATUS } from '../lib/labels'
+import { PersonPicker, PriorityPicker, StatusPicker } from '../components/pickers'
+import { PRIORITY, PRIORITY_ORDER, TASK_STATUS, options } from '../lib/labels'
 import { addDays, fa, todayISO } from '../lib/jalali'
 import { isTaskOverdue } from '../lib/metrics'
+import { L, useI18n } from '../lib/i18n'
 import { useProjectName } from '../components/shared'
+import { usePref } from '../lib/prefs'
 import type { Task } from '../lib/types'
 
 type SortKey = 'due_date' | 'priority' | 'status' | 'assignee'
 
 export default function Tasks() {
-  const { db, me, canEdit } = useStore()
+  const { db, me, canEdit, upsert } = useStore()
+  const { lang } = useI18n()
   const { open } = useEditor()
   const pname = useProjectName()
   const [params, setParams] = useSearchParams()
-  const [view, setView] = useState<'list' | 'board'>('list')
+  const [view, setView] = usePref<'list' | 'board'>('acg.tasks.view', 'list')
   const [q, setQ] = useState('')
   const [sort, setSort] = useState<SortKey>('due_date')
   const get = (k: string) => params.get(k) || ''
@@ -34,7 +38,6 @@ export default function Tasks() {
   const prio = get('priority')
   const due = get('due')
   const today = todayISO()
-
   const assignees = Array.from(new Set(db.Tasks.map((t) => t.assignee).filter(Boolean)))
 
   const list = useMemo(() => {
@@ -59,9 +62,10 @@ export default function Tasks() {
     return out.sort(cmp[sort])
   }, [db.Tasks, project, assignee, status, prio, due, q, sort, today])
 
-  const SortTh = ({ k, children }: { k: SortKey; children: React.ReactNode }) => (
-    <th className="th">
-      <button className={cx('inline-flex items-center gap-1', sort === k && 'text-brand')} onClick={() => setSort(k)}>
+  const patch = (t: Task, p: Partial<Task>) => upsert('Tasks', { ...t, ...p, ...(p.status ? { completed_at: p.status === 'done' ? todayISO() : '' } : {}) })
+  const SortTh = ({ k, children, className }: { k: SortKey; children: React.ReactNode; className?: string }) => (
+    <th className={cx('th', className)}>
+      <button className={cx('inline-flex items-center gap-1', sort === k && 'text-ink')} onClick={() => setSort(k)}>
         {children} <ArrowUpDown size={11} />
       </button>
     </th>
@@ -69,94 +73,113 @@ export default function Tasks() {
 
   return (
     <>
-      <PageHeader
-        title="تسک‌ها"
-        sub={`${fa(list.length)} تسک · ${fa(db.Tasks.filter(isTaskOverdue).length)} معوق · ${fa(db.Tasks.filter((t) => t.status === 'blocked').length)} مسدود`}
+      <Band
+        eyebrow={<span>{L('اجرا / تسک‌ها', 'Execution / Tasks')}</span>}
+        title={L('تسک‌ها', 'Tasks')}
+        sub={L(`${fa(list.length)} تسک · ${fa(db.Tasks.filter(isTaskOverdue).length)} معوق · ${fa(db.Tasks.filter((t) => t.status === 'blocked').length)} مسدود`, `${list.length} tasks · ${db.Tasks.filter(isTaskOverdue).length} overdue · ${db.Tasks.filter((t) => t.status === 'blocked').length} blocked`)}
         actions={
           <>
-            <Segmented value={view} onChange={setView} options={[{ value: 'list', label: 'لیست' }, { value: 'board', label: 'بورد کانبان' }]} />
+            <Segmented dark value={view} onChange={setView} options={[{ value: 'list', label: L('لیست', 'List') }, { value: 'board', label: L('بورد', 'Board') }]} />
             {canEdit && (
-              <button className="btn-primary" onClick={() => open('Tasks', { project_id: project, assignee: assignee || me })}>
-                <Plus size={16} /> تسک جدید
+              <button className="btn h-10 bg-white text-band" onClick={() => open('Tasks', { project_id: project, assignee: assignee || me })}>
+                <Plus size={16} /> {L('تسک جدید', 'New task')}
               </button>
             )}
           </>
         }
       />
-      <Toolbar>
-        <div className="relative">
-          <Search size={15} className="absolute right-3 top-1/2 -translate-y-1/2 text-sub" />
-          <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="جستجو…" className="input h-9 w-52 pr-9" />
+      <Overlap>
+        <div className="card mb-4 p-3">
+          <Toolbar className="!mb-0">
+            <SearchInput value={q} onChange={setQ} />
+            <FilterSelect value={project} onChange={(v) => set('project', v)} placeholder={L('همه‌ی پروژه‌ها', 'All projects')} options={db.Projects.map((p) => ({ value: p.id, label: p.name }))} />
+            <FilterSelect value={assignee} onChange={(v) => set('assignee', v)} placeholder={L('همه‌ی افراد', 'Everyone')} options={assignees.map((a) => ({ value: a, label: a === me ? `${a} (${L('من', 'me')})` : a }))} />
+            {view === 'list' && <FilterSelect value={get('status')} onChange={(v) => set('status', v)} placeholder={L('باز', 'Open')} options={[{ value: 'all', label: L('همه', 'All') }, ...options(TASK_STATUS, lang)]} />}
+            <FilterSelect value={prio} onChange={(v) => set('priority', v)} placeholder={L('اولویت', 'Priority')} options={options(PRIORITY, lang)} />
+            <FilterSelect
+              value={due}
+              onChange={(v) => set('due', v)}
+              placeholder={L('سررسید', 'Due')}
+              options={[
+                { value: 'overdue', label: L('معوق', 'Overdue') },
+                { value: 'today', label: L('امروز', 'Today') },
+                { value: 'week', label: L('۷ روز آینده', 'Next 7 days') },
+                { value: 'none', label: L('بدون سررسید', 'No due date') },
+              ]}
+            />
+            {me && (
+              <button aria-pressed={assignee === me} className="chip-btn" onClick={() => set('assignee', assignee === me ? '' : me)}>
+                {L('فقط من', 'Only mine')}
+              </button>
+            )}
+          </Toolbar>
         </div>
-        <FilterSelect value={project} onChange={(v) => set('project', v)} placeholder="همه‌ی پروژه‌ها" options={db.Projects.map((p) => ({ value: p.id, label: p.name }))} />
-        <FilterSelect value={assignee} onChange={(v) => set('assignee', v)} placeholder="همه‌ی افراد" options={assignees.map((a) => ({ value: a, label: a === me ? `${a} (من)` : a }))} />
-        {view === 'list' && (
-          <FilterSelect value={get('status')} onChange={(v) => set('status', v)} placeholder="باز (همه به‌جز انجام‌شده)" options={[{ value: 'all', label: 'همه' }, ...Object.entries(TASK_STATUS).map(([value, label]) => ({ value, label }))]} />
-        )}
-        <FilterSelect value={prio} onChange={(v) => set('priority', v)} placeholder="اولویت" options={Object.entries(PRIORITY).map(([value, label]) => ({ value, label }))} />
-        <FilterSelect
-          value={due}
-          onChange={(v) => set('due', v)}
-          placeholder="سررسید"
-          options={[
-            { value: 'overdue', label: 'معوق' },
-            { value: 'today', label: 'امروز' },
-            { value: 'week', label: '۷ روز آینده' },
-            { value: 'none', label: 'بدون سررسید' },
-          ]}
-        />
-        {canEdit && me && (
-          <button className={cx('btn-outline h-9', assignee === me && 'border-brand text-brand')} onClick={() => set('assignee', assignee === me ? '' : me)}>
-            فقط تسک‌های من
-          </button>
-        )}
-      </Toolbar>
 
-      {view === 'board' ? (
-        <Kanban tasks={list} defaults={{ project_id: project, assignee: assignee || me }} />
-      ) : (
-        <Card pad={false}>
-          {list.length === 0 ? (
-            <Empty />
-          ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full min-w-[860px]">
-                <thead className="border-b border-line bg-muted/40">
-                  <tr>
-                    <th className="th">عنوان</th>
-                    <th className="th">پروژه</th>
-                    <SortTh k="assignee">مسئول</SortTh>
-                    <SortTh k="status">وضعیت</SortTh>
-                    <SortTh k="priority">اولویت</SortTh>
-                    <SortTh k="due_date">سررسید</SortTh>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-line">
-                  {list.map((t) => (
-                    <tr key={t.id} className={cx('cursor-pointer hover:bg-muted/40', isTaskOverdue(t) && 'bg-bad/[0.03]')} onClick={() => open('Tasks', t as never)}>
-                      <td className="td">
-                        <div className={cx('font-medium', t.status === 'done' && 'line-through text-sub')}>{t.title}</div>
-                        {t.tags && (
-                          <div className="mt-0.5 flex gap-1">
-                            {t.tags.split(',').map((g) => g.trim()).filter(Boolean).map((g) => (
-                              <span key={g} className="text-[10px] text-sub" dir="ltr">#{g}</span>
-                            ))}
-                          </div>
-                        )}
-                      </td>
-                      <td className="td text-sub text-xs">{pname(t.project_id) || '—'}</td>
-                      <td className="td"><Person name={t.assignee} /></td>
-                      <td className="td"><TaskStatusBadge s={t.status} /></td>
-                      <td className="td"><PriorityBadge p={t.priority} /></td>
-                      <td className="td"><Due iso={t.due_date} done={t.status === 'done'} /></td>
+        {view === 'board' ? (
+          <Kanban tasks={list} defaults={{ project_id: project, assignee: assignee || me }} />
+        ) : (
+          <Card pad={false}>
+            {list.length === 0 ? (
+              <Empty />
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full min-w-[900px]">
+                  <thead className="border-b border-line">
+                    <tr>
+                      <SortTh k="status" className="w-12">
+                        {''}
+                      </SortTh>
+                      <th className="th">{L('عنوان', 'Title')}</th>
+                      <th className="th">{L('پروژه', 'Project')}</th>
+                      <SortTh k="priority">{L('اولویت', 'Priority')}</SortTh>
+                      <SortTh k="assignee">{L('مسئول', 'Assignee')}</SortTh>
+                      <SortTh k="due_date">{L('سررسید', 'Due')}</SortTh>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
-        </Card>
-      )}
+                  </thead>
+                  <tbody className="divide-y divide-line">
+                    {list.map((t) => {
+                      const nC = db.Comments.filter((c) => c.entity === 'Tasks' && c.entity_id === t.id).length
+                      return (
+                        <tr key={t.id} className={cx('group cursor-pointer transition hover:bg-muted/40', isTaskOverdue(t) && 'bg-bad/[0.025]')} onClick={() => open('Tasks', t as never)}>
+                          <td className="px-2 py-1.5" onClick={(e) => e.stopPropagation()}>
+                            {canEdit ? <StatusPicker value={t.status} onChange={(s) => patch(t, { status: s })} label={false} /> : <StatusIcon s={t.status} />}
+                          </td>
+                          <td className="td">
+                            <div className={cx('font-medium', t.status === 'done' && 'text-sub line-through')}>{t.title}</div>
+                            <div className="mt-0.5 flex items-center gap-2 text-[11px] text-sub">
+                              {t.tags &&
+                                t.tags.split(',').map((g) => g.trim()).filter(Boolean).map((g) => (
+                                  <span key={g} dir="ltr" className="font-mono">
+                                    #{g}
+                                  </span>
+                                ))}
+                              {nC > 0 && (
+                                <span className="inline-flex items-center gap-0.5">
+                                  <MessageSquare size={11} /> {fa(nC)}
+                                </span>
+                              )}
+                            </div>
+                          </td>
+                          <td className="td text-xs text-sub">{pname(t.project_id) || '—'}</td>
+                          <td className="px-2" onClick={(e) => e.stopPropagation()}>
+                            <PriorityPicker value={t.priority} onChange={(p) => patch(t, { priority: p })} />
+                          </td>
+                          <td className="px-2" onClick={(e) => e.stopPropagation()}>
+                            <PersonPicker value={t.assignee} onChange={(a) => patch(t, { assignee: a })} />
+                          </td>
+                          <td className="td">
+                            <Due iso={t.due_date} done={t.status === 'done'} />
+                          </td>
+                        </tr>
+                      )
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </Card>
+        )}
+      </Overlap>
     </>
   )
 }

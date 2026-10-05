@@ -1,11 +1,20 @@
 // Sample data so the dashboard is fully usable before the Google Sheet is connected.
 // Dates are relative to today so the demo always looks "live".
-import type { DB, Task, Milestone, Sprint, FollowUp, Risk, ScopeItem, Update, Allocation } from '../lib/types'
+import type { DB, Task, Milestone, Sprint, FollowUp, Risk, ScopeItem, Update, Allocation, Comment } from '../lib/types'
 import { addDays, todayISO } from '../lib/jalali'
+import { locale } from '../lib/i18n'
+import { EN, translateDemo } from './demo-en'
 
-export const DEMO_ME = 'مدیر برنامه'
+const DEMO_ME = 'مدیر برنامه'
+export const demoMe = () => (locale.lang === 'en' ? EN[DEMO_ME] : DEMO_ME)
 
+/** Sample data in the current interface language. */
 export function buildDemo(): DB {
+  const db = buildDemoFa()
+  return locale.lang === 'en' ? translateDemo(db) : db
+}
+
+function buildDemoFa(): DB {
   const t = todayISO()
   const d = (n: number) => addDays(t, n)
 
@@ -221,5 +230,14 @@ export function buildDemo(): DB {
     U('u6', 'p1', -9, 'سارا محمدی', 'green', 'MVP فروش تحویل شد.', 'ماژول فروش', 'تیکتینگ', ''),
   ]
 
-  return { Projects, Scope, Milestones, Sprints, Tasks, FollowUps, Risks, Team, Allocations, Updates }
+  const at = (days: number, hm: string) => `${d(days)} ${hm}`
+  const Comments: Comment[] = [
+    { id: 'c1', entity: 'Tasks', entity_id: 't7', author: 'حمید جعفری', body: 'تیم ERP گفتند تا پنجشنبه دسترسی تست می‌دهند. اگر نشد باید اسکالیشن کنیم.', created_at: at(-2, '10:15') },
+    { id: 'c2', entity: 'Tasks', entity_id: 't7', author: DEMO_ME, body: '@دکتر کامرانی لطفاً در جلسه‌ی مدیریت پیگیری بفرمایید.', created_at: at(-1, '09:02') },
+    { id: 'c3', entity: 'Tasks', entity_id: 't11', author: 'مریم احمدی', body: 'علت کرش پیدا شد؛ مربوط به SDK پرداخت است. فردا PR آماده می‌شود.', created_at: at(0, '08:40') },
+    { id: 'c4', entity: 'Projects', entity_id: 'p4', author: 'دکتر کامرانی', body: 'تاریخ Cut-over را تا تأیید مالی جابه‌جا نکنید. جلسه‌ی دوشنبه تصمیم می‌گیریم.', created_at: at(-1, '17:30') },
+    { id: 'c5', entity: 'FollowUps', entity_id: 'f1', author: DEMO_ME, body: 'ایمیل دوم ارسال شد.', created_at: at(-1, '11:20') },
+  ]
+
+  return { Projects, Scope, Milestones, Sprints, Tasks, FollowUps, Risks, Team, Allocations, Updates, Comments }
 }

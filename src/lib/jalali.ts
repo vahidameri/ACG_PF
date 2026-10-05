@@ -1,3 +1,5 @@
+import { locale } from './i18n'
+
 // Jalali (Persian) calendar helpers. Storage is always ISO Gregorian (YYYY-MM-DD);
 // everything the user sees or picks is Jalali.
 
@@ -138,42 +140,75 @@ export function jalaliPartsToISO(jy: number, jm: number, jd: number) {
   return toISO(new Date(g.gy, g.gm - 1, g.gd))
 }
 
-// ---------- Formatting ----------
+// ---------- Formatting (locale-aware) ----------
+
+export const J_MONTHS_EN = ['Farvardin', 'Ordibehesht', 'Khordad', 'Tir', 'Mordad', 'Shahrivar', 'Mehr', 'Aban', 'Azar', 'Dey', 'Bahman', 'Esfand']
+export const G_MONTHS_FA = ['ژانویه', 'فوریه', 'مارس', 'آوریل', 'مه', 'ژوئن', 'ژوئیه', 'اوت', 'سپتامبر', 'اکتبر', 'نوامبر', 'دسامبر']
+export const G_MONTHS_EN = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
+export const G_WEEKDAYS_EN = ['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa']
+export const J_WEEKDAYS_EN = ['Sa', 'Su', 'Mo', 'Tu', 'We', 'Th', 'Fr']
 
 const faDigits = '۰۱۲۳۴۵۶۷۸۹'
+/** Localize digits (Persian digits in fa, Latin in en). Name kept short because it's everywhere. */
 export function fa(n: number | string) {
-  return String(n).replace(/\d/g, (d) => faDigits[+d])
+  const s = String(n)
+  return locale.lang === 'fa' ? s.replace(/\d/g, (d) => faDigits[+d]).replace(/%/g, '٪') : s
 }
 
 export function fmtNum(n: number) {
-  return fa(Math.round(n).toLocaleString('en-US').replace(/,/g, '٬'))
+  const s = Math.round(n).toLocaleString('en-US')
+  return locale.lang === 'fa' ? fa(s.replace(/,/g, '٬')) : s
+}
+
+interface DateParts { y: number; m: number; d: number; monthName: string }
+function parts(iso: string): DateParts | null {
+  const dt = parseISO(iso)
+  if (!dt) return null
+  if (locale.cal === 'jalali') {
+    const j = toJalali(dt.getFullYear(), dt.getMonth() + 1, dt.getDate())
+    return { y: j.jy, m: j.jm, d: j.jd, monthName: (locale.lang === 'fa' ? J_MONTHS : J_MONTHS_EN)[j.jm - 1] }
+  }
+  const m = dt.getMonth()
+  return { y: dt.getFullYear(), m: m + 1, d: dt.getDate(), monthName: (locale.lang === 'fa' ? G_MONTHS_FA : G_MONTHS_EN)[m] }
 }
 
 export function fmtDate(iso: string, style: 'short' | 'long' | 'month' = 'short') {
-  const j = isoToJalaliParts(iso)
-  if (!j) return '—'
-  if (style === 'long') return `${fa(j.jd)} ${J_MONTHS[j.jm - 1]} ${fa(j.jy)}`
-  if (style === 'month') return `${J_MONTHS[j.jm - 1]} ${fa(j.jy)}`
-  return `${fa(j.jy)}/${fa(String(j.jm).padStart(2, '0'))}/${fa(String(j.jd).padStart(2, '0'))}`
+  const p = parts(iso)
+  if (!p) return '—'
+  const pad = (n: number) => String(n).padStart(2, '0')
+  if (style === 'long') return fa(locale.lang === 'fa' ? `${p.d} ${p.monthName} ${p.y}` : `${p.d} ${p.monthName} ${p.y}`)
+  if (style === 'month') return fa(`${p.monthName} ${p.y}`)
+  return fa(locale.lang === 'fa' || locale.cal === 'jalali' ? `${p.y}/${pad(p.m)}/${pad(p.d)}` : `${pad(p.d)}/${pad(p.m)}/${p.y}`)
 }
 
 export function fmtDayMonth(iso: string) {
-  const j = isoToJalaliParts(iso)
-  if (!j) return '—'
-  return `${fa(j.jd)} ${J_MONTHS[j.jm - 1]}`
+  const p = parts(iso)
+  if (!p) return '—'
+  return fa(`${p.d} ${p.monthName}`)
 }
 
 export function relDays(iso: string) {
   if (!iso) return ''
   const d = daysFromToday(iso)
-  if (d === 0) return 'امروز'
-  if (d === 1) return 'فردا'
-  if (d === -1) return 'دیروز'
-  if (d > 0) return `${fa(d)} روز دیگر`
-  return `${fa(-d)} روز تأخیر`
+  const en = locale.lang === 'en'
+  if (d === 0) return en ? 'Today' : 'امروز'
+  if (d === 1) return en ? 'Tomorrow' : 'فردا'
+  if (d === -1) return en ? 'Yesterday' : 'دیروز'
+  if (d > 0) return en ? `in ${d} days` : `${fa(d)} روز دیگر`
+  return en ? `${-d} days late` : `${fa(-d)} روز تأخیر`
 }
 
 export function weekdayIndex(d: Date) {
   // Saturday = 0
   return (d.getDay() + 1) % 7
+}
+
+export function timeAgo(isoOrDate: string | Date) {
+  const t = typeof isoOrDate === 'string' ? new Date(isoOrDate) : isoOrDate
+  const s = Math.max(0, (Date.now() - t.getTime()) / 1000)
+  const en = locale.lang === 'en'
+  if (s < 60) return en ? 'just now' : 'همین الان'
+  if (s < 3600) return en ? `${Math.floor(s / 60)}m ago` : `${fa(Math.floor(s / 60))} دقیقه پیش`
+  if (s < 86400) return en ? `${Math.floor(s / 3600)}h ago` : `${fa(Math.floor(s / 3600))} ساعت پیش`
+  return en ? `${Math.floor(s / 86400)}d ago` : `${fa(Math.floor(s / 86400))} روز پیش`
 }

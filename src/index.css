@@ -2,31 +2,52 @@
 @tailwind components;
 @tailwind utilities;
 
+/*
+  ACG Portfolio design tokens
+  Identity (joinacg.com): monochrome ink, hairline grids, Inter display + Geist Mono labels,
+  accents: steel #C1D6DE · deep teal #102E39/#1D4F61 · wine #6A0421.
+  App patterns (Karma prototype): pill controls, dark grid band with an overlapping panel,
+  soft elevated cards, state layers.
+*/
 :root {
-  --bg: 246 247 251;
+  --bg: 243 244 246;
   --surface: 255 255 255;
-  --muted: 241 243 248;
-  --line: 228 231 239;
-  --ink: 17 24 39;
-  --sub: 100 108 128;
-  --brand: 79 70 229;
-  --good: 16 163 106;
-  --warn: 217 141 6;
-  --bad: 225 55 72;
+  --muted: 241 243 246;
+  --line: 229 231 235;
+  --line-strong: 208 213 220;
+  --ink: 10 10 10;
+  --sub: 95 102 114;
+  --brand: 29 79 97;
+  --brand-soft: 193 214 222;
+  --wine: 106 4 33;
+  --good: 22 122 77;
+  --warn: 176 118 0;
+  --bad: 190 32 56;
+  --band: 10 10 10;
+  --on-band: 255 255 255;
+  --band-sub: 150 156 166;
+  --band-line: 38 40 44;
   color-scheme: light;
 }
 
 .dark {
-  --bg: 11 13 20;
-  --surface: 20 23 33;
-  --muted: 28 32 45;
-  --line: 40 45 61;
-  --ink: 236 238 245;
-  --sub: 148 155 176;
-  --brand: 129 120 255;
-  --good: 52 199 140;
-  --warn: 245 176 50;
-  --bad: 248 96 112;
+  --bg: 7 8 9;
+  --surface: 15 16 18;
+  --muted: 23 25 28;
+  --line: 33 36 40;
+  --line-strong: 50 54 60;
+  --ink: 244 245 246;
+  --sub: 146 152 162;
+  --brand: 193 214 222;
+  --brand-soft: 29 79 97;
+  --wine: 236 120 146;
+  --good: 70 196 138;
+  --warn: 236 178 60;
+  --bad: 246 98 116;
+  --band: 0 0 0;
+  --on-band: 255 255 255;
+  --band-sub: 140 146 156;
+  --band-line: 30 32 36;
   color-scheme: dark;
 }
 
@@ -38,12 +59,15 @@ body,
 
 body {
   @apply bg-bg text-ink font-sans antialiased;
-  font-feature-settings: 'ss01';
+  font-feature-settings: 'cv11', 'ss01';
+}
+html[lang='fa'] body {
+  @apply font-fa;
 }
 
 * {
   scrollbar-width: thin;
-  scrollbar-color: rgb(var(--line)) transparent;
+  scrollbar-color: rgb(var(--line-strong)) transparent;
 }
 
 input,
@@ -53,81 +77,250 @@ button {
   font-family: inherit;
 }
 
+:focus-visible {
+  outline: 2px solid rgb(var(--brand));
+  outline-offset: 2px;
+}
+/* text fields draw their own focus state */
+input:focus-visible,
+textarea:focus-visible,
+select:focus-visible {
+  outline: none;
+}
+
+::selection {
+  background: rgb(var(--brand-soft));
+  color: rgb(var(--ink));
+}
+
 @layer components {
+  /* ---------- surfaces ---------- */
   .card {
     @apply bg-surface border border-line rounded-2xl shadow-card;
   }
-  .btn {
-    @apply inline-flex items-center justify-center gap-1.5 rounded-xl px-3.5 h-9 text-sm font-medium transition select-none disabled:opacity-50 disabled:pointer-events-none whitespace-nowrap;
+  .card-hover {
+    @apply transition duration-200 hover:-translate-y-0.5 hover:shadow-float hover:border-line-strong;
   }
-  .btn-primary {
-    @apply btn bg-brand text-white hover:brightness-110 active:brightness-95 shadow-sm;
+  .hairline {
+    @apply border-line;
   }
-  .btn-ghost {
-    @apply btn text-ink/80 hover:bg-muted;
+
+  /* ---------- type ---------- */
+  .eyebrow {
+    @apply font-mono text-[11px] font-medium uppercase tracking-[0.16em] text-sub;
   }
-  .btn-outline {
-    @apply btn border border-line bg-surface hover:bg-muted;
+  html[lang='fa'] .eyebrow {
+    @apply font-fa text-[12px] font-semibold normal-case tracking-normal;
   }
-  .btn-danger {
-    @apply btn text-bad hover:bg-bad/10;
+  .display {
+    @apply font-medium tracking-[-0.035em];
   }
-  .input {
-    @apply w-full h-10 rounded-xl border border-line bg-surface px-3 text-sm outline-none transition placeholder:text-sub/70 focus:border-brand focus:ring-4 focus:ring-brand/15;
-  }
-  textarea.input {
-    @apply h-auto py-2 leading-7;
-  }
-  .label {
-    @apply block text-xs font-medium text-sub mb-1.5;
-  }
-  .chip {
-    @apply inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-medium leading-5 whitespace-nowrap;
-  }
-  .th {
-    @apply text-right text-[11px] font-semibold text-sub uppercase tracking-wide px-3 py-2.5 whitespace-nowrap;
-  }
-  .td {
-    @apply px-3 py-2.5 text-sm align-middle;
+  html[lang='fa'] .display {
+    @apply font-bold tracking-[-0.01em];
   }
   .num {
     font-variant-numeric: tabular-nums;
   }
+
+  /* ---------- buttons (pill, with state layer) ---------- */
+  .btn {
+    @apply relative inline-flex items-center justify-center gap-2 overflow-hidden rounded-full px-4 h-10 text-sm font-medium transition duration-150 select-none whitespace-nowrap disabled:opacity-40 disabled:pointer-events-none active:scale-[.97];
+  }
+  .btn::before {
+    content: '';
+    @apply absolute inset-0 bg-current opacity-0 transition-opacity;
+  }
+  .btn:hover::before {
+    opacity: 0.08;
+  }
+  .btn:active::before {
+    opacity: 0.12;
+  }
+  .btn-primary {
+    @apply btn bg-ink text-surface;
+  }
+  .btn-accent {
+    @apply btn bg-brand text-surface;
+  }
+  .dark .btn-accent {
+    @apply text-band;
+  }
+  .btn-tonal {
+    @apply btn bg-brand-soft/60 text-ink;
+  }
+  .dark .btn-tonal {
+    @apply bg-brand-soft/70;
+  }
+  .btn-outline {
+    @apply btn border border-line-strong bg-surface text-ink;
+  }
+  .btn-ghost {
+    @apply btn text-ink/80;
+  }
+  .btn-danger {
+    @apply btn text-bad;
+  }
+  .btn-sm {
+    @apply h-8 px-3 text-xs;
+  }
+  .icon-btn {
+    @apply relative inline-grid h-9 w-9 place-items-center rounded-full text-ink/75 transition hover:bg-ink/[0.06] hover:text-ink active:scale-95;
+  }
+
+  /* ---------- inputs ---------- */
+  .input {
+    @apply w-full h-11 rounded-xl border border-line-strong bg-surface px-3.5 text-sm outline-none transition placeholder:text-sub/70 hover:border-sub/60 focus:border-brand focus:ring-4 focus:ring-brand/10;
+  }
+  textarea.input {
+    @apply h-auto py-2.5 leading-7;
+  }
+  .label {
+    @apply block text-xs font-medium text-sub mb-1.5;
+  }
+
+  /* ---------- chips & badges ---------- */
+  .chip {
+    @apply inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-[11px] font-medium leading-5 whitespace-nowrap;
+  }
+  .chip-btn {
+    @apply inline-flex h-8 items-center gap-1.5 rounded-full border border-line bg-surface px-3 text-xs font-medium transition hover:bg-muted;
+  }
+  .chip-btn[aria-pressed='true'] {
+    @apply border-transparent bg-ink text-surface;
+  }
+
+  /* ---------- tables ---------- */
+  .th {
+    @apply text-start text-[11px] font-semibold text-sub px-4 py-3 whitespace-nowrap;
+  }
+  .td {
+    @apply px-4 py-3 text-sm align-middle;
+  }
+
+  /* ---------- page band (ACG black with grid) ---------- */
+  .band {
+    @apply relative overflow-hidden bg-band text-on-band;
+    background-image: linear-gradient(rgb(var(--band-line)) 1px, transparent 1px), linear-gradient(90deg, rgb(var(--band-line)) 1px, transparent 1px),
+      radial-gradient(900px 380px at 85% -20%, rgb(29 79 97 / 0.55), transparent 70%), radial-gradient(600px 300px at 0% 120%, rgb(106 4 33 / 0.28), transparent 70%);
+    background-size:
+      56px 56px,
+      56px 56px,
+      100% 100%,
+      100% 100%;
+    background-position: -1px -1px;
+  }
+  .band::after {
+    content: '';
+    @apply pointer-events-none absolute inset-0;
+    background: linear-gradient(180deg, transparent 40%, rgb(var(--band)) 100%);
+    opacity: 0.6;
+  }
+  .kbd {
+    @apply inline-flex h-5 min-w-5 items-center justify-center rounded-md border border-line bg-surface px-1.5 font-mono text-[10px] text-sub;
+  }
 }
 
+/* ---------- motion ---------- */
 .fade-in {
-  animation: fade 0.18s ease-out;
+  animation: fade 0.22s ease-out both;
 }
-.slide-in {
-  animation: slide 0.22s cubic-bezier(0.2, 0.8, 0.2, 1);
+.rise {
+  animation: rise 0.4s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+.sheet-in {
+  animation: sheet 0.28s cubic-bezier(0.2, 0.9, 0.25, 1) both;
+}
+.pop-in {
+  animation: pop 0.16s cubic-bezier(0.2, 0.9, 0.3, 1.2) both;
 }
 @keyframes fade {
   from {
     opacity: 0;
-    transform: translateY(4px);
+  }
+  to {
+    opacity: 1;
+  }
+}
+@keyframes rise {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
   }
   to {
     opacity: 1;
     transform: none;
   }
 }
-@keyframes slide {
+@keyframes sheet {
   from {
-    opacity: 0;
-    transform: translateX(-24px);
+    opacity: 0.4;
+    transform: translateX(calc(var(--sheet-dir, -1) * 40px));
   }
   to {
     opacity: 1;
     transform: none;
+  }
+}
+[dir='ltr'] {
+  --sheet-dir: 1;
+}
+@keyframes pop {
+  from {
+    opacity: 0;
+    transform: scale(0.96) translateY(-4px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+.stagger > * {
+  animation: rise 0.45s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+.stagger > *:nth-child(2) {
+  animation-delay: 40ms;
+}
+.stagger > *:nth-child(3) {
+  animation-delay: 80ms;
+}
+.stagger > *:nth-child(4) {
+  animation-delay: 120ms;
+}
+.stagger > *:nth-child(5) {
+  animation-delay: 160ms;
+}
+.stagger > *:nth-child(6) {
+  animation-delay: 200ms;
+}
+.stagger > *:nth-child(n + 7) {
+  animation-delay: 240ms;
+}
+.skeleton {
+  @apply rounded-xl bg-muted;
+  background-image: linear-gradient(90deg, transparent, rgb(var(--surface) / 0.6), transparent);
+  background-size: 200% 100%;
+  animation: shimmer 1.4s infinite;
+}
+@keyframes shimmer {
+  to {
+    background-position: -200% 0;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
   }
 }
 
-/* Recharts in RTL: keep chart internals LTR so axes don't flip oddly */
+/* Recharts: keep internals LTR */
 .recharts-wrapper {
   direction: ltr;
 }
 .recharts-tooltip-wrapper {
-  direction: rtl;
+  direction: inherit;
 }
 
 @media print {

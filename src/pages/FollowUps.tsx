@@ -2,9 +2,10 @@ import { useState } from 'react'
 import { Plus } from 'lucide-react'
 import { useStore } from '../lib/store'
 import { useEditor } from '../components/Editor'
-import { Card, Empty, FilterSelect, PageHeader, Segmented, Toolbar, Avatar, cx } from '../components/ui'
+import { Band, Card, Empty, FilterSelect, Overlap, Segmented, Toolbar, Avatar, StatStrip, cx } from '../components/ui'
 import { FollowUpRow } from '../components/shared'
 import { addDays, fa, todayISO } from '../lib/jalali'
+import { L } from '../lib/i18n'
 import type { FollowUp } from '../lib/types'
 
 export default function FollowUps() {
@@ -22,73 +23,89 @@ export default function FollowUps() {
   const people = Array.from(new Set(db.FollowUps.map((f) => f.person).filter(Boolean)))
   const sort = (a: FollowUp, b: FollowUp) => (a.due_date || '9999').localeCompare(b.due_date || '9999')
 
+  const overdue = openFu.filter((f) => f.status === 'open' && f.due_date && f.due_date < today)
   const groups: { key: string; title: string; tone: string; items: FollowUp[] }[] =
     group === 'time'
       ? [
-          { key: 'overdue', title: 'معوق', tone: 'text-bad', items: openFu.filter((f) => f.status === 'open' && f.due_date && f.due_date < today) },
-          { key: 'today', title: 'امروز', tone: 'text-warn', items: openFu.filter((f) => f.status === 'open' && f.due_date === today) },
-          { key: 'waiting', title: 'منتظر پاسخ', tone: 'text-purple-500', items: openFu.filter((f) => f.status === 'waiting') },
-          { key: 'week', title: 'این هفته', tone: 'text-brand', items: openFu.filter((f) => f.status === 'open' && f.due_date > today && f.due_date <= week) },
-          { key: 'later', title: 'بعداً', tone: 'text-sub', items: openFu.filter((f) => f.status === 'open' && (!f.due_date || f.due_date > week)) },
+          { key: 'overdue', title: L('معوق', 'Overdue'), tone: 'text-bad', items: overdue },
+          { key: 'today', title: L('امروز', 'Today'), tone: 'text-warn', items: openFu.filter((f) => f.status === 'open' && f.due_date === today) },
+          { key: 'waiting', title: L('منتظر پاسخ', 'Waiting'), tone: 'text-purple-500', items: openFu.filter((f) => f.status === 'waiting') },
+          { key: 'week', title: L('این هفته', 'This week'), tone: '', items: openFu.filter((f) => f.status === 'open' && f.due_date > today && f.due_date <= week) },
+          { key: 'later', title: L('بعداً', 'Later'), tone: 'text-sub', items: openFu.filter((f) => f.status === 'open' && (!f.due_date || f.due_date > week)) },
         ]
       : people
           .map((p) => ({ key: p, title: p, tone: '', items: openFu.filter((f) => f.person === p) }))
           .filter((g) => g.items.length)
           .sort((a, b) => b.items.length - a.items.length)
-
   const done = all.filter((f) => f.status === 'done').sort((a, b) => (b.done_at || '').localeCompare(a.done_at || ''))
 
   return (
     <>
-      <PageHeader
-        title="فالوآپ‌ها"
-        sub={`${fa(openFu.length)} پیگیری باز · ${fa(openFu.filter((f) => f.status === 'open' && f.due_date < today).length)} معوق · ${fa(openFu.filter((f) => f.status === 'waiting').length)} منتظر پاسخ`}
+      <Band
+        eyebrow={<span>{L('اجرا / فالوآپ‌ها', 'Execution / Follow-ups')}</span>}
+        title={L('فالوآپ‌ها', 'Follow-ups')}
+        sub={L('هر چیزی که منتظرش هستید، از هر کسی — تا وقتی بسته نشده، اینجاست.', 'Everything you’re waiting on, from anyone — it stays here until it’s closed.')}
         actions={
           canEdit && (
-            <button className="btn-primary" onClick={() => open('FollowUps', { project_id: project, person })}>
-              <Plus size={16} /> فالوآپ جدید
+            <button className="btn h-10 bg-white text-band" onClick={() => open('FollowUps', { project_id: project, person })}>
+              <Plus size={16} /> {L('فالوآپ جدید', 'New follow-up')}
             </button>
           )
         }
-      />
-      <Toolbar>
-        <Segmented value={group} onChange={setGroup} options={[{ value: 'time', label: 'بر اساس زمان' }, { value: 'person', label: 'بر اساس فرد' }]} />
-        <FilterSelect value={project} onChange={setProject} placeholder="همه‌ی پروژه‌ها" options={db.Projects.map((p) => ({ value: p.id, label: p.name }))} />
-        <FilterSelect value={person} onChange={setPerson} placeholder="همه‌ی افراد" options={people.map((p) => ({ value: p, label: p }))} />
-        <label className="flex items-center gap-2 text-xs text-sub mr-auto">
-          <input type="checkbox" checked={showDone} onChange={(e) => setShowDone(e.target.checked)} /> نمایش بسته‌شده‌ها
-        </label>
-      </Toolbar>
+      >
+        <StatStrip
+          items={[
+            { label: L('پیگیری باز', 'Open'), value: fa(openFu.length) },
+            { label: L('معوق', 'Overdue'), value: fa(overdue.length), tone: overdue.length ? 'red' : 'green' },
+            { label: L('امروز', 'Today'), value: fa(openFu.filter((f) => f.status === 'open' && f.due_date === today).length), tone: 'amber' },
+            { label: L('منتظر پاسخ', 'Waiting'), value: fa(openFu.filter((f) => f.status === 'waiting').length) },
+            { label: L('افراد', 'People'), value: fa(new Set(openFu.map((f) => f.person)).size) },
+            { label: L('بسته‌شده', 'Closed'), value: fa(done.length), tone: 'green' },
+          ]}
+        />
+      </Band>
+      <Overlap>
+        <div className="card mb-4 p-3">
+          <Toolbar className="!mb-0">
+            <Segmented value={group} onChange={setGroup} options={[{ value: 'time', label: L('بر اساس زمان', 'By time') }, { value: 'person', label: L('بر اساس فرد', 'By person') }]} />
+            <FilterSelect value={project} onChange={setProject} placeholder={L('همه‌ی پروژه‌ها', 'All projects')} options={db.Projects.map((p) => ({ value: p.id, label: p.name }))} />
+            <FilterSelect value={person} onChange={setPerson} placeholder={L('همه‌ی افراد', 'Everyone')} options={people.map((p) => ({ value: p, label: p }))} />
+            <button aria-pressed={showDone} className="chip-btn ms-auto" onClick={() => setShowDone((x) => !x)}>
+              {L('نمایش بسته‌شده‌ها', 'Show closed')}
+            </button>
+          </Toolbar>
+        </div>
 
-      <div className="grid gap-4 lg:grid-cols-2">
-        {groups
-          .filter((g) => g.items.length)
-          .map((g) => (
-            <Card
-              key={g.key}
-              pad={false}
-              title={
-                <span className={cx('flex items-center gap-2', g.tone)}>
-                  {group === 'person' && <Avatar name={g.title} size="xs" />}
-                  {g.title} <span className="text-sub font-normal num">({fa(g.items.length)})</span>
-                </span>
-              }
-            >
-              <div className="p-2">{[...g.items].sort(sort).map((f) => <FollowUpRow key={f.id} f={f} />)}</div>
-            </Card>
-          ))}
-        {groups.every((g) => !g.items.length) && (
-          <div className="lg:col-span-2">
-            <Empty text="فالوآپ بازی وجود ندارد" />
-          </div>
+        <div className="stagger grid gap-4 lg:grid-cols-2">
+          {groups
+            .filter((g) => g.items.length)
+            .map((g) => (
+              <Card
+                key={g.key}
+                pad={false}
+                title={
+                  <span className={cx('flex items-center gap-2', g.tone)}>
+                    {group === 'person' && <Avatar name={g.title} size="xs" />}
+                    {g.title} <span className="font-normal text-sub num">· {fa(g.items.length)}</span>
+                  </span>
+                }
+              >
+                <div className="px-2 pb-2">{[...g.items].sort(sort).map((f) => <FollowUpRow key={f.id} f={f} />)}</div>
+              </Card>
+            ))}
+          {groups.every((g) => !g.items.length) && (
+            <div className="card lg:col-span-2">
+              <Empty text={L('فالوآپ بازی وجود ندارد', 'No open follow-ups')} />
+            </div>
+          )}
+        </div>
+
+        {showDone && (
+          <Card className="mt-4" pad={false} title={L(`بسته‌شده · ${fa(done.length)}`, `Closed · ${done.length}`)}>
+            <div className="px-2 pb-2">{done.length ? done.map((f) => <FollowUpRow key={f.id} f={f} compact />) : <Empty />}</div>
+          </Card>
         )}
-      </div>
-
-      {showDone && (
-        <Card className="mt-4" pad={false} title={`بسته‌شده (${fa(done.length)})`}>
-          <div className="p-2">{done.length ? done.map((f) => <FollowUpRow key={f.id} f={f} compact />) : <Empty />}</div>
-        </Card>
-      )}
+      </Overlap>
     </>
   )
 }

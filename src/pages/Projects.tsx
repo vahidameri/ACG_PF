@@ -1,17 +1,22 @@
 import { useState } from 'react'
-import { Plus, Search } from 'lucide-react'
+import { Plus } from 'lucide-react'
 import { useStore } from '../lib/store'
 import { useEditor } from '../components/Editor'
-import { PageHeader, Toolbar, FilterSelect, Empty } from '../components/ui'
+import { Band, Overlap, Toolbar, FilterSelect, Empty, SearchInput, Segmented } from '../components/ui'
 import { ProjectCard } from '../components/shared'
-import { PRIORITY, PROJECT_STATUS, HEALTH } from '../lib/labels'
+import { PRIORITY, PROJECT_STATUS, HEALTH, options } from '../lib/labels'
 import { projectMetrics } from '../lib/metrics'
 import { fa } from '../lib/jalali'
+import { L, useI18n } from '../lib/i18n'
+import { usePins } from '../lib/prefs'
 
 export default function Projects() {
   const { db, canEdit } = useStore()
+  const { lang } = useI18n()
   const { open } = useEditor()
+  const { pins } = usePins()
   const [q, setQ] = useState('')
+  const [scope, setScope] = useState<'all' | 'pinned'>('all')
   const [status, setStatus] = useState('active')
   const [cat, setCat] = useState('')
   const [prio, setPrio] = useState('')
@@ -22,6 +27,7 @@ export default function Projects() {
   const owners = Array.from(new Set(db.Projects.map((p) => p.owner).filter(Boolean)))
   const list = db.Projects.filter(
     (p) =>
+      (scope === 'all' || pins.includes(p.id)) &&
       (!status || p.status === status) &&
       (!cat || p.category === cat) &&
       (!prio || p.priority === prio) &&
@@ -32,37 +38,42 @@ export default function Projects() {
 
   return (
     <>
-      <PageHeader
-        title="پروژه‌ها"
-        sub={`${fa(list.length)} پروژه از ${fa(db.Projects.length)}`}
+      <Band
+        eyebrow={<span>{L('پورتفولیو / پروژه‌ها', 'Portfolio / Projects')}</span>}
+        title={L('پروژه‌ها', 'Projects')}
+        sub={L(`${fa(list.length)} از ${fa(db.Projects.length)} پروژه`, `${list.length} of ${db.Projects.length} projects`)}
         actions={
           canEdit && (
-            <button className="btn-primary" onClick={() => open('Projects')}>
-              <Plus size={16} /> پروژه‌ی جدید
+            <button className="btn h-10 bg-white text-band" onClick={() => open('Projects')}>
+              <Plus size={16} /> {L('پروژه‌ی جدید', 'New project')}
             </button>
           )
         }
       />
-      <Toolbar>
-        <div className="relative">
-          <Search size={15} className="absolute right-3 top-1/2 -translate-y-1/2 text-sub" />
-          <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="جستجو…" className="input h-9 w-56 pr-9" />
+      <Overlap>
+        <div className="card mb-5 p-3">
+          <Toolbar className="!mb-0">
+            <Segmented value={scope} onChange={setScope} options={[{ value: 'all', label: L('همه', 'All') }, { value: 'pinned', label: L(`پین‌شده · ${fa(pins.length)}`, `Pinned · ${pins.length}`) }]} />
+            <SearchInput value={q} onChange={setQ} />
+            <FilterSelect value={status} onChange={setStatus} placeholder={L('همه‌ی وضعیت‌ها', 'Any status')} options={options(PROJECT_STATUS, lang)} />
+            <FilterSelect value={health} onChange={setHealth} placeholder={L('سلامت', 'Health')} options={options(HEALTH, lang)} />
+            <FilterSelect value={prio} onChange={setPrio} placeholder={L('اولویت', 'Priority')} options={options(PRIORITY, lang)} />
+            <FilterSelect value={cat} onChange={setCat} placeholder={L('دسته', 'Category')} options={cats.map((c) => ({ value: c, label: c }))} />
+            <FilterSelect value={owner} onChange={setOwner} placeholder={L('مدیر پروژه', 'Lead')} options={owners.map((c) => ({ value: c, label: c }))} />
+          </Toolbar>
         </div>
-        <FilterSelect value={status} onChange={setStatus} placeholder="همه‌ی وضعیت‌ها" options={Object.entries(PROJECT_STATUS).map(([value, label]) => ({ value, label }))} />
-        <FilterSelect value={health} onChange={setHealth} placeholder="سلامت" options={Object.entries(HEALTH).map(([value, label]) => ({ value, label }))} />
-        <FilterSelect value={prio} onChange={setPrio} placeholder="اولویت" options={Object.entries(PRIORITY).map(([value, label]) => ({ value, label }))} />
-        <FilterSelect value={cat} onChange={setCat} placeholder="دسته" options={cats.map((c) => ({ value: c, label: c }))} />
-        <FilterSelect value={owner} onChange={setOwner} placeholder="مدیر پروژه" options={owners.map((c) => ({ value: c, label: c }))} />
-      </Toolbar>
-      {list.length === 0 ? (
-        <Empty text="پروژه‌ای با این فیلترها پیدا نشد" />
-      ) : (
-        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
-          {list.map((p) => (
-            <ProjectCard key={p.id} p={p} />
-          ))}
-        </div>
-      )}
+        {list.length === 0 ? (
+          <div className="card">
+            <Empty text={L('پروژه‌ای با این فیلترها پیدا نشد', 'No projects match these filters')} />
+          </div>
+        ) : (
+          <div className="stagger grid gap-4 md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
+            {list.map((p) => (
+              <ProjectCard key={p.id} p={p} />
+            ))}
+          </div>
+        )}
+      </Overlap>
     </>
   )
 }

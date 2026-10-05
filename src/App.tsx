@@ -1,5 +1,6 @@
 import { HashRouter, Route, Routes } from 'react-router-dom'
 import { StoreProvider, useStore } from './lib/store'
+import { I18nProvider } from './lib/i18n'
 import { EditorProvider } from './components/Editor'
 import { Layout } from './components/Layout'
 import Dashboard from './pages/Dashboard'
@@ -15,15 +16,22 @@ import Team from './pages/Team'
 import Updates from './pages/Updates'
 import Report from './pages/Report'
 import Settings from './pages/Settings'
-import { Loader2 } from 'lucide-react'
+import { Skeleton } from './components/ui'
+import { SignIn } from './components/SignIn'
 
 function Gate({ children }: { children: React.ReactNode }) {
-  const { loading, lastSync, mode } = useStore()
+  const { loading, lastSync, mode, config } = useStore()
+  if (mode === 'live' && !config.token) return <SignIn />
   if (mode === 'live' && loading && !lastSync)
     return (
-      <div className="flex h-[60vh] flex-col items-center justify-center gap-3 text-sub">
-        <Loader2 className="animate-spin" />
-        در حال دریافت داده‌ها از Google Sheets…
+      <div className="mx-auto max-w-[1440px] space-y-4 pt-8">
+        <Skeleton className="h-10 w-1/3" />
+        <Skeleton className="h-5 w-1/2" />
+        <div className="grid gap-4 pt-6 md:grid-cols-3">
+          {[0, 1, 2, 3, 4, 5].map((i) => (
+            <Skeleton key={i} className="h-40" />
+          ))}
+        </div>
       </div>
     )
   return <>{children}</>
@@ -32,6 +40,7 @@ function Gate({ children }: { children: React.ReactNode }) {
 export default function App() {
   return (
     <StoreProvider>
+      <I18nProvider>
       <HashRouter>
         <EditorProvider>
           <Layout>
@@ -56,6 +65,7 @@ export default function App() {
           </Layout>
         </EditorProvider>
       </HashRouter>
+      </I18nProvider>
     </StoreProvider>
   )
 }

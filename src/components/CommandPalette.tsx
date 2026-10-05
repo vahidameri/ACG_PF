@@ -1,25 +1,31 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
+import { createPortal } from 'react-dom'
 import { useNavigate } from 'react-router-dom'
-import { Briefcase, ListChecks, BellRing, ShieldAlert, User, CornerDownLeft } from 'lucide-react'
+import { Briefcase, ListChecks, BellRing, ShieldAlert, User, CornerDownLeft, ArrowRight, Plus, Languages, Search } from 'lucide-react'
 import { useStore } from '../lib/store'
+import { useI18n, L } from '../lib/i18n'
 import { useEditor } from './Editor'
-import { cx } from './ui'
+import { cx, HealthDot, StatusIcon } from './ui'
+import { projectMetrics } from '../lib/metrics'
 
 interface Item {
   key: string
+  group: string
   label: string
-  sub: string
-  icon: typeof Briefcase
+  sub?: string
+  icon: React.ReactNode
   run: () => void
 }
 
 export function CommandPalette({ open, onClose }: { open: boolean; onClose: () => void }) {
-  const { db } = useStore()
+  const { db, me, canEdit } = useStore()
+  const { lang, setLang } = useI18n()
   const editor = useEditor()
   const navigate = useNavigate()
   const [q, setQ] = useState('')
   const [idx, setIdx] = useState(0)
   const inputRef = useRef<HTMLInputElement>(null)
+  const listRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
     if (open) {
@@ -31,17 +37,49 @@ export function CommandPalette({ open, onClose }: { open: boolean; onClose: () =
 
   const items = useMemo<Item[]>(() => {
     const pname = (id: string) => db.Projects.find((p) => p.id === id)?.name || ''
-    const all: Item[] = [
-      ...db.Projects.map((p) => ({ key: p.id, label: p.name, sub: `پروژه · ${p.code}`, icon: Briefcase, run: () => navigate(`/projects/${p.id}`) })),
-      ...db.Tasks.map((t) => ({ key: t.id, label: t.title, sub: `تسک · ${pname(t.project_id)} · ${t.assignee}`, icon: ListChecks, run: () => editor.open('Tasks', t as never) })),
-      ...db.FollowUps.map((f) => ({ key: f.id, label: f.subject, sub: `فالوآپ · ${f.person}`, icon: BellRing, run: () => editor.open('FollowUps', f as never) })),
-      ...db.Risks.map((r) => ({ key: r.id, label: r.title, sub: `ریسک · ${pname(r.project_id)}`, icon: ShieldAlert, run: () => editor.open('Risks', r as never) })),
-      ...db.Team.map((m) => ({ key: m.id, label: m.name, sub: `عضو تیم · ${m.role}`, icon: User, run: () => navigate(`/tasks?assignee=${encodeURIComponent(m.name)}`) })),
+    const G = { act: L('فرمان‌ها', 'Commands'), nav: L('رفتن به', 'Go to'), proj: L('پروژه‌ها', 'Projects'), task: L('تسک‌ها', 'Tasks'), fu: L('فالوآپ‌ها', 'Follow-ups'), risk: L('ریسک‌ها', 'Risks'), ppl: L('افراد', 'People') }
+    const ico = (I: typeof Briefcase) => <I size={16} />
+    const actions: Item[] = [
+      ...(canEdit
+        ? [
+            { key: 'new-task', group: G.act, label: L('تسک جدید', 'New task'), icon: ico(Plus), run: () => editor.open('Tasks', { assignee: me }) },
+            { key: 'new-fu', group: G.act, label: L('فالوآپ جدید', 'New follow-up'), icon: ico(Plus), run: () => editor.open('FollowUps') },
+            { key: 'new-upd', group: G.act, label: L('گزارش هفتگی جدید', 'New weekly update'), icon: ico(Plus), run: () => editor.open('Updates') },
+          ]
+        : []),
+      { key: 'lang', group: G.act, label: lang === 'fa' ? 'Switch to English' : 'تغییر زبان به فارسی', icon: ico(Languages), run: () => setLang(lang === 'fa' ? 'en' : 'fa') },
     ]
-    const s = q.trim()
-    if (!s) return all.slice(0, 12)
-    return all.filter((i) => i.label.includes(s) || i.sub.includes(s)).slice(0, 30)
-  }, [db, q, navigate, editor])
+    const navs: Item[] = (
+      [
+        ['/my', L('میز کار من', 'My desk')],
+        ['/', L('نمای کلی پورتفولیو', 'Portfolio overview')],
+        ['/projects', L('پروژه‌ها', 'Projects')],
+        ['/roadmap', L('رودمپ', 'Roadmap')],
+        ['/tasks', L('تسک‌ها', 'Tasks')],
+        ['/followups', L('فالوآپ‌ها', 'Follow-ups')],
+        ['/sprints', L('اسپرینت‌ها', 'Sprints')],
+        ['/risks', L('ریسک‌ها', 'Risks')],
+        ['/team', L('تیم', 'Team')],
+        ['/report', L('گزارش مدیریتی', 'Executive report')],
+        ['/settings', L('تنظیمات', 'Settings')],
+      ] as const
+    ).map(([to, label]) => ({ key: `nav-${to}`, group: G.nav, label, icon: <ArrowRight size={16} className="rtl:-scale-x-100" />, run: () => navigate(to) }))
+    const data: Item[] = [
+      ...db.Projects.map((p) => ({ key: p.id, group: G.proj, label: p.name, sub: p.code, icon: <HealthDot h={projectMetrics(p, db).health} />, run: () => navigate(`/projects/${p.id}`) })),
+      ...db.Tasks.map((t) => ({ key: t.id, group: G.task, label: t.title, sub: [pname(t.project_id), t.assignee].filter(Boolean).join(' · '), icon: <StatusIcon s={t.status} size={15} />, run: () => editor.open('Tasks', t as never) })),
+      ...db.FollowUps.map((f) => ({ key: f.id, group: G.fu, label: f.subject, sub: f.person, icon: ico(BellRing), run: () => editor.open('FollowUps', f as never) })),
+      ...db.Risks.map((r) => ({ key: r.id, group: G.risk, label: r.title, sub: pname(r.project_id), icon: ico(ShieldAlert), run: () => editor.open('Risks', r as never) })),
+      ...db.Team.map((m) => ({ key: m.id, group: G.ppl, label: m.name, sub: m.role, icon: ico(User), run: () => navigate(`/tasks?assignee=${encodeURIComponent(m.name)}`) })),
+    ]
+    const s = q.trim().toLowerCase()
+    if (!s) return [...actions, ...navs.slice(0, 6), ...data.filter((d) => d.group === G.proj).slice(0, 5)]
+    const match = (i: Item) => i.label.toLowerCase().includes(s) || (i.sub || '').toLowerCase().includes(s)
+    return [...actions.filter(match), ...navs.filter(match), ...data.filter(match)].slice(0, 40)
+  }, [db, q, navigate, editor, me, canEdit, lang, setLang])
+
+  useEffect(() => {
+    listRef.current?.querySelector(`[data-i="${idx}"]`)?.scrollIntoView({ block: 'nearest' })
+  }, [idx])
 
   if (!open) return null
 
@@ -50,45 +88,68 @@ export function CommandPalette({ open, onClose }: { open: boolean; onClose: () =
     i.run()
   }
 
-  return (
-    <div className="fixed inset-0 z-[55] flex items-start justify-center pt-[12vh] px-4 no-print">
-      <div className="absolute inset-0 bg-black/30 backdrop-blur-sm fade-in" onClick={onClose} />
-      <div className="relative w-full max-w-xl overflow-hidden rounded-2xl border border-line bg-surface shadow-pop fade-in">
-        <input
-          ref={inputRef}
-          value={q}
-          onChange={(e) => {
-            setQ(e.target.value)
-            setIdx(0)
-          }}
-          onKeyDown={(e) => {
-            if (e.key === 'Escape') onClose()
-            if (e.key === 'ArrowDown') setIdx((i) => Math.min(items.length - 1, i + 1))
-            if (e.key === 'ArrowUp') setIdx((i) => Math.max(0, i - 1))
-            if (e.key === 'Enter' && items[idx]) run(items[idx])
-          }}
-          placeholder="جستجو…"
-          className="w-full border-b border-line bg-transparent px-5 h-14 text-base outline-none"
-        />
-        <div className="max-h-[50vh] overflow-y-auto p-2">
-          {items.length === 0 && <div className="py-8 text-center text-sm text-sub">نتیجه‌ای پیدا نشد</div>}
-          {items.map((i, n) => (
-            <button
-              key={i.key}
-              onMouseEnter={() => setIdx(n)}
-              onClick={() => run(i)}
-              className={cx('flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-right', n === idx && 'bg-muted')}
-            >
-              <i.icon size={17} className="text-sub shrink-0" />
-              <div className="min-w-0 flex-1">
-                <div className="truncate text-sm">{i.label}</div>
-                <div className="truncate text-xs text-sub">{i.sub}</div>
+  let lastGroup = ''
+  return createPortal(
+    <div className="fixed inset-0 z-[75] flex items-start justify-center px-4 pt-[12vh] no-print">
+      <div className="absolute inset-0 bg-[#0a0d12]/50 backdrop-blur-sm fade-in" onClick={onClose} />
+      <div className="relative w-full max-w-2xl overflow-hidden rounded-3xl border border-line bg-surface shadow-pop pop-in">
+        <div className="flex items-center gap-3 border-b border-line px-5">
+          <Search size={18} className="text-sub" />
+          <input
+            ref={inputRef}
+            value={q}
+            onChange={(e) => {
+              setQ(e.target.value)
+              setIdx(0)
+            }}
+            onKeyDown={(e) => {
+              if (e.key === 'Escape') onClose()
+              if (e.key === 'ArrowDown') {
+                e.preventDefault()
+                setIdx((i) => Math.min(items.length - 1, i + 1))
+              }
+              if (e.key === 'ArrowUp') {
+                e.preventDefault()
+                setIdx((i) => Math.max(0, i - 1))
+              }
+              if (e.key === 'Enter' && items[idx]) run(items[idx])
+            }}
+            placeholder={L('جستجو در پروژه‌ها، تسک‌ها، افراد یا فرمان‌ها…', 'Search projects, tasks, people or commands…')}
+            className="h-16 w-full bg-transparent text-base outline-none"
+          />
+          <span className="kbd">ESC</span>
+        </div>
+        <div ref={listRef} className="max-h-[52vh] overflow-y-auto p-2">
+          {items.length === 0 && <div className="py-10 text-center text-sm text-sub">{L('نتیجه‌ای پیدا نشد', 'No results')}</div>}
+          {items.map((i, n) => {
+            const head = i.group !== lastGroup
+            lastGroup = i.group
+            return (
+              <div key={i.key}>
+                {head && <div className="eyebrow px-3 pb-1 pt-3">{i.group}</div>}
+                <button data-i={n} onMouseMove={() => setIdx(n)} onClick={() => run(i)} className={cx('flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-start', n === idx && 'bg-muted')}>
+                  <span className="grid w-5 shrink-0 place-items-center text-sub">{i.icon}</span>
+                  <span className="min-w-0 flex-1 truncate text-sm">{i.label}</span>
+                  {i.sub && <span className="max-w-[40%] truncate text-xs text-sub">{i.sub}</span>}
+                  {n === idx && <CornerDownLeft size={14} className="text-sub" />}
+                </button>
               </div>
-              {n === idx && <CornerDownLeft size={14} className="text-sub" />}
-            </button>
-          ))}
+            )
+          })}
+        </div>
+        <div className="flex items-center gap-4 border-t border-line px-5 py-2.5 text-[11px] text-sub">
+          <span className="flex items-center gap-1.5">
+            <span className="kbd">↑↓</span> {L('حرکت', 'Navigate')}
+          </span>
+          <span className="flex items-center gap-1.5">
+            <span className="kbd">↵</span> {L('انتخاب', 'Open')}
+          </span>
+          <span className="ms-auto flex items-center gap-1.5">
+            <ListChecks size={12} /> <span className="kbd">N</span> {L('تسک', 'Task')} <span className="kbd">F</span> {L('فالوآپ', 'Follow-up')}
+          </span>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body,
   )
 }

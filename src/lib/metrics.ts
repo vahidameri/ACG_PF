@@ -1,5 +1,6 @@
 import type { DB, Health, Project, Task, Sprint, Risk } from './types'
-import { daysBetween, daysFromToday, todayISO, addDays, parseISO } from './jalali'
+import { daysBetween, daysFromToday, todayISO, addDays, parseISO, fa } from './jalali'
+import { L } from './i18n'
 
 export interface HealthReason {
   level: Health
@@ -83,35 +84,35 @@ export function projectMetrics(p: Project, db: DB): ProjectMetrics {
 
   const live = p.status === 'active' || p.status === 'planning'
   if (live) {
-    if (scheduleGap <= -20) add('red', 35, `پیشرفت ${Math.round(-scheduleGap)}٪ از زمان سپری‌شده عقب است`)
-    else if (scheduleGap <= -10) add('amber', 18, `پیشرفت ${Math.round(-scheduleGap)}٪ از زمان سپری‌شده عقب است`)
+    if (scheduleGap <= -20) add('red', 35, L(`پیشرفت ${fa(Math.round(-scheduleGap))}٪ از زمان سپری‌شده عقب است`, `Progress is ${Math.round(-scheduleGap)}% behind elapsed time`))
+    else if (scheduleGap <= -10) add('amber', 18, L(`پیشرفت ${fa(Math.round(-scheduleGap))}٪ از زمان سپری‌شده عقب است`, `Progress is ${Math.round(-scheduleGap)}% behind elapsed time`))
 
-    if (daysLeft < 0 && progress < 100) add('red', 35, `ددلاین پروژه ${-daysLeft} روز گذشته است`)
-    else if (daysLeft <= 14 && progress < 85) add('amber', 15, `کمتر از دو هفته تا ددلاین و پیشرفت زیر ۸۵٪`)
+    if (daysLeft < 0 && progress < 100) add('red', 35, L(`ددلاین پروژه ${fa(-daysLeft)} روز گذشته است`, `Deadline passed ${-daysLeft} days ago`))
+    else if (daysLeft <= 14 && progress < 85) add('amber', 15, L('کمتر از دو هفته تا ددلاین و پیشرفت زیر ۸۵٪', 'Under two weeks to deadline with progress below 85%'))
 
-    if (overdueMs.length >= 2) add('red', 25, `${overdueMs.length} مایلستون عقب‌افتاده`)
-    else if (overdueMs.length === 1) add('amber', 12, `مایلستون «${overdueMs[0].title}» عقب افتاده`)
+    if (overdueMs.length >= 2) add('red', 25, L(`${fa(overdueMs.length)} مایلستون عقب‌افتاده`, `${overdueMs.length} overdue milestones`))
+    else if (overdueMs.length === 1) add('amber', 12, L(`مایلستون «${overdueMs[0].title}» عقب افتاده`, `Milestone “${overdueMs[0].title}” is overdue`))
 
-    if (highRisks >= 2) add('red', 20, `${highRisks} ریسک با شدت بالا باز است`)
-    else if (highRisks === 1) add('amber', 10, `یک ریسک با شدت بالا باز است`)
+    if (highRisks >= 2) add('red', 20, L(`${fa(highRisks)} ریسک با شدت بالا باز است`, `${highRisks} high-severity risks open`))
+    else if (highRisks === 1) add('amber', 10, L('یک ریسک با شدت بالا باز است', 'One high-severity risk open'))
 
-    if (budgetUse > 100) add('red', 20, `مصرف بودجه ${Math.round(budgetUse)}٪ (بیش از بودجه)`)
-    else if (budgetUse - progress > 20) add('amber', 10, `مصرف بودجه (${Math.round(budgetUse)}٪) از پیشرفت جلوتر است`)
+    if (budgetUse > 100) add('red', 20, L(`مصرف بودجه ${fa(Math.round(budgetUse))}٪ (بیش از بودجه)`, `Budget at ${Math.round(budgetUse)}% (over budget)`))
+    else if (budgetUse - progress > 20) add('amber', 10, L(`مصرف بودجه (${fa(Math.round(budgetUse))}٪) از پیشرفت جلوتر است`, `Spend (${Math.round(budgetUse)}%) is ahead of progress`))
 
-    if (blockedTasks >= 3) add('amber', 10, `${blockedTasks} تسک مسدود`)
-    if (overdueTasks >= 5) add('amber', 10, `${overdueTasks} تسک عقب‌افتاده`)
+    if (blockedTasks >= 3) add('amber', 10, L(`${fa(blockedTasks)} تسک مسدود`, `${blockedTasks} blocked tasks`))
+    if (overdueTasks >= 5) add('amber', 10, L(`${fa(overdueTasks)} تسک عقب‌افتاده`, `${overdueTasks} overdue tasks`))
 
     if (activeSprint && Number(activeSprint.committed_points) > 0) {
       const sElapsed = Math.max(0, Math.min(1, daysBetween(activeSprint.start_date, todayISO()) / Math.max(1, daysBetween(activeSprint.start_date, activeSprint.end_date))))
       const sDone = sprintDonePoints(activeSprint, db) / Number(activeSprint.committed_points)
-      if (sElapsed > 0.5 && sDone < sElapsed - 0.3) add('amber', 8, `اسپرینت جاری از برنامه عقب است`)
+      if (sElapsed > 0.5 && sDone < sElapsed - 0.3) add('amber', 8, L('اسپرینت جاری از برنامه عقب است', 'Current sprint is behind plan'))
     }
   }
 
   const score = Math.max(0, 100 - penalty)
   const computedHealth: Health = reasons.some((r) => r.level === 'red') || score < 55 ? 'red' : reasons.some((r) => r.level === 'amber') || score < 85 ? 'amber' : 'green'
   const health: Health = (p.health_override as Health) || computedHealth
-  if (!reasons.length) reasons.push({ level: 'green', text: 'همه شاخص‌ها در محدوده‌ی برنامه هستند' })
+  if (!reasons.length) reasons.push({ level: 'green', text: L('همه‌ی شاخص‌ها در محدوده‌ی برنامه هستند', 'All signals within plan') })
 
   return {
     progress: Math.round(progress),
