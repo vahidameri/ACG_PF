@@ -109,7 +109,7 @@ export function projectMetrics(p: Project, db: DB): ProjectMetrics {
     }
   }
 
-  const score = Math.max(0, 100 - penalty)
+  const score = Math.max(10, 100 - penalty) // floor: a zero reads as missing data, not "very unhealthy"
   const computedHealth: Health = reasons.some((r) => r.level === 'red') || score < 55 ? 'red' : reasons.some((r) => r.level === 'amber') || score < 85 ? 'amber' : 'green'
   const health: Health = (p.health_override as Health) || computedHealth
   if (!reasons.length) reasons.push({ level: 'green', text: L('همه‌ی شاخص‌ها در محدوده‌ی برنامه هستند', 'All signals within plan') })

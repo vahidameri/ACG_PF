@@ -229,7 +229,7 @@ function setup() {
   if (users.getLastRow() < 2) {
     var key = newKey_();
     var me = Session.getEffectiveUser().getEmail();
-    users.appendRow([key, 'مدیر برنامه', me, 'admin', true]);
+    users.appendRow([key, 'وحید عامری', me, 'admin', true]);
     SpreadsheetApp.getUi && safeAlert_('راه‌اندازی انجام شد.\n\nکلید ادمین شما:\n' + key + '\n\nاین کلید در تب Users هم ذخیره شده است.');
     Logger.log('Admin key: ' + key);
   }
@@ -332,29 +332,20 @@ function seedDemo() {
     if (vals.length) sh.getRange(sh.getLastRow() + 1, 1, vals.length, h.length).setValues(vals);
   };
   put('Team', [
-    { id: 'm1', name: 'مدیر برنامه', role: 'Program Manager', team: 'PMO' },
-    { id: 'm2', name: 'سارا محمدی', role: 'Product Owner', team: 'محصول' },
-    { id: 'm3', name: 'علی رضایی', role: 'Tech Lead', team: 'فنی' },
-    { id: 'm4', name: 'رضا کریمی', role: 'Backend Developer', team: 'فنی' },
+    { id: 'm1', name: 'وحید عامری', role: 'مدیر پروگرم', team: 'PMO', track: '' },
+    { id: 'm2', name: 'جلیل علیزاده', role: 'مدیرعامل', team: 'مدیریت', track: '' },
+    { id: 'm3', name: 'وحید کیوانیان', role: 'هد تک', team: 'تک', track: 'tech' },
+    { id: 'm4', name: 'مهرزاد گلی', role: 'هد پروداکت', team: 'پروداکت', track: 'product' },
+    { id: 'm5', name: 'آتنا دهقان', role: 'پروداکت منیجر', team: 'پروداکت', track: 'product' },
+    { id: 'm6', name: 'علی سرمیلی', role: 'پروداکت منیجر', team: 'پروداکت', track: 'product' },
+    { id: 'm7', name: 'علی سالمه', role: 'پروداکت منیجر', team: 'پروداکت', track: 'product' },
+    { id: 'm8', name: 'مهرسا دبیر', role: 'پروداکت منیجر', team: 'پروداکت', track: 'product' },
+    { id: 'm9', name: 'بابک معروفی', role: 'پروداکت منیجر', team: 'پروداکت', track: 'product' },
+    { id: 'm10', name: 'امین ظفری', role: 'پروداکت منیجر', team: 'پروداکت', track: 'product' },
+    { id: 'm11', name: 'هانیه منصورکیایی', role: 'پروداکت دیزاینر', team: 'پروداکت', track: 'product' },
   ]);
-  put('Projects', [
-    { id: 'p1', code: 'ACG-CRM', name: 'سامانه CRM یکپارچه', description: 'یکپارچه‌سازی فروش و پشتیبانی', category: 'تحول دیجیتال', owner: 'سارا محمدی', sponsor: 'مدیرعامل', status: 'active', priority: 'critical', phase: 'توسعه', start_date: d(-120), end_date: d(60), budget: 8500000000, spent: 5200000000, progress: 58, objective: 'افزایش ۲۰٪ نرخ تبدیل' },
-    { id: 'p2', code: 'ACG-APP', name: 'اپلیکیشن موبایل مشتریان', description: 'اپ سفارش و پرداخت', category: 'محصول', owner: 'علی رضایی', sponsor: 'مدیرعامل', status: 'active', priority: 'high', phase: 'توسعه', start_date: d(-90), end_date: d(25), budget: 6000000000, spent: 5600000000, progress: 72 },
-  ]);
-  put('Milestones', [
-    { id: 'ms1', project_id: 'p1', title: 'MVP فروش', planned_date: d(-20), actual_date: d(-15), status: 'done', owner: 'علی رضایی', weight: 2 },
-    { id: 'ms2', project_id: 'p1', title: 'ماژول پشتیبانی', planned_date: d(10), status: 'in_progress', owner: 'رضا کریمی', weight: 2 },
-    { id: 'ms3', project_id: 'p1', title: 'Go-Live', planned_date: d(60), status: 'pending', owner: 'سارا محمدی', weight: 1 },
-    { id: 'ms4', project_id: 'p2', title: 'انتشار در استورها', planned_date: d(25), status: 'pending', owner: 'علی رضایی', weight: 2 },
-  ]);
-  put('Sprints', [{ id: 's1', project_id: 'p1', name: 'اسپرینت ۹', start_date: d(-7), end_date: d(6), goal: 'SLA تیکت‌ها', status: 'active' }]);
-  put('Tasks', [
-    { id: 't1', project_id: 'p1', sprint_id: 's1', title: 'موتور SLA', assignee: 'رضا کریمی', status: 'done', priority: 'high', due_date: d(-3), points: 8, created_at: d(-7), completed_at: d(-4) },
-    { id: 't2', project_id: 'p1', sprint_id: 's1', title: 'قوانین اسکالیشن', assignee: 'رضا کریمی', status: 'in_progress', priority: 'high', due_date: d(3), points: 5, created_at: d(-7) },
-    { id: 't3', project_id: 'p1', title: 'جلسه‌ی دمو با فروش', assignee: 'مدیر برنامه', status: 'todo', priority: 'high', due_date: d(0), created_at: d(-2) },
-  ]);
-  put('FollowUps', [{ id: 'f1', project_id: 'p2', subject: 'پیش‌فاکتور سرویس پوش', person: 'واحد تدارکات', channel: 'call', due_date: d(0), status: 'open', priority: 'high', created_at: d(-3) }]);
-  put('Risks', [{ id: 'r1', project_id: 'p1', title: 'تأخیر API تیم ERP', type: 'dependency', probability: 4, impact: 4, owner: 'علی رضایی', mitigation: 'Mock API', status: 'open', due_date: d(5) }]);
-  put('Allocations', [{ id: 'a1', member_id: 'm2', project_id: 'p1', percent: 60 }, { id: 'a2', member_id: 'm3', project_id: 'p2', percent: 70 }]);
-  put('Updates', [{ id: 'u1', project_id: 'p1', week_date: d(-2), author: 'سارا محمدی', health: 'amber', summary: 'ماژول پشتیبانی طبق برنامه است؛ وابستگی ERP در خطر.', done: 'موتور SLA', next: 'تست یکپارچه', blockers: 'دسترسی API' }]);
+  var pm = { 'CX Orbit': 'آتنا دهقان', 'Insight X Padida': 'علی سرمیلی', 'Roo B Roo': 'علی سالمه', 'Kadiner': 'مهرسا دبیر', 'HamAfza': 'بابک معروفی', 'Myca': 'امین ظفری', 'malek': 'آتنا دهقان', 'SimiPass': 'علی سرمیلی', 'Ino School': 'مهرسا دبیر', 'AISN': 'امین ظفری', 'Clarity Pass': 'بابک معروفی' };
+  put('Projects', Object.keys(pm).map(function (name, i) {
+    return { id: 'p' + (i + 1), code: name.replace(/[^A-Za-z]/g, '').slice(0, 4).toUpperCase(), name: name, owner: pm[name], sponsor: 'جلیل علیزاده', status: 'planning', priority: 'medium', start_date: d(0), end_date: d(90), budget: 0, spent: 0, progress: '' };
+  }));
 }

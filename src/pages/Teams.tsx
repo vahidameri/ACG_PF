@@ -191,7 +191,7 @@ function TrackColumn({ track, projectId }: { track: Track; projectId?: string })
   const st = trackStats(db, track, projectId)
   const members = db.Team.filter((m) => m.track === track)
   const open = db.Tasks.filter((t) => trackOf(t, db) === track && t.status !== 'done' && (!projectId || t.project_id === projectId)).sort((a, b) => (a.due_date || '9999').localeCompare(b.due_date || '9999'))
-  const waiting = open.filter((t) => waitingOn(t, db).length > 0)
+  const waiting = open.filter((t) => waitingOn(t, db).some((d) => trackOf(d, db) && trackOf(d, db) !== track))
   return (
     <div className="min-w-0 space-y-4">
       <section className="card overflow-hidden">

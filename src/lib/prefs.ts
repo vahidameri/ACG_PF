@@ -32,7 +32,7 @@ export function usePref<T>(key: string, initial: T) {
 }
 
 export function usePins() {
-  const [pins, setPins] = usePref<string[]>('acg.pins', ['p1', 'p2', 'p4'])
+  const [pins, setPins] = usePref<string[]>('acg.pins', ['p1', 'p2', 'p8'])
   const toggle = (id: string) => setPins((p) => (p.includes(id) ? p.filter((x) => x !== id) : [...p, id]))
   return { pins, toggle, isPinned: (id: string) => pins.includes(id) }
 }

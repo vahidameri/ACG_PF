@@ -5,7 +5,7 @@ import { buildDemo, demoMe } from '../data/demo'
 import { L, locale } from './i18n'
 
 // Demo edits are kept per language so switching language shows sample data in that language.
-const demoKey = () => `acg.demo.db.${locale.lang}`
+const demoKey = () => `acg.demo.v2.${locale.lang}`
 const ME_KEY = 'acg.me'
 
 const NUMERIC: Partial<Record<SheetName, string[]>> = {
