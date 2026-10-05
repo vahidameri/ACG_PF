@@ -163,14 +163,14 @@ export default function MyDesk() {
           <>
             {headline}
             {nextMs && (
-              <span className="mt-1 block text-[13px] text-[#9fb3d9]">
+              <span className="mt-1 block text-[0.8125rem] text-[#9fb3d9]">
                 {L('مایلستون بعدی پورتفولیو', 'Next portfolio milestone')}: {nextMs.title} · {relDays(nextMs.planned_date)}
               </span>
             )}
           </>
         }
         actions={
-          <div className="hidden items-center gap-4 rounded-3xl border border-white/10 bg-white/[0.04] px-5 py-3 md:flex">
+          <div className="hidden items-center gap-4 rounded-3xl border border-white/10 bg-white/[0.04] px-5 py-3 @md:flex">
             <Ring value={dayPct} size={64} stroke={6} h={dayPct === 100 ? 'green' : dayPct >= 50 ? 'amber' : undefined} light />
             <div className="text-xs leading-5 text-[#b9c3d6]">
               <div className="text-sm font-semibold text-white">{L('پیشرفت امروز', 'Today’s progress')}</div>
@@ -201,7 +201,7 @@ export default function MyDesk() {
                 onChange={(e) => setText(e.target.value)}
                 onKeyDown={(e) => e.key === 'Enter' && capture()}
                 placeholder={kind === 'task' ? L('چه کاری باید انجام شود؟ Enter برای ثبت', 'What needs doing? Press Enter') : L('چه چیزی را از چه کسی پیگیری کنید؟', 'What do you need to chase, and from whom?')}
-                className="h-11 min-w-[14rem] flex-1 bg-transparent px-3 text-[15px] outline-none placeholder:text-sub/70"
+                className="h-11 min-w-[14rem] flex-1 bg-transparent px-3 text-[0.9375rem] outline-none placeholder:text-sub/70"
               />
               <div className="flex flex-wrap items-center gap-1 rounded-full bg-muted/70 p-1">
                 <PersonPicker value={who} onChange={setWho} placeholder={kind === 'task' ? L('خودم', 'Me') : L('با چه کسی؟', 'With whom?')} />
@@ -221,8 +221,8 @@ export default function MyDesk() {
           </div>
         )}
 
-        <div className="grid gap-4 lg:grid-cols-5">
-          <Card className="lg:col-span-3" eyebrow={<span className="flex items-center gap-1.5"><CalendarDays size={12} /> {L('هفته‌ی پیش رو', 'The week ahead')}</span>} title={day ? `${fmtWeekday(day)} ${fmtDate(day, 'long')}` : L('برنامه‌ی ۷ روز آینده', 'Next 7 days')} action={day ? <button className="btn-ghost btn-sm" onClick={() => setDay('')}>{L('همه', 'All')} ×</button> : undefined}>
+        <div className="grid gap-4 @lg:grid-cols-5">
+          <Card className="@lg:col-span-3" eyebrow={<span className="flex items-center gap-1.5"><CalendarDays size={12} /> {L('هفته‌ی پیش رو', 'The week ahead')}</span>} title={day ? `${fmtWeekday(day)} ${fmtDate(day, 'long')}` : L('برنامه‌ی ۷ روز آینده', 'Next 7 days')} action={day ? <button className="btn-ghost btn-sm" onClick={() => setDay('')}>{L('همه', 'All')} ×</button> : undefined}>
             <div className="grid grid-cols-7 gap-1.5">
               {Array.from({ length: 7 }, (_, i) => addDays(today, i)).map((d) => {
                 const tasksN = myOpen.filter((t) => t.due_date === d).length + (d === today ? myToday.filter((t) => t.due_date < today).length : 0)
@@ -240,19 +240,19 @@ export default function MyDesk() {
                       weekend && !sel && 'opacity-70',
                     )}
                   >
-                    <span className={cx('text-[11px]', sel ? 'text-surface/70' : 'text-sub')}>{d === today ? L('امروز', 'Today') : fmtWeekday(d, true)}</span>
+                    <span className={cx('text-[0.6875rem]', sel ? 'text-surface/70' : 'text-sub')}>{d === today ? L('امروز', 'Today') : fmtWeekday(d, true)}</span>
                     <span className="display mt-1 text-2xl num">{fa(dayNum(d))}</span>
                     <span className="mt-2 flex h-2 items-center gap-1">
                       {tasksN > 0 && <span className={cx('h-1.5 rounded-full', sel ? 'bg-surface' : 'bg-ink')} style={{ width: Math.min(18, 4 + tasksN * 3) }} />}
                       {fuN > 0 && <span className="h-1.5 w-1.5 rounded-full bg-warn" />}
                       {msN > 0 && <span className="h-1.5 w-1.5 rotate-45 rounded-[1px] bg-bad" />}
                     </span>
-                    <span className={cx('mt-1.5 text-[10px] num', sel ? 'text-surface/70' : 'text-sub')}>{tasksN + fuN ? fa(tasksN + fuN) : '—'}</span>
+                    <span className={cx('mt-1.5 text-[0.625rem] num', sel ? 'text-surface/70' : 'text-sub')}>{tasksN + fuN ? fa(tasksN + fuN) : '—'}</span>
                   </button>
                 )
               })}
             </div>
-            <div className="mt-3 flex flex-wrap items-center gap-4 text-[11px] text-sub">
+            <div className="mt-3 flex flex-wrap items-center gap-4 text-[0.6875rem] text-sub">
               <span className="flex items-center gap-1.5"><span className="h-1.5 w-3 rounded-full bg-ink" /> {L('تسک', 'Tasks')}</span>
               <span className="flex items-center gap-1.5"><span className="h-1.5 w-1.5 rounded-full bg-warn" /> {L('فالوآپ', 'Follow-ups')}</span>
               <span className="flex items-center gap-1.5"><span className="h-1.5 w-1.5 rotate-45 rounded-[1px] bg-bad" /> {L('مایلستون', 'Milestone')}</span>
@@ -260,7 +260,7 @@ export default function MyDesk() {
             </div>
           </Card>
 
-          <Card className="lg:col-span-2" eyebrow={<span className="flex items-center gap-1.5"><Target size={12} /> {L('تمرکز', 'Focus')}</span>} title={L('سه کار مهم امروز', 'Your top three today')}>
+          <Card className="@lg:col-span-2" eyebrow={<span className="flex items-center gap-1.5"><Target size={12} /> {L('تمرکز', 'Focus')}</span>} title={L('سه کار مهم امروز', 'Your top three today')}>
             {focus.length === 0 ? (
               <Empty text={L('کار مهمی باقی نمانده', 'Nothing urgent left')} icon={<Sparkles size={22} />} />
             ) : (
@@ -271,7 +271,7 @@ export default function MyDesk() {
                       <span className="display grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-ink text-base text-surface num">{fa(i + 1)}</span>
                       <span className="min-w-0 flex-1">
                         <span className="block truncate text-sm font-medium">{t.title}</span>
-                        <span className="mt-0.5 flex items-center gap-2 text-[11px] text-sub">
+                        <span className="mt-0.5 flex items-center gap-2 text-[0.6875rem] text-sub">
                           <PriorityIcon p={t.priority} /> {pname(t.project_id) || L('بدون پروژه', 'No project')}
                         </span>
                       </span>
@@ -284,8 +284,8 @@ export default function MyDesk() {
           </Card>
         </div>
 
-        <div className="grid gap-4 xl:grid-cols-5">
-          <div className="min-w-0 space-y-4 xl:col-span-3">
+        <div className="grid gap-4 @xl:grid-cols-5">
+          <div className="min-w-0 space-y-4 @xl:col-span-3">
             <Card
               pad={false}
               eyebrow={<span className="flex items-center gap-1.5"><ListChecks size={12} /> {L('کارهای من', 'My work')}</span>}
@@ -322,7 +322,7 @@ export default function MyDesk() {
               <div className="px-2 pb-2">{fuDue.length === 0 ? <Empty text={L('فالوآپ سررسیدشده‌ای ندارید', 'No follow-ups due')} /> : fuDue.map((f) => <FollowUpRow key={f.id} f={f} />)}</div>
             </Card>
 
-            <div className="grid gap-4 md:grid-cols-2">
+            <div className="grid gap-4 @md:grid-cols-2">
               <Card pad={false} eyebrow={<span className="flex items-center gap-1.5"><Hourglass size={12} /> {L('منتظر', 'Waiting')}</span>} title={L('منتظر پاسخ دیگران', 'Waiting on others')}>
                 <div className="px-2 pb-2">{fuWaiting.length === 0 ? <Empty /> : fuWaiting.map((f) => <FollowUpRow key={f.id} f={f} compact />)}</div>
               </Card>
@@ -332,14 +332,14 @@ export default function MyDesk() {
             </div>
           </div>
 
-          <div className="min-w-0 space-y-4 xl:col-span-2">
+          <div className="min-w-0 space-y-4 @xl:col-span-2">
             <section className="relative overflow-hidden rounded-2xl bg-band p-5 text-on-band shadow-card">
               <div className="pointer-events-none absolute -end-16 -top-16 h-48 w-48 rounded-full bg-[#1D4F61]/60 blur-3xl" />
               <div className="relative">
                 <div className="eyebrow !text-band-sub flex items-center gap-1.5">
                   <Lightbulb size={12} /> {L('دستیار', 'Assistant')}
                 </div>
-                <h3 className="mt-1 text-[15px] font-semibold">{L('پیشنهادهای امروز', 'Today’s suggestions')}</h3>
+                <h3 className="mt-1 text-[0.9375rem] font-semibold">{L('پیشنهادهای امروز', 'Today’s suggestions')}</h3>
                 {suggestions.length === 0 ? (
                   <p className="mt-4 text-sm text-band-sub">{L('همه‌چیز مرتب است.', 'All clear.')}</p>
                 ) : (
@@ -347,9 +347,9 @@ export default function MyDesk() {
                     {suggestions.map((s) => (
                       <div key={s.key} className="flex items-start gap-3 rounded-2xl border border-white/10 bg-white/[0.04] p-3">
                         <span className={cx('mt-2 h-1.5 w-1.5 shrink-0 rounded-full', s.tone === 'bad' ? 'bg-[#ff8a9a]' : s.tone === 'warn' ? 'bg-[#f5c565]' : 'bg-[#C1D6DE]')} />
-                        <div className="flex-1 text-[13px] leading-6 text-white/85">{s.text}</div>
+                        <div className="flex-1 text-[0.8125rem] leading-6 text-white/85">{s.text}</div>
                         {canEdit && (
-                          <button className="btn h-7 shrink-0 bg-white px-3 text-[11px] text-band" onClick={s.run}>
+                          <button className="btn h-7 shrink-0 bg-white px-3 text-[0.6875rem] text-band" onClick={s.run}>
                             {s.action}
                           </button>
                         )}
@@ -371,7 +371,7 @@ export default function MyDesk() {
                         <Avatar name={person} size="md" />
                         <div className="min-w-0 flex-1">
                           <div className="truncate text-sm font-medium">{person}</div>
-                          <div className="text-[11px] text-sub">
+                          <div className="text-[0.6875rem] text-sub">
                             {L(`${fa(tasks.filter(isTaskOverdue).length)} معوق · ${fa(tasks.filter((t) => t.status === 'blocked').length)} مسدود`, `${tasks.filter(isTaskOverdue).length} overdue · ${tasks.filter((t) => t.status === 'blocked').length} blocked`)}
                           </div>
                         </div>

@@ -56,7 +56,7 @@ export default function Team() {
       <Overlap>
         <Card pad={false} eyebrow={L('نقشه‌ی حرارتی', 'Heatmap')} title={L('درصد تخصیص هر نفر به هر پروژه', 'Allocation % per person per project')}>
           <div className="overflow-x-auto">
-            <table className="w-full min-w-[960px]">
+            <table className="w-full min-w-[60rem]">
               <thead className="border-y border-line">
                 <tr>
                   <th className="th sticky start-0 z-10 bg-surface">{L('عضو', 'Member')}</th>
@@ -80,7 +80,7 @@ export default function Team() {
                         <Avatar name={m.name} size="md" />
                         <div>
                           <div className="text-sm font-medium">{m.name}</div>
-                          <div className="text-[11px] text-sub">
+                          <div className="text-[0.6875rem] text-sub">
                             {m.role} · {m.team}
                           </div>
                         </div>

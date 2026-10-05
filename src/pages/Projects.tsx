@@ -67,7 +67,7 @@ export default function Projects() {
             <Empty text={L('پروژه‌ای با این فیلترها پیدا نشد', 'No projects match these filters')} />
           </div>
         ) : (
-          <div className="stagger grid gap-4 md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
+          <div className="stagger grid gap-4 @md:grid-cols-2 @xl:grid-cols-3 @2xl:grid-cols-4">
             {list.map((p) => (
               <ProjectCard key={p.id} p={p} />
             ))}

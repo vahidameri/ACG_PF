@@ -123,7 +123,7 @@ export default function Tasks() {
               <Empty />
             ) : (
               <div className="overflow-x-auto">
-                <table className="w-full min-w-[900px]">
+                <table className="w-full min-w-[56.25rem]">
                   <thead className="border-b border-line">
                     <tr>
                       <SortTh k="status" className="w-12">
@@ -146,7 +146,7 @@ export default function Tasks() {
                           </td>
                           <td className="td">
                             <div className={cx('font-medium', t.status === 'done' && 'text-sub line-through')}>{t.title}</div>
-                            <div className="mt-0.5 flex items-center gap-2 text-[11px] text-sub">
+                            <div className="mt-0.5 flex items-center gap-2 text-[0.6875rem] text-sub">
                               {t.tags &&
                                 t.tags.split(',').map((g) => g.trim()).filter(Boolean).map((g) => (
                                   <span key={g} dir="ltr" className="font-mono">

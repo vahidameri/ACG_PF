@@ -27,7 +27,7 @@ export default function Settings() {
   }
 
   const code = (s: string) => (
-    <code className="rounded-md bg-muted px-1.5 py-0.5 font-mono text-[12px]" dir="ltr">
+    <code className="rounded-md bg-muted px-1.5 py-0.5 font-mono text-[0.75rem]" dir="ltr">
       {s}
     </code>
   )
@@ -35,7 +35,7 @@ export default function Settings() {
   return (
     <>
       <Band eyebrow={<span>{L('سیستم', 'System')}</span>} title={L('تنظیمات و اتصال', 'Settings & connection')} sub={L('زبان، تقویم، پروفایل و اتصال به Google Sheets.', 'Language, calendar, profile and the Google Sheets connection.')} />
-      <Overlap className="grid gap-4 xl:grid-cols-2">
+      <Overlap className="grid gap-4 @xl:grid-cols-2">
         <Card eyebrow={L('نمایش', 'Display')} title={L('زبان و تقویم', 'Language & calendar')}>
           <div className="space-y-5">
             <div className="flex items-center justify-between gap-4">
@@ -68,7 +68,7 @@ export default function Settings() {
               <option key={m.id} value={m.name} />
             ))}
           </datalist>
-          <p className="mt-2 text-[11px] text-sub">{L('باید با نام شما در ستون assignee تسک‌ها یکی باشد.', 'Must match your name in the tasks’ assignee column.')}</p>
+          <p className="mt-2 text-[0.6875rem] text-sub">{L('باید با نام شما در ستون assignee تسک‌ها یکی باشد.', 'Must match your name in the tasks’ assignee column.')}</p>
           {mode === 'demo' && (
             <div className="mt-6 border-t border-line pt-4">
               <div className="text-sm font-medium">{L('داده‌های نمونه', 'Sample data')}</div>
@@ -80,8 +80,8 @@ export default function Settings() {
           )}
         </Card>
 
-        <Card eyebrow="Google Sheets" title={L('اتصال به دیتابیس', 'Database connection')} className="xl:col-span-2">
-          <div className="grid gap-6 lg:grid-cols-2">
+        <Card eyebrow="Google Sheets" title={L('اتصال به دیتابیس', 'Database connection')} className="@xl:col-span-2">
+          <div className="grid gap-6 @lg:grid-cols-2">
             <div className="space-y-4">
               <div>
                 <label className="label">{L('آدرس Web App (از Apps Script → Deploy)', 'Web App URL (Apps Script → Deploy)')}</label>
@@ -90,7 +90,7 @@ export default function Settings() {
               <div>
                 <label className="label">{L('کلید دسترسی', 'Access key')}</label>
                 <input className="input font-mono text-xs" dir="ltr" type="password" value={token} onChange={(e) => setToken(e.target.value)} placeholder="••••••••••••" />
-                <p className="mt-1 text-[11px] text-sub">{L('هر نفر کلید شخصی دارد؛ نقش (مدیر / ویرایشگر / فقط مشاهده) روی سرور تعیین می‌شود.', 'Everyone has a personal key; their role (admin / editor / viewer) is enforced server-side.')}</p>
+                <p className="mt-1 text-[0.6875rem] text-sub">{L('هر نفر کلید شخصی دارد؛ نقش (مدیر / ویرایشگر / فقط مشاهده) روی سرور تعیین می‌شود.', 'Everyone has a personal key; their role (admin / editor / viewer) is enforced server-side.')}</p>
               </div>
               <div className="flex flex-wrap gap-2">
                 <button className="btn-outline" onClick={runTest} disabled={!url || test.state === 'loading'}>
@@ -140,7 +140,7 @@ export default function Settings() {
                   <>{L('اختیاری: ', 'Optional: ')}{code('installDailyDigest')}{L(' برای ایمیل خلاصه‌ی هر صبح.', ' for a morning email digest.')}</>,
                 ].map((x, i) => (
                   <li key={i} className="flex gap-3">
-                    <span className="grid h-6 w-6 shrink-0 place-items-center rounded-full bg-ink font-mono text-[11px] text-surface">{i + 1}</span>
+                    <span className="grid h-6 w-6 shrink-0 place-items-center rounded-full bg-ink font-mono text-[0.6875rem] text-surface">{i + 1}</span>
                     <span>{x}</span>
                   </li>
                 ))}

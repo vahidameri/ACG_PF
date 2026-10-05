@@ -76,7 +76,7 @@ export function ItemSheet({ sheet, id, onClose }: { sheet: 'Tasks' | 'FollowUps'
       footer={
         canEdit && (
           <>
-            <span className="text-[11px] text-sub">
+            <span className="text-[0.6875rem] text-sub">
               {L('ایجاد', 'Created')} {fmtDate(item.created_at)}
               {item.reporter && ` · ${item.reporter}`}
             </span>
@@ -154,7 +154,7 @@ export function ItemSheet({ sheet, id, onClose }: { sheet: 'Tasks' | 'FollowUps'
                   </span>
                   <div className="flex items-baseline gap-2 text-sm">
                     <span className="font-medium">{c.author}</span>
-                    <span className="text-[11px] text-sub">{timeAgo(stampToDate(c.created_at))}</span>
+                    <span className="text-[0.6875rem] text-sub">{timeAgo(stampToDate(c.created_at))}</span>
                   </div>
                   <div className="mt-1 whitespace-pre-wrap rounded-2xl rounded-ss-md bg-muted px-4 py-2.5 text-sm leading-7">{renderMentions(c.body, people)}</div>
                 </li>
@@ -332,7 +332,7 @@ export function ItemSheet({ sheet, id, onClose }: { sheet: 'Tasks' | 'FollowUps'
               )}
             </div>
           )}
-          <div className="px-2.5 pt-6 text-[11px] text-sub">
+          <div className="px-2.5 pt-6 text-[0.6875rem] text-sub">
             ID <span dir="ltr" className="font-mono">{fa(item.id)}</span>
           </div>
         </aside>

@@ -76,7 +76,7 @@ export default function FollowUps() {
           </Toolbar>
         </div>
 
-        <div className="stagger grid gap-4 lg:grid-cols-2">
+        <div className="stagger grid gap-4 @lg:grid-cols-2">
           {groups
             .filter((g) => g.items.length)
             .map((g) => (
@@ -94,7 +94,7 @@ export default function FollowUps() {
               </Card>
             ))}
           {groups.every((g) => !g.items.length) && (
-            <div className="card lg:col-span-2">
+            <div className="card @lg:col-span-2">
               <Empty text={L('فالوآپ بازی وجود ندارد', 'No open follow-ups')} />
             </div>
           )}

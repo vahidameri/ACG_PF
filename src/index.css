@@ -65,6 +65,22 @@ body,
   height: 100%;
 }
 
+/*
+  Fluid scale: every size in the app is rem-based, so scaling the root font size
+  scales the whole UI to the monitor (laptop → 4K) while phones keep 16px.
+*/
+:root {
+  --page-w: 120rem;
+}
+html {
+  font-size: 16px;
+}
+@media (min-width: 1024px) {
+  html {
+    font-size: clamp(14px, calc(7.5px + 0.58vw), 20px);
+  }
+}
+
 body {
   @apply bg-bg text-ink font-sans antialiased;
   font-feature-settings: 'cv11', 'ss01';
@@ -117,10 +133,10 @@ select:focus-visible {
 
   /* ---------- type ---------- */
   .eyebrow {
-    @apply font-mono text-[11px] font-medium uppercase tracking-[0.16em] text-sub;
+    @apply font-mono text-[0.6875rem] font-medium uppercase tracking-[0.16em] text-sub;
   }
   html[lang='fa'] .eyebrow {
-    @apply font-fa text-[12px] font-semibold normal-case tracking-normal;
+    @apply font-fa text-[0.75rem] font-semibold normal-case tracking-normal;
   }
   .display {
     @apply font-medium tracking-[-0.035em];
@@ -195,7 +211,7 @@ select:focus-visible {
 
   /* ---------- chips & badges ---------- */
   .chip {
-    @apply inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-[11px] font-medium leading-5 whitespace-nowrap;
+    @apply inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-[0.6875rem] font-medium leading-5 whitespace-nowrap;
   }
   .chip-btn {
     @apply inline-flex h-8 items-center gap-1.5 rounded-full border border-line bg-surface px-3 text-xs font-medium transition hover:bg-muted;
@@ -206,7 +222,7 @@ select:focus-visible {
 
   /* ---------- tables ---------- */
   .th {
-    @apply text-start text-[11px] font-semibold text-sub px-4 py-3 whitespace-nowrap;
+    @apply text-start text-[0.6875rem] font-semibold text-sub px-4 py-3 whitespace-nowrap;
   }
   .td {
     @apply px-4 py-3 text-sm align-middle;
@@ -232,10 +248,10 @@ select:focus-visible {
       linear-gradient(160deg, #0b0c0e 0%, #121316 60%, #16181c 100%);
   }
   .band-eye {
-    @apply inline-flex items-center gap-2 rounded-full border border-[rgb(195_208_232/0.25)] px-3 py-1 text-[12px] text-[#c3d0e8];
+    @apply inline-flex items-center gap-2 rounded-full border border-[rgb(195_208_232/0.25)] px-3 py-1 text-[0.75rem] text-[#c3d0e8];
   }
   .kbd {
-    @apply inline-flex h-5 min-w-5 items-center justify-center rounded-md border border-line bg-surface px-1.5 font-mono text-[10px] text-sub;
+    @apply inline-flex h-5 min-w-5 items-center justify-center rounded-md border border-line bg-surface px-1.5 font-mono text-[0.625rem] text-sub;
   }
 }
 

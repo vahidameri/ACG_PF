@@ -1,3 +1,5 @@
+import containerQueries from '@tailwindcss/container-queries'
+
 /** @type {import('tailwindcss').Config} */
 const c = (v) => `rgb(var(--${v}) / <alpha-value>)`
 export default {
@@ -35,8 +37,10 @@ export default {
         float: '0 2px 6px rgb(15 26 46 / 0.05), 0 26px 50px -18px rgb(15 26 46 / 0.28)',
         pop: '0 18px 48px -16px rgb(10 12 16 / 0.42)',
       },
+      // Container sizes for the main content area (pages respond to the space they actually get, not the viewport).
+      containers: { sm: '26rem', md: '36rem', lg: '46rem', xl: '56rem', '2xl': '74rem', '3xl': '92rem' },
       transitionTimingFunction: { spring: 'cubic-bezier(.2,.9,.3,1.2)' },
     },
   },
-  plugins: [],
+  plugins: [containerQueries],
 }

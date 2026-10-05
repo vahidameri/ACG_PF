@@ -57,17 +57,17 @@ export default function Risks() {
             <FilterSelect value={status} onChange={setStatus} placeholder={L('همه‌ی وضعیت‌ها', 'Any status')} options={[{ value: 'active', label: L('فعال', 'Active') }, ...options(RISK_STATUS, lang)]} />
           </Toolbar>
         </div>
-        <div className="grid gap-4 xl:grid-cols-3">
+        <div className="grid gap-4 @xl:grid-cols-3">
           <Card eyebrow={L('ماتریس', 'Matrix')} title={L('احتمال × اثر', 'Probability × impact')}>
             <RiskMatrix risks={list} onPick={(r) => open('Risks', r as never)} />
             <p className="mt-3 text-xs text-sub">{L('شماره‌ها همان ردیف جدول هستند.', 'Numbers match the table rows.')}</p>
           </Card>
-          <Card className="xl:col-span-2" pad={false}>
+          <Card className="@xl:col-span-2" pad={false}>
             {list.length === 0 ? (
               <Empty />
             ) : (
               <div className="overflow-x-auto">
-                <table className="w-full min-w-[780px]">
+                <table className="w-full min-w-[48.75rem]">
                   <thead className="border-b border-line">
                     <tr>
                       <th className="th">#</th>

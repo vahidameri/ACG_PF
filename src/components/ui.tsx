@@ -29,7 +29,7 @@ export function Card({
         <header className="flex flex-wrap items-start justify-between gap-3 px-5 pt-5 pb-3">
           <div className="min-w-0">
             {eyebrow && <div className="eyebrow mb-1">{eyebrow}</div>}
-            {title && <h3 className="text-[15px] font-semibold leading-6">{title}</h3>}
+            {title && <h3 className="text-[0.9375rem] font-semibold leading-6">{title}</h3>}
           </div>
           {action}
         </header>
@@ -42,13 +42,13 @@ export function Card({
 /** ACG-style black band with grid texture; page content overlaps its bottom edge. */
 export function Band({ eyebrow, title, sub, actions, children }: { eyebrow?: ReactNode; title: ReactNode; sub?: ReactNode; actions?: ReactNode; children?: ReactNode }) {
   return (
-    <div className="band -mx-4 sm:-mx-6 lg:-mx-8 px-4 sm:px-6 lg:px-8 pt-9 pb-24 no-print">
-      <div className="relative z-10 mx-auto max-w-[1440px] rise">
+    <div className="band -mx-4 @sm:-mx-6 @lg:-mx-8 px-4 @sm:px-6 @lg:px-8 pt-9 pb-24 no-print">
+      <div className="relative z-10 mx-auto max-w-[90rem] rise">
         <div className="flex flex-wrap items-end justify-between gap-4">
           <div className="min-w-0">
             {eyebrow && <div className="band-eye mb-4"><span className="eyebrow !text-[#c3d0e8] flex items-center gap-2">{eyebrow}</span></div>}
-            <h1 className="display text-3xl sm:text-[42px] leading-[1.15]">{title}</h1>
-            {sub && <div className="mt-3 max-w-2xl text-[15px] leading-7 text-[#b9c3d6]">{sub}</div>}
+            <h1 className="display text-3xl @sm:text-[2.625rem] leading-[1.15]">{title}</h1>
+            {sub && <div className="mt-3 max-w-2xl text-[0.9375rem] leading-7 text-[#b9c3d6]">{sub}</div>}
           </div>
           {actions && <div className="flex flex-wrap items-center gap-2">{actions}</div>}
         </div>
@@ -60,18 +60,18 @@ export function Band({ eyebrow, title, sub, actions, children }: { eyebrow?: Rea
 
 /** Content panel that overlaps the band above it. */
 export function Overlap({ children, className }: { children: ReactNode; className?: string }) {
-  return <div className={cx('relative z-10 mx-auto -mt-16 max-w-[1440px] stagger', className)}>{children}</div>
+  return <div className={cx('relative z-10 mx-auto -mt-16 max-w-[90rem] stagger', className)}>{children}</div>
 }
 
 /** ACG stats strip: big numbers separated by hairlines. */
 export function StatStrip({ items }: { items: { label: ReactNode; value: ReactNode; tone?: Health | 'muted'; sub?: ReactNode }[] }) {
   return (
-    <div className="grid grid-cols-2 border-t border-band-line sm:grid-cols-3 lg:grid-cols-6">
+    <div className="grid grid-cols-2 border-t border-band-line @sm:grid-cols-3 @lg:grid-cols-6">
       {items.map((it, i) => (
-        <div key={i} className="border-b border-band-line px-0 py-4 pe-4 sm:border-e sm:last:border-e-0 sm:ps-4 sm:first:ps-0 lg:border-b-0">
-          <div className={cx('display text-3xl sm:text-4xl num', it.tone === 'red' ? 'text-[#ff8a9a]' : it.tone === 'amber' ? 'text-[#f5c565]' : it.tone === 'green' ? 'text-[#7fe0b0]' : 'text-on-band')}>{it.value}</div>
+        <div key={i} className="border-b border-band-line px-0 py-4 pe-4 @sm:border-e @sm:last:border-e-0 @sm:ps-4 @sm:first:ps-0 @lg:border-b-0">
+          <div className={cx('display text-3xl @sm:text-4xl num', it.tone === 'red' ? 'text-[#ff8a9a]' : it.tone === 'amber' ? 'text-[#f5c565]' : it.tone === 'green' ? 'text-[#7fe0b0]' : 'text-on-band')}>{it.value}</div>
           <div className="mt-2 text-xs text-band-sub">{it.label}</div>
-          {it.sub && <div className="mt-0.5 text-[11px] text-band-sub/70">{it.sub}</div>}
+          {it.sub && <div className="mt-0.5 text-[0.6875rem] text-band-sub/70">{it.sub}</div>}
         </div>
       ))}
     </div>
@@ -102,7 +102,7 @@ export function HealthBadge({ h }: { h: Health }) {
 export function PriorityIcon({ p, className }: { p: Priority; className?: string }) {
   if (p === 'critical')
     return (
-      <span className={cx('inline-grid h-4 w-4 place-items-center rounded-[4px] bg-bad text-[10px] font-black text-white', className)} title={lbl(PRIORITY, p)}>
+      <span className={cx('inline-grid h-4 w-4 place-items-center rounded-[4px] bg-bad text-[0.625rem] font-black text-white', className)} title={lbl(PRIORITY, p)}>
         !
       </span>
     )
@@ -210,7 +210,7 @@ export function Avatar({ name, size = 'sm', ring }: { name: string; size?: 'xs' 
   if (!name) return null
   let h = 0
   for (const ch of name) h = (h * 31 + ch.charCodeAt(0)) >>> 0
-  const s = size === 'xs' ? 'h-5 w-5 text-[10px]' : size === 'md' ? 'h-9 w-9 text-sm' : size === 'lg' ? 'h-12 w-12 text-base' : 'h-7 w-7 text-xs'
+  const s = size === 'xs' ? 'h-5 w-5 text-[0.625rem]' : size === 'md' ? 'h-9 w-9 text-sm' : size === 'lg' ? 'h-12 w-12 text-base' : 'h-7 w-7 text-xs'
   const initial = name.replace(/^(دکتر|Dr\.?)\s*/, '').trim().charAt(0).toUpperCase()
   return (
     <span title={name} className={cx('inline-flex shrink-0 items-center justify-center rounded-full font-semibold text-white', s, ring && 'ring-2 ring-surface')} style={{ background: avatarPalette[h % avatarPalette.length] }}>
@@ -226,7 +226,7 @@ export function AvatarStack({ names, max = 4 }: { names: string[]; max?: number 
       {shown.map((n) => (
         <Avatar key={n} name={n} size="xs" ring />
       ))}
-      {names.length > max && <span className="inline-grid h-5 min-w-5 place-items-center rounded-full bg-muted px-1 text-[10px] text-sub ring-2 ring-surface">+{fa(names.length - max)}</span>}
+      {names.length > max && <span className="inline-grid h-5 min-w-5 place-items-center rounded-full bg-muted px-1 text-[0.625rem] text-sub ring-2 ring-surface">+{fa(names.length - max)}</span>}
     </span>
   )
 }
@@ -336,7 +336,7 @@ export function MenuItem({ children, onClick, active, icon, hint, danger }: { ch
     <button onClick={onClick} className={cx('flex w-full items-center gap-2.5 rounded-xl px-2.5 h-9 text-start text-sm transition hover:bg-muted', danger && 'text-bad')}>
       {icon && <span className="grid w-4 place-items-center text-sub">{icon}</span>}
       <span className="flex-1 truncate">{children}</span>
-      {hint && <span className="text-[11px] text-sub">{hint}</span>}
+      {hint && <span className="text-[0.6875rem] text-sub">{hint}</span>}
       {active && <Check size={14} className="text-brand" />}
     </button>
   )
@@ -383,7 +383,7 @@ export function Tabs<T extends string>({ value, onChange, tabs }: { value: T; on
       {tabs.map((t) => (
         <button key={t.value} onClick={() => onChange(t.value)} className={cx('relative whitespace-nowrap px-3.5 py-3 text-sm font-medium transition', value === t.value ? 'text-ink' : 'text-sub hover:text-ink')}>
           {t.label}
-          {t.count !== undefined && <span className="ms-1.5 rounded-full bg-muted px-1.5 text-[11px] text-sub num">{fa(t.count)}</span>}
+          {t.count !== undefined && <span className="ms-1.5 rounded-full bg-muted px-1.5 text-[0.6875rem] text-sub num">{fa(t.count)}</span>}
           {value === t.value && <span className="absolute inset-x-2 -bottom-px h-[2px] rounded bg-ink" />}
         </button>
       ))}

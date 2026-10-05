@@ -46,13 +46,13 @@ export function Kanban({ tasks, defaults, showProject = true }: { tasks: Task[];
             }}
             onDragLeave={() => setOver(null)}
             onDrop={() => drop(s)}
-            className={cx('flex min-h-[240px] flex-col rounded-3xl bg-muted/60 p-2 transition', over === s && 'bg-brand-soft/30 ring-2 ring-brand/30')}
+            className={cx('flex min-h-[15rem] flex-col rounded-3xl bg-muted/60 p-2 transition', over === s && 'bg-brand-soft/30 ring-2 ring-brand/30')}
           >
             <div className="flex items-center gap-2 px-2.5 py-2">
               <StatusIcon s={s} size={15} />
               <span className="text-sm font-semibold">{lbl(TASK_STATUS, s)}</span>
               <span className="text-xs text-sub num">{fa(col.length)}</span>
-              {pts > 0 && <span className="ms-auto font-mono text-[10px] text-sub">{fa(pts)} SP</span>}
+              {pts > 0 && <span className="ms-auto font-mono text-[0.625rem] text-sub">{fa(pts)} SP</span>}
             </div>
             <div className="mt-1 flex flex-col gap-2">
               {col.map((t) => {
@@ -65,14 +65,14 @@ export function Kanban({ tasks, defaults, showProject = true }: { tasks: Task[];
                     onClick={() => open('Tasks', t as never)}
                     className={cx('cursor-pointer rounded-2xl border border-line bg-surface p-3.5 shadow-sm transition hover:-translate-y-0.5 hover:shadow-float', drag === t.id && 'rotate-1 opacity-40')}
                   >
-                    {showProject && t.project_id && <div className="mb-1 truncate font-mono text-[10px] uppercase tracking-wider text-sub" dir="auto">{db.Projects.find((p) => p.id === t.project_id)?.code || pname(t.project_id)}</div>}
+                    {showProject && t.project_id && <div className="mb-1 truncate font-mono text-[0.625rem] uppercase tracking-wider text-sub" dir="auto">{db.Projects.find((p) => p.id === t.project_id)?.code || pname(t.project_id)}</div>}
                     <div className={cx('text-sm leading-6', s === 'done' && 'text-sub line-through')}>{t.title}</div>
-                    {t.status === 'blocked' && t.description && <div className="mt-2 rounded-lg bg-bad/[0.07] px-2 py-1 text-[11px] leading-5 text-bad">{t.description}</div>}
+                    {t.status === 'blocked' && t.description && <div className="mt-2 rounded-lg bg-bad/[0.07] px-2 py-1 text-[0.6875rem] leading-5 text-bad">{t.description}</div>}
                     <div className="mt-3 flex items-center gap-2">
                       <PriorityIcon p={t.priority} />
                       {Number(t.points) > 0 && <Chip className="font-mono">{fa(t.points)}</Chip>}
                       {nC > 0 && (
-                        <span className="inline-flex items-center gap-0.5 text-[11px] text-sub">
+                        <span className="inline-flex items-center gap-0.5 text-[0.6875rem] text-sub">
                           <MessageSquare size={11} />
                           {fa(nC)}
                         </span>
@@ -164,7 +164,7 @@ export function RiskMatrix({ risks, onPick }: { risks: Risk[]; onPick?: (r: Risk
                       key={r.id}
                       onClick={() => onPick?.(r)}
                       title={r.title}
-                      className={cx('h-5 min-w-5 rounded-full px-1 text-[10px] font-bold text-white shadow-sm transition hover:scale-110', p * i >= 15 ? 'bg-bad' : p * i >= 8 ? 'bg-warn' : 'bg-good')}
+                      className={cx('h-5 min-w-5 rounded-full px-1 text-[0.625rem] font-bold text-white shadow-sm transition hover:scale-110', p * i >= 15 ? 'bg-bad' : p * i >= 8 ? 'bg-warn' : 'bg-good')}
                     >
                       {fa(risks.indexOf(r) + 1)}
                     </button>
@@ -209,7 +209,7 @@ export function MilestoneList({ milestones }: { milestones: Milestone[] }) {
               </Chip>
               {canEdit && m.status !== 'done' && (
                 <button
-                  className="text-[11px] text-sub opacity-0 transition hover:text-good group-hover:opacity-100"
+                  className="text-[0.6875rem] text-sub opacity-0 transition hover:text-good group-hover:opacity-100"
                   onClick={async () => {
                     await upsert('Milestones', { ...m, status: 'done', actual_date: todayISO() })
                     toast(L('مایلستون انجام شد', 'Milestone completed'), 'ok', { label: L('بازگردانی', 'Undo'), run: () => upsert('Milestones', m) })
@@ -244,7 +244,7 @@ export function UpdateCard({ u, showProject }: { u: Update; showProject?: boolea
           <Avatar name={u.author} size="md" />
           <div>
             <div className="text-sm font-semibold">{showProject ? pname(u.project_id) : u.author}</div>
-            <div className="text-[11px] text-sub">
+            <div className="text-[0.6875rem] text-sub">
               {showProject && `${u.author} · `}
               {fmtDate(u.week_date, 'long')}
             </div>
@@ -252,8 +252,8 @@ export function UpdateCard({ u, showProject }: { u: Update; showProject?: boolea
         </div>
         <HealthBadge h={u.health} />
       </div>
-      <p className="mt-4 text-[15px] leading-8">{u.summary}</p>
-      <div className="mt-5 grid gap-4 border-t border-line pt-4 sm:grid-cols-3">
+      <p className="mt-4 text-[0.9375rem] leading-8">{u.summary}</p>
+      <div className="mt-5 grid gap-4 border-t border-line pt-4 @sm:grid-cols-3">
         {[
           [L('انجام‌شده', 'Done'), u.done, 'bg-good'],
           [L('هفته‌ی بعد', 'Next'), u.next, 'bg-brand'],
@@ -324,9 +324,9 @@ export function ActivityFeed({ items, showProject = true }: { items: Activity[];
             <span className={cx('relative z-10 grid h-8 w-8 shrink-0 place-items-center rounded-full ring-4 ring-surface', actTone[a.kind])}>
               <Icon size={14} />
             </span>
-            <button disabled={!row} onClick={() => row && open(a.target!.sheet, row as never)} className="min-w-0 flex-1 pt-1 text-start text-[13px] leading-6 enabled:hover:opacity-80">
+            <button disabled={!row} onClick={() => row && open(a.target!.sheet, row as never)} className="min-w-0 flex-1 pt-1 text-start text-[0.8125rem] leading-6 enabled:hover:opacity-80">
               <span className="font-semibold">{a.who || L('تیم', 'Team')}</span> <span className="text-sub">{a.verb}</span> <span className="font-medium">«{a.what}»</span>
-              <span className="block text-[11px] text-sub">
+              <span className="block text-[0.6875rem] text-sub">
                 {whenLabel(a.when)}
                 {showProject && a.project_id && ` · ${db.Projects.find((p) => p.id === a.project_id)?.name || ''}`}
               </span>
@@ -342,7 +342,7 @@ export function ActivityFeed({ items, showProject = true }: { items: Activity[];
 export function HealthTrend({ projectId, n = 5 }: { projectId: string; n?: number }) {
   const { db } = useStore()
   const ups = db.Updates.filter((u) => u.project_id === projectId).sort((a, b) => (a.week_date < b.week_date ? -1 : 1)).slice(-n)
-  if (!ups.length) return <span className="text-[11px] text-sub/60">—</span>
+  if (!ups.length) return <span className="text-[0.6875rem] text-sub/60">—</span>
   return (
     <span className="inline-flex items-center gap-1" title={L('روند سلامت از گزارش‌های هفتگی', 'Health trend from weekly updates')}>
       {ups.map((u) => (

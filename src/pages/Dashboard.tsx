@@ -74,8 +74,8 @@ export default function Dashboard() {
       </Band>
 
       <Overlap className="space-y-4">
-        <div className="grid gap-4 xl:grid-cols-3">
-          <Card className="xl:col-span-2" eyebrow={L('نیازمند توجه مدیریت', 'Needs leadership attention')} title={L(`${fa(attention.length)} پروژه خارج از برنامه`, `${attention.length} projects off plan`)}>
+        <div className="grid gap-4 @xl:grid-cols-3">
+          <Card className="@xl:col-span-2" eyebrow={L('نیازمند توجه مدیریت', 'Needs leadership attention')} title={L(`${fa(attention.length)} پروژه خارج از برنامه`, `${attention.length} projects off plan`)}>
             {attention.length === 0 ? (
               <Empty text={L('همه‌ی پروژه‌ها سالم هستند', 'Every project is on track')} />
             ) : (
@@ -99,9 +99,9 @@ export default function Dashboard() {
                           ))}
                       </ul>
                     </div>
-                    <div className="hidden text-end sm:block">
+                    <div className="hidden text-end @sm:block">
                       <div className="text-sm font-semibold num">{fa(m.progress)}%</div>
-                      <div className="text-[11px] text-sub">{p.owner}</div>
+                      <div className="text-[0.6875rem] text-sub">{p.owner}</div>
                     </div>
                     <ArrowUpRight size={16} className="mt-1 text-sub/40 transition group-hover:text-ink rtl:-scale-x-100" />
                   </Link>
@@ -119,7 +119,7 @@ export default function Dashboard() {
                   <button key={r.id} onClick={() => open('Risks', r as never)} className="w-full rounded-2xl border border-line p-4 text-start transition hover:border-line-strong hover:bg-muted/40">
                     <div className="text-sm font-medium leading-6">{r.title}</div>
                     <div className="mt-1 line-clamp-2 text-xs leading-5 text-sub">{r.mitigation}</div>
-                    <div className="mt-3 flex items-center justify-between text-[11px] text-sub">
+                    <div className="mt-3 flex items-center justify-between text-[0.6875rem] text-sub">
                       <span className="truncate">{pname(r.project_id)}</span>
                       <span className={cx('num', r.due_date < today && 'font-semibold text-bad')}>{relDays(r.due_date)}</span>
                     </div>
@@ -137,14 +137,14 @@ export default function Dashboard() {
           action={<Segmented value={view} onChange={setView} options={[{ value: 'table', label: L('جدول', 'Table') }, { value: 'cards', label: L('کارت', 'Cards') }]} />}
         >
           {view === 'cards' ? (
-            <div className="grid gap-4 p-5 pt-1 md:grid-cols-2 xl:grid-cols-3">
+            <div className="grid gap-4 p-5 pt-1 @md:grid-cols-2 @xl:grid-cols-3">
               {sorted.map((p) => (
                 <ProjectCard key={p.id} p={p} />
               ))}
             </div>
           ) : (
             <div className="overflow-x-auto">
-              <table className="w-full min-w-[960px]">
+              <table className="w-full min-w-[60rem]">
                 <thead className="border-y border-line">
                   <tr>
                     <th className="th">{L('پروژه', 'Project')}</th>
@@ -167,7 +167,7 @@ export default function Dashboard() {
                           <Link to={`/projects/${p.id}`} className="font-medium hover:underline">
                             {p.name}
                           </Link>
-                          <div className="mt-0.5 flex items-center gap-1.5 text-[11px] text-sub">
+                          <div className="mt-0.5 flex items-center gap-1.5 text-[0.6875rem] text-sub">
                             <span className="font-mono" dir="ltr">{p.code}</span> · {lbl(PROJECT_STATUS, p.status)}
                           </div>
                         </td>
@@ -182,23 +182,23 @@ export default function Dashboard() {
                             <Progress value={m.progress} h={m.health} marker={m.elapsed} />
                             <span className="w-10 text-xs font-semibold num">{fa(m.progress)}%</span>
                           </div>
-                          <div className={cx('mt-1 text-[11px] num', m.scheduleGap < -10 ? 'text-bad' : 'text-sub')}>
+                          <div className={cx('mt-1 text-[0.6875rem] num', m.scheduleGap < -10 ? 'text-bad' : 'text-sub')}>
                             {m.scheduleGap >= 0 ? L(`${fa(m.scheduleGap)}٪ جلوتر`, `${m.scheduleGap}% ahead`) : L(`${fa(-m.scheduleGap)}٪ عقب‌تر`, `${-m.scheduleGap}% behind`)}
                           </div>
                         </td>
                         <td className="td">
                           <div className="text-sm num">{fmtDate(p.end_date)}</div>
-                          <div className={cx('text-[11px]', m.daysLeft < 0 ? 'font-semibold text-bad' : 'text-sub')}>{relDays(p.end_date)}</div>
+                          <div className={cx('text-[0.6875rem]', m.daysLeft < 0 ? 'font-semibold text-bad' : 'text-sub')}>{relDays(p.end_date)}</div>
                         </td>
                         <td className="td">
                           <div className={cx('text-sm font-semibold num', m.budgetUse > 100 ? 'text-bad' : m.budgetUse > m.progress + 20 ? 'text-warn' : '')}>{fa(m.budgetUse)}%</div>
-                          <div className="text-[11px] text-sub">{money(p.budget)}</div>
+                          <div className="text-[0.6875rem] text-sub">{money(p.budget)}</div>
                         </td>
                         <td className="td max-w-[13rem]">
                           {m.nextMilestone ? (
                             <>
                               <div className="truncate text-sm">{m.nextMilestone.title}</div>
-                              <div className="text-[11px] text-sub">{fmtDayMonth(m.nextMilestone.planned_date)}</div>
+                              <div className="text-[0.6875rem] text-sub">{fmtDayMonth(m.nextMilestone.planned_date)}</div>
                             </>
                           ) : (
                             <span className="text-sub">—</span>
@@ -206,7 +206,7 @@ export default function Dashboard() {
                         </td>
                         <td className="td">
                           <span className={cx('text-sm num', m.highRisks ? 'font-semibold text-bad' : '')}>{fa(m.openRisks)}</span>
-                          {m.highRisks > 0 && <span className="text-[11px] text-bad"> · {fa(m.highRisks)}!</span>}
+                          {m.highRisks > 0 && <span className="text-[0.6875rem] text-bad"> · {fa(m.highRisks)}!</span>}
                         </td>
                         <td className="td">
                           <Avatar name={p.owner} />
@@ -220,7 +220,7 @@ export default function Dashboard() {
           )}
         </Card>
 
-        <div className="grid gap-4 lg:grid-cols-2 xl:grid-cols-3">
+        <div className="grid gap-4 @lg:grid-cols-2 @xl:grid-cols-3">
           <Card eyebrow={L('۳۰ روز آینده', 'Next 30 days')} title={L('مایلستون‌ها', 'Milestones')} action={<Link to="/roadmap" className="text-xs font-medium text-sub hover:text-ink">{L('رودمپ', 'Roadmap')} →</Link>}>
             {s.overdueMilestones.length + s.upcomingMilestones.length === 0 ? (
               <Empty />
@@ -233,13 +233,13 @@ export default function Dashboard() {
                     <button key={m.id} onClick={() => open('Milestones', m as never)} className="flex w-full items-center gap-3 rounded-xl px-2 py-2 text-start transition hover:bg-muted/60">
                       <div className={cx('flex h-11 w-11 shrink-0 flex-col items-center justify-center rounded-2xl leading-none', late ? 'bg-bad/10 text-bad' : 'bg-muted')}>
                         <span className="text-sm font-semibold num">{d}</span>
-                        <span className="mt-0.5 text-[9px]">{mo}</span>
+                        <span className="mt-0.5 text-[0.5625rem]">{mo}</span>
                       </div>
                       <div className="min-w-0 flex-1">
                         <div className="truncate text-sm">{m.title}</div>
                         <div className="truncate text-xs text-sub">{pname(m.project_id)}</div>
                       </div>
-                      <span className={cx('text-[11px]', late ? 'font-semibold text-bad' : 'text-sub')}>{relDays(m.planned_date)}</span>
+                      <span className={cx('text-[0.6875rem]', late ? 'font-semibold text-bad' : 'text-sub')}>{relDays(m.planned_date)}</span>
                     </button>
                   )
                 })}
@@ -268,7 +268,7 @@ export default function Dashboard() {
             </div>
           </Card>
 
-          <Card eyebrow={L('سلامت', 'Health')} title={L('توزیع وضعیت', 'Distribution')} className="lg:col-span-2 xl:col-span-1">
+          <Card eyebrow={L('سلامت', 'Health')} title={L('توزیع وضعیت', 'Distribution')} className="@lg:col-span-2 @xl:col-span-1">
             <div className="space-y-4">
               {(['green', 'amber', 'red'] as Health[]).map((h) => {
                 const n = s.counts[h]
@@ -312,8 +312,8 @@ export default function Dashboard() {
           </Card>
         </div>
 
-        <div className="grid gap-4 xl:grid-cols-3">
-          <Card className="xl:col-span-2" eyebrow={L('نبض پورتفولیو', 'Portfolio pulse')} title={L('فعالیت اخیر تیم‌ها', 'Recent activity')}>
+        <div className="grid gap-4 @xl:grid-cols-3">
+          <Card className="@xl:col-span-2" eyebrow={L('نبض پورتفولیو', 'Portfolio pulse')} title={L('فعالیت اخیر تیم‌ها', 'Recent activity')}>
             <ActivityFeed items={buildActivity(db, undefined, 9)} />
           </Card>
           <Card eyebrow={L('۷ روز گذشته', 'Last 7 days')} title={L('این هفته چه گذشت؟', 'This week in numbers')}>
@@ -342,7 +342,7 @@ export default function Dashboard() {
                       </div>
                     </div>
                   ))}
-                  <div className="border-t border-line pt-3 text-[11px] text-sub">
+                  <div className="border-t border-line pt-3 text-[0.6875rem] text-sub">
                     {L(`میانگین عمر تسک‌های باز: ${fa(Math.round(avgAge(db.Tasks.filter((t) => t.status !== 'done').map((t) => t.created_at), today)))} روز`, `Avg. age of open tasks: ${Math.round(avgAge(db.Tasks.filter((t) => t.status !== 'done').map((t) => t.created_at), today))} days`)}
                   </div>
                 </div>

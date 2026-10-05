@@ -138,7 +138,7 @@ export function CommandPalette({ open, onClose }: { open: boolean; onClose: () =
             )
           })}
         </div>
-        <div className="flex items-center gap-4 border-t border-line px-5 py-2.5 text-[11px] text-sub">
+        <div className="flex items-center gap-4 border-t border-line px-5 py-2.5 text-[0.6875rem] text-sub">
           <span className="flex items-center gap-1.5">
             <span className="kbd">↑↓</span> {L('حرکت', 'Navigate')}
           </span>

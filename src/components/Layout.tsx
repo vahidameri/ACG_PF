@@ -45,7 +45,10 @@ export function Layout({ children }: { children: ReactNode }) {
       } else if (!typing && !e.metaKey && !e.ctrlKey && canEdit && (e.key === 'f' || e.key === 'ب')) {
         e.preventDefault()
         open('FollowUps')
-      } else if (!typing && e.key === '[') setCollapsed((c) => !c)
+      } else if (!typing && e.key === '[') {
+        if (window.innerWidth < 1280) setForceWide((v) => !v)
+        else setCollapsed((c) => !c)
+      }
       else if (!typing && e.key === '?') setKeys(true)
       else if (e.key === 'Escape') setKeys(false)
     }
@@ -96,17 +99,26 @@ export function Layout({ children }: { children: ReactNode }) {
   ]
 
   const pinned = db.Projects.filter((p) => pins.includes(p.id))
-  const wide = !collapsed || nav
+  // Laptops under 1280px get the compact icon rail automatically; the user can still expand it.
+  const [narrow, setNarrow] = useState(() => window.innerWidth < 1280)
+  const [forceWide, setForceWide] = useState(false)
+  useEffect(() => {
+    const h = () => setNarrow(window.innerWidth < 1280)
+    window.addEventListener('resize', h)
+    return () => window.removeEventListener('resize', h)
+  }, [])
+  const wide = nav || (narrow ? forceWide : !collapsed)
+  const toggleSidebar = () => (narrow ? setForceWide((v) => !v) : setCollapsed(!collapsed))
 
   const sidebar = (
-    <aside className={cx('flex h-full flex-col bg-band text-on-band transition-[width] duration-300', wide ? 'w-64' : 'w-[72px]')}>
+    <aside className={cx('flex h-full flex-col bg-band text-on-band transition-[width] duration-300', wide ? 'w-64' : 'w-[4.5rem]')}>
       <div className={cx('flex h-16 shrink-0 items-center border-b border-band-line', wide ? 'gap-3 px-5' : 'justify-center')}>
         <Link to="/" className="flex items-center gap-3">
           <AcgMark className="h-7 text-white" />
           {wide && (
             <div className="leading-tight">
               <div className="text-sm font-semibold tracking-tight">{L('پورتفولیو', 'Portfolio')}</div>
-              <div className="font-mono text-[10px] uppercase tracking-[0.18em] text-band-sub">ACG · PMO</div>
+              <div className="font-mono text-[0.625rem] uppercase tracking-[0.18em] text-band-sub">ACG · PMO</div>
             </div>
           )}
         </Link>
@@ -114,7 +126,7 @@ export function Layout({ children }: { children: ReactNode }) {
       <nav className="flex-1 space-y-5 overflow-y-auto px-3 py-4">
         {groups.map((g) => (
           <div key={g.label}>
-            {wide && <div className="mb-1.5 px-3 font-mono text-[10px] uppercase tracking-[0.18em] text-band-sub/80">{g.label}</div>}
+            {wide && <div className="mb-1.5 px-3 font-mono text-[0.625rem] uppercase tracking-[0.18em] text-band-sub/80">{g.label}</div>}
             <div className="space-y-0.5">
               {g.links.map((l) => (
                 <NavLink
@@ -135,9 +147,9 @@ export function Layout({ children }: { children: ReactNode }) {
                       {isActive && <span className="absolute inset-y-2 start-0 w-[3px] rounded-full bg-brand-soft" />}
                       <l.icon size={18} strokeWidth={1.7} />
                       {wide && <span className="flex-1 truncate">{l.label}</span>}
-                      {wide && !l.badge && !!l.count && <span className="font-mono text-[11px] text-white/35 num">{fa(l.count)}</span>}
+                      {wide && !l.badge && !!l.count && <span className="font-mono text-[0.6875rem] text-white/35 num">{fa(l.count)}</span>}
                       {!!l.badge && (
-                        <span className={cx('rounded-full bg-[#c4314b] text-[10px] font-semibold text-white num leading-[18px]', wide ? 'px-1.5' : 'absolute end-2 top-1.5 h-2 w-2 overflow-hidden text-transparent')}>{fa(l.badge)}</span>
+                        <span className={cx('rounded-full bg-[#c4314b] text-[0.625rem] font-semibold text-white num leading-[18px]', wide ? 'px-1.5' : 'absolute end-2 top-1.5 h-2 w-2 overflow-hidden text-transparent')}>{fa(l.badge)}</span>
                       )}
                     </>
                   )}
@@ -148,7 +160,7 @@ export function Layout({ children }: { children: ReactNode }) {
         ))}
         {wide && pinned.length > 0 && (
           <div>
-            <div className="mb-1.5 flex items-center gap-1.5 px-3 font-mono text-[10px] uppercase tracking-[0.18em] text-band-sub/80">
+            <div className="mb-1.5 flex items-center gap-1.5 px-3 font-mono text-[0.625rem] uppercase tracking-[0.18em] text-band-sub/80">
               <Star size={10} /> {L('پین‌شده', 'Pinned')}
             </div>
             <div className="space-y-0.5">
@@ -156,7 +168,7 @@ export function Layout({ children }: { children: ReactNode }) {
                 <NavLink
                   key={p.id}
                   to={`/projects/${p.id}`}
-                  className={({ isActive }) => cx('flex h-9 items-center gap-3 rounded-xl px-3 text-[13px] transition', isActive ? 'bg-white/[0.09] text-white' : 'text-white/60 hover:bg-white/[0.05] hover:text-white')}
+                  className={({ isActive }) => cx('flex h-9 items-center gap-3 rounded-xl px-3 text-[0.8125rem] transition', isActive ? 'bg-white/[0.09] text-white' : 'text-white/60 hover:bg-white/[0.05] hover:text-white')}
                 >
                   <HealthDot h={projectMetrics(p, db).health} />
                   <span className="truncate">{p.name}</span>
@@ -175,7 +187,7 @@ export function Layout({ children }: { children: ReactNode }) {
               {wide && (
                 <div className="min-w-0 flex-1">
                   <div className="truncate text-sm font-medium">{me || L('مهمان', 'Guest')}</div>
-                  <div className="truncate text-[11px] text-band-sub">{mode === 'demo' ? L('حالت نمایشی', 'Demo mode') : lbl(ROLE, role)}</div>
+                  <div className="truncate text-[0.6875rem] text-band-sub">{mode === 'demo' ? L('حالت نمایشی', 'Demo mode') : lbl(ROLE, role)}</div>
                 </div>
               )}
             </button>
@@ -194,8 +206,8 @@ export function Layout({ children }: { children: ReactNode }) {
               <MenuItem icon={dark ? <Sun size={15} /> : <Moon size={15} />} onClick={() => { toggleTheme(); close() }}>
                 {dark ? L('حالت روشن', 'Light mode') : L('حالت تیره', 'Dark mode')}
               </MenuItem>
-              <MenuItem icon={wide ? <PanelLeftClose size={15} /> : <PanelLeftOpen size={15} />} hint="[" onClick={() => { setCollapsed(!collapsed); close() }}>
-                {collapsed ? L('باز کردن منو', 'Expand sidebar') : L('جمع کردن منو', 'Collapse sidebar')}
+              <MenuItem icon={wide ? <PanelLeftClose size={15} /> : <PanelLeftOpen size={15} />} hint="[" onClick={() => { toggleSidebar(); close() }}>
+                {!wide ? L('باز کردن منو', 'Expand sidebar') : L('جمع کردن منو', 'Collapse sidebar')}
               </MenuItem>
               <MenuItem icon={<Keyboard size={15} />} hint="?" onClick={() => { close(); setKeys(true) }}>
                 {L('میانبرهای صفحه‌کلید', 'Keyboard shortcuts')}
@@ -233,12 +245,12 @@ export function Layout({ children }: { children: ReactNode }) {
           >
             <Search size={16} />
             <span className="flex-1 truncate text-start">{L('جستجو یا فرمان…', 'Search or jump to…')}</span>
-            <kbd className="hidden rounded-md border border-white/15 px-1.5 font-mono text-[10px] text-white/50 sm:inline" dir="ltr">
+            <kbd className="hidden rounded-md border border-white/15 px-1.5 font-mono text-[0.625rem] text-white/50 sm:inline" dir="ltr">
               Ctrl K
             </kbd>
           </button>
           <div className="flex-1" />
-          <span className={cx('hidden items-center gap-1.5 font-mono text-[11px] md:flex', error ? 'text-[#ff8a9a]' : 'text-white/45')} title={error}>
+          <span className={cx('hidden items-center gap-1.5 font-mono text-[0.6875rem] md:flex', error ? 'text-[#ff8a9a]' : 'text-white/45')} title={error}>
             <span className={cx('h-1.5 w-1.5 rounded-full', mode === 'demo' ? 'bg-[#f5c565]' : error ? 'bg-[#ff8a9a]' : 'bg-[#7fe0b0]')} />
             {mode === 'demo' ? L('نمایشی', 'DEMO') : syncText}
           </span>
@@ -247,7 +259,7 @@ export function Layout({ children }: { children: ReactNode }) {
           </button>
           <div className="hidden rounded-full border border-white/10 p-0.5 sm:flex">
             {(['fa', 'en'] as const).map((l) => (
-              <button key={l} onClick={() => setLang(l)} className={cx('h-7 rounded-full px-2.5 text-[11px] font-semibold transition', lang === l ? 'bg-white text-band' : 'text-white/60 hover:text-white')}>
+              <button key={l} onClick={() => setLang(l)} className={cx('h-7 rounded-full px-2.5 text-[0.6875rem] font-semibold transition', lang === l ? 'bg-white text-band' : 'text-white/60 hover:text-white')}>
                 {l === 'fa' ? 'فا' : 'EN'}
               </button>
             ))}
@@ -298,7 +310,7 @@ export function Layout({ children }: { children: ReactNode }) {
         {error && mode === 'live' && <div className="bg-bad px-4 py-2 text-center text-xs text-white no-print">{L('اتصال به Google Sheet برقرار نشد', 'Could not reach Google Sheet')}: {error}</div>}
 
         <main className="flex-1 overflow-y-auto">
-          <div className="px-4 pb-16 sm:px-6 lg:px-8 print-full" key={loc.pathname}>
+          <div className="@container px-4 pb-16 sm:px-6 lg:px-8 print-full" key={loc.pathname}>
             {children}
           </div>
         </main>
@@ -355,7 +367,7 @@ function InboxButton({ items }: { items: InboxItem[] }) {
       trigger={({ toggle }) => (
         <button className="icon-btn text-white/75 hover:bg-white/10 hover:text-white" onClick={toggle} title={L('اعلان‌ها', 'Inbox')}>
           <Bell size={17} />
-          {unread.length > 0 && <span className="absolute end-1 top-1 grid h-4 min-w-4 place-items-center rounded-full bg-[#c4314b] px-1 text-[9px] font-bold text-white num">{fa(unread.length > 9 ? '9+' : unread.length)}</span>}
+          {unread.length > 0 && <span className="absolute end-1 top-1 grid h-4 min-w-4 place-items-center rounded-full bg-[#c4314b] px-1 text-[0.5625rem] font-bold text-white num">{fa(unread.length > 9 ? '9+' : unread.length)}</span>}
         </button>
       )}
     >
@@ -364,7 +376,7 @@ function InboxButton({ items }: { items: InboxItem[] }) {
           <div className="flex items-center justify-between border-b border-line px-4 py-3">
             <div>
               <div className="text-sm font-semibold">{L('صندوق اعلان‌ها', 'Inbox')}</div>
-              <div className="text-[11px] text-sub">{L(`${fa(unread.length)} مورد خوانده‌نشده`, `${unread.length} unread`)}</div>
+              <div className="text-[0.6875rem] text-sub">{L(`${fa(unread.length)} مورد خوانده‌نشده`, `${unread.length} unread`)}</div>
             </div>
             {unread.length > 0 && (
               <button className="text-xs font-medium text-brand hover:underline" onClick={() => setRead(items.map((i) => i.id))}>
@@ -394,7 +406,7 @@ function InboxButton({ items }: { items: InboxItem[] }) {
                     <span className="block truncate text-xs text-sub">{i.sub}</span>
                   </span>
                   <span className="flex flex-col items-end gap-1.5">
-                    <span className="text-[10px] text-sub num">{fmtDayMonth(i.when.slice(0, 10))}</span>
+                    <span className="text-[0.625rem] text-sub num">{fmtDayMonth(i.when.slice(0, 10))}</span>
                     {isUnread && <span className="h-1.5 w-1.5 rounded-full bg-brand" />}
                   </span>
                 </button>
@@ -429,7 +441,7 @@ function Shortcuts({ onClose }: { onClose: () => void }) {
               <span>{l}</span>
               <span className="flex gap-1" dir="ltr">
                 {k.split(' ').map((x) => (
-                  <kbd key={x} className="kbd h-6 min-w-6 text-[11px]">
+                  <kbd key={x} className="kbd h-6 min-w-6 text-[0.6875rem]">
                     {x}
                   </kbd>
                 ))}

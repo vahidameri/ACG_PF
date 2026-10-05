@@ -98,7 +98,7 @@ export default function Roadmap() {
         </div>
 
         <div className="card overflow-x-auto">
-          <div className="min-w-[980px]">
+          <div className="min-w-[61.25rem]">
             <div className="flex border-b border-line">
               <div className="eyebrow w-72 shrink-0 border-e border-line px-5 py-3.5">{L('پروژه', 'Project')}</div>
               <div className="relative flex flex-1">
@@ -129,7 +129,7 @@ export default function Roadmap() {
                         <Link to={`/projects/${p.id}`} className="block truncate text-sm font-medium hover:underline">
                           {p.name}
                         </Link>
-                        <div className="text-[11px] text-sub num">{fa(m.progress)}% · {p.owner}</div>
+                        <div className="text-[0.6875rem] text-sub num">{fa(m.progress)}% · {p.owner}</div>
                       </div>
                       <Avatar name={p.owner} size="xs" />
                     </div>
@@ -169,7 +169,7 @@ export default function Roadmap() {
                             <button onClick={() => open('Milestones', x as never)} className="block truncate text-start text-xs hover:underline">
                               {x.title}
                             </button>
-                            <div className={cx('text-[10px] num', late ? 'text-bad' : 'text-sub')}>{fmtDate(x.planned_date)}</div>
+                            <div className={cx('text-[0.625rem] num', late ? 'text-bad' : 'text-sub')}>{fmtDate(x.planned_date)}</div>
                           </div>
                           <div className="relative flex-1">
                             <Grid months={months} total={total} />

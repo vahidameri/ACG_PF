@@ -34,7 +34,7 @@ export default function Sprints() {
         }
       />
       <Overlap className="space-y-4">
-        <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+        <div className="grid gap-3 @md:grid-cols-2 @xl:grid-cols-3">
           {active.map((s) => {
             const c = sprintCommitted(s, db)
             const d = sprintDonePoints(s, db)
@@ -46,7 +46,7 @@ export default function Sprints() {
               <button key={s.id} onClick={() => setSel(s.id)} className={cx('card card-hover p-5 text-start', sel === s.id && 'ring-2 ring-ink')}>
                 <div className="flex items-center justify-between">
                   <div className="eyebrow truncate">{pname(s.project_id)}</div>
-                  <span className={cx('text-[11px]', daysFromToday(s.end_date) <= 2 ? 'font-semibold text-warn' : 'text-sub')}>{L(`${fa(Math.max(0, daysFromToday(s.end_date)))} روز مانده`, `${Math.max(0, daysFromToday(s.end_date))}d left`)}</span>
+                  <span className={cx('text-[0.6875rem]', daysFromToday(s.end_date) <= 2 ? 'font-semibold text-warn' : 'text-sub')}>{L(`${fa(Math.max(0, daysFromToday(s.end_date)))} روز مانده`, `${Math.max(0, daysFromToday(s.end_date))}d left`)}</span>
                 </div>
                 <div className="mt-2 flex items-center gap-2">
                   <Zap size={16} className="text-brand" />
@@ -61,12 +61,12 @@ export default function Sprints() {
                   <span className="text-xs text-sub num">{fa(d)} / {fa(c)} SP</span>
                 </div>
                 <Progress value={pct} marker={timePct} h={behind ? 'red' : pct >= timePct ? 'green' : 'amber'} className="mt-2" />
-                {blocked > 0 && <div className="mt-3 text-[11px] text-bad">{L(`${fa(blocked)} تسک مسدود`, `${blocked} blocked`)}</div>}
+                {blocked > 0 && <div className="mt-3 text-[0.6875rem] text-bad">{L(`${fa(blocked)} تسک مسدود`, `${blocked} blocked`)}</div>}
               </button>
             )
           })}
           {!active.length && (
-            <div className="card md:col-span-3">
+            <div className="card @md:col-span-3">
               <Empty text={L('اسپرینت فعالی وجود ندارد', 'No active sprints')} />
             </div>
           )}
@@ -110,7 +110,7 @@ export default function Sprints() {
                 </button>
               )}
             </div>
-            <div className="grid gap-4 xl:grid-cols-2">
+            <div className="grid gap-4 @xl:grid-cols-2">
               <Card eyebrow="Burndown" title={<SprintHeader s={sprint} db={db} />}>
                 <BurndownChart sprint={sprint} db={db} />
               </Card>
@@ -128,7 +128,7 @@ export default function Sprints() {
 
         <Card eyebrow={L('تاریخچه', 'History')} title={L('همه‌ی اسپرینت‌ها', 'All sprints')} pad={false}>
           <div className="overflow-x-auto">
-            <table className="w-full min-w-[760px]">
+            <table className="w-full min-w-[47.5rem]">
               <thead className="border-y border-line">
                 <tr>
                   <th className="th">{L('پروژه', 'Project')}</th>

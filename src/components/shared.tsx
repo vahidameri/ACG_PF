@@ -52,7 +52,7 @@ export function TaskRow({ t, showProject = true, dense }: { t: Task; showProject
       <div className="min-w-0 flex-1">
         <div className={cx('truncate text-sm', done && 'text-sub line-through')}>{t.title}</div>
         {(showProject && t.project_id) || nComments ? (
-          <div className="mt-0.5 flex items-center gap-2 text-[11px] text-sub">
+          <div className="mt-0.5 flex items-center gap-2 text-[0.6875rem] text-sub">
             {showProject && t.project_id && <span className="max-w-[14rem] truncate">{pname(t.project_id)}</span>}
             {nComments > 0 && (
               <span className="inline-flex items-center gap-0.5">
@@ -62,10 +62,10 @@ export function TaskRow({ t, showProject = true, dense }: { t: Task; showProject
           </div>
         ) : null}
       </div>
-      <span className="hidden sm:inline-flex">
+      <span className="hidden @sm:inline-flex">
         <PriorityPicker value={t.priority} onChange={(p) => patch({ priority: p })} label={false} />
       </span>
-      <span className="hidden min-w-[4.5rem] justify-end md:inline-flex" onClick={(e) => e.stopPropagation()}>
+      <span className="hidden min-w-[4.5rem] justify-end @md:inline-flex" onClick={(e) => e.stopPropagation()}>
         {canEdit ? <DueInline iso={t.due_date} done={done} onChange={(d) => patch({ due_date: d })} /> : <Due iso={t.due_date} done={done} />}
       </span>
       <PersonPicker value={t.assignee} onChange={(a) => patch({ assignee: a })} label={false} />
@@ -121,7 +121,7 @@ export function FollowUpRow({ f, compact }: { f: FollowUp; compact?: boolean }) 
       <div className="flex flex-col items-end gap-1.5">
         <Due iso={f.due_date} done={f.status === 'done'} />
         {canEdit && f.status !== 'done' && (
-          <div className="flex gap-0.5 transition sm:opacity-0 sm:group-hover:opacity-100">
+          <div className="flex gap-0.5 transition @sm:opacity-0 @sm:group-hover:opacity-100">
             <button className="icon-btn h-7 w-7" title={L('انجام شد', 'Done')} onClick={(e) => act(e, { status: 'done', done_at: todayISO() }, L('فالوآپ بسته شد', 'Follow-up closed'))}>
               <Check size={14} />
             </button>
@@ -165,16 +165,16 @@ export function ProjectCard({ p }: { p: Project }) {
     <Link to={`/projects/${p.id}`} className="card card-hover group flex flex-col p-5">
       <div className="flex items-start justify-between gap-3">
         <div className="flex items-center gap-2">
-          <span className="rounded-md bg-muted px-1.5 py-0.5 font-mono text-[10px] font-medium tracking-wider text-sub" dir="ltr">
+          <span className="rounded-md bg-muted px-1.5 py-0.5 font-mono text-[0.625rem] font-medium tracking-wider text-sub" dir="ltr">
             {p.code}
           </span>
-          <span className={cx('inline-flex items-center gap-1.5 text-[11px] font-medium', healthText[m.health])}>
+          <span className={cx('inline-flex items-center gap-1.5 text-[0.6875rem] font-medium', healthText[m.health])}>
             <HealthDot h={m.health} pulse /> {p.status === 'active' ? lbl(HEALTH, m.health) : lbl(PROJECT_STATUS, p.status)}
           </span>
         </div>
         <PinButton id={p.id} className="-me-2 -mt-1.5" />
       </div>
-      <h3 className="mt-3 text-[17px] font-semibold leading-snug tracking-tight">{p.name}</h3>
+      <h3 className="mt-3 text-[1.0625rem] font-semibold leading-snug tracking-tight">{p.name}</h3>
       <p className="mt-1 line-clamp-2 text-xs leading-5 text-sub">{p.description}</p>
 
       <div className="mt-5 flex items-end justify-between">
@@ -183,11 +183,11 @@ export function ProjectCard({ p }: { p: Project }) {
             {fa(m.progress)}
             <span className="text-base text-sub">%</span>
           </div>
-          <div className="text-[11px] text-sub">
+          <div className="text-[0.6875rem] text-sub">
             {L('زمان', 'Time')} {fa(m.elapsed)}%
           </div>
         </div>
-        <div className="text-end text-[11px] text-sub">
+        <div className="text-end text-[0.6875rem] text-sub">
           <div>{L('ددلاین', 'Deadline')}</div>
           <div className={cx('text-sm font-medium num text-ink', m.daysLeft < 0 && p.status === 'active' && '!text-bad')}>{fmtDayMonth(p.end_date)}</div>
         </div>
@@ -196,18 +196,18 @@ export function ProjectCard({ p }: { p: Project }) {
 
       <div className="mt-4 grid grid-cols-3 divide-x divide-line rounded-2xl border border-line rtl:divide-x-reverse">
         <div className="px-3 py-2">
-          <div className="text-[10px] text-sub">{L('تسک‌ها', 'Tasks')}</div>
+          <div className="text-[0.625rem] text-sub">{L('تسک‌ها', 'Tasks')}</div>
           <div className="mt-0.5 text-sm font-semibold num">
             {fa(m.doneTasks)}
             <span className="font-normal text-sub">/{fa(m.totalTasks)}</span>
           </div>
         </div>
         <div className="px-3 py-2">
-          <div className="text-[10px] text-sub">{L('بودجه', 'Budget')}</div>
+          <div className="text-[0.625rem] text-sub">{L('بودجه', 'Budget')}</div>
           <div className={cx('mt-0.5 text-sm font-semibold num', m.budgetUse > 100 ? 'text-bad' : m.budgetUse > m.progress + 20 ? 'text-warn' : '')}>{fa(m.budgetUse)}%</div>
         </div>
         <div className="px-3 py-2">
-          <div className="text-[10px] text-sub">{L('روند', 'Trend')}</div>
+          <div className="text-[0.625rem] text-sub">{L('روند', 'Trend')}</div>
           <div className="mt-1">
             <HealthTrend projectId={p.id} n={4} />
           </div>
@@ -215,12 +215,12 @@ export function ProjectCard({ p }: { p: Project }) {
       </div>
 
       {issue && p.status === 'active' ? (
-        <div className={cx('mt-4 flex items-start gap-2 rounded-xl px-3 py-2 text-[11px] leading-5', m.health === 'red' ? 'bg-bad/[0.07] text-bad' : 'bg-warn/[0.09] text-warn')}>
+        <div className={cx('mt-4 flex items-start gap-2 rounded-xl px-3 py-2 text-[0.6875rem] leading-5', m.health === 'red' ? 'bg-bad/[0.07] text-bad' : 'bg-warn/[0.09] text-warn')}>
           <AlertTriangle size={13} className="mt-0.5 shrink-0" />
           <span className="line-clamp-2">{issue.text}</span>
         </div>
       ) : m.nextMilestone ? (
-        <div className="mt-4 rounded-xl bg-muted/70 px-3 py-2 text-[11px] text-sub">
+        <div className="mt-4 rounded-xl bg-muted/70 px-3 py-2 text-[0.6875rem] text-sub">
           {L('بعدی', 'Next')}: <span className="text-ink">{m.nextMilestone.title}</span> · {fmtDayMonth(m.nextMilestone.planned_date)}
         </div>
       ) : (
@@ -246,7 +246,7 @@ function AvatarStackLite({ names }: { names: string[] }) {
       {names.slice(0, 3).map((n) => (
         <Avatar key={n} name={n} size="xs" ring />
       ))}
-      {names.length > 3 && <span className="grid h-5 min-w-5 place-items-center rounded-full bg-muted px-1 text-[9px] ring-2 ring-surface">+{fa(names.length - 3)}</span>}
+      {names.length > 3 && <span className="grid h-5 min-w-5 place-items-center rounded-full bg-muted px-1 text-[0.5625rem] ring-2 ring-surface">+{fa(names.length - 3)}</span>}
     </span>
   )
 }

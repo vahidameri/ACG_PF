@@ -59,13 +59,13 @@ export default function Report() {
           <header className="bg-band px-10 py-9 text-on-band print:bg-black">
             <div className="flex items-start justify-between">
               <AcgLogo className="h-7 text-white" />
-              <div className="text-end font-mono text-[11px] uppercase tracking-[0.18em] text-band-sub">
+              <div className="text-end font-mono text-[0.6875rem] uppercase tracking-[0.18em] text-band-sub">
                 <div>{L('محرمانه · داخلی', 'Confidential · internal')}</div>
                 <div className="mt-1 num">{fmtDate(today, 'long')}</div>
               </div>
             </div>
             <h2 className="display mt-10 text-4xl leading-tight">{L('وضعیت پورتفولیو پروژه‌ها', 'Portfolio status')}</h2>
-            <div className="mt-8 grid grid-cols-2 border-t border-band-line sm:grid-cols-5">
+            <div className="mt-8 grid grid-cols-2 border-t border-band-line @sm:grid-cols-5">
               {[
                 [L('پروژه‌های جاری', 'Live'), fa(s.live.length), ''],
                 [L('سالم', 'On track'), fa(s.counts.green), 'text-[#7fe0b0]'],
@@ -73,7 +73,7 @@ export default function Report() {
                 [L('در خطر', 'Off track'), fa(s.counts.red), 'text-[#ff8a9a]'],
                 [L('میانگین پیشرفت', 'Avg. progress'), `${fa(s.avgProgress)}%`, ''],
               ].map(([l, v, c]) => (
-                <div key={l} className="border-band-line py-4 pe-4 sm:border-e sm:ps-4 sm:first:ps-0 sm:last:border-e-0">
+                <div key={l} className="border-band-line py-4 pe-4 @sm:border-e @sm:ps-4 @sm:first:ps-0 @sm:last:border-e-0">
                   <div className={cx('display text-3xl num', c)}>{v}</div>
                   <div className="mt-1 text-xs text-band-sub">{l}</div>
                 </div>
@@ -105,7 +105,7 @@ export default function Report() {
                       <tr key={p.id}>
                         <td className="py-3 pe-4">
                           <div className="font-semibold">{p.name}</div>
-                          <div className="text-[11px] text-sub">{p.owner}</div>
+                          <div className="text-[0.6875rem] text-sub">{p.owner}</div>
                         </td>
                         <td className="td">
                           <HealthBadge h={m.health} />
@@ -151,13 +151,13 @@ export default function Report() {
               </div>
             </section>
 
-            <section className="grid gap-10 md:grid-cols-2">
+            <section className="grid gap-10 @md:grid-cols-2">
               <div>
                 <div className="eyebrow mb-4">03 — {L('ریسک‌ها و مسائل کلیدی', 'Key risks & issues')}</div>
                 <ul className="space-y-3">
                   {topRisks.map((r) => (
                     <li key={r.id} className="flex items-start gap-3 text-sm">
-                      <span className={cx('mt-0.5 rounded-md px-1.5 text-[11px] font-bold text-white num', riskScore(r) >= 15 ? 'bg-bad' : riskScore(r) >= 8 ? 'bg-warn' : 'bg-good')}>{fa(riskScore(r))}</span>
+                      <span className={cx('mt-0.5 rounded-md px-1.5 text-[0.6875rem] font-bold text-white num', riskScore(r) >= 15 ? 'bg-bad' : riskScore(r) >= 8 ? 'bg-warn' : 'bg-good')}>{fa(riskScore(r))}</span>
                       <div>
                         {r.title} <span className="text-xs text-sub">({lbl(RISK_TYPE, r.type)} · {pname(r.project_id)})</span>
                         <div className="text-xs text-sub">{r.mitigation}</div>
@@ -193,7 +193,7 @@ export default function Report() {
               </div>
             </section>
 
-            <footer className="flex flex-wrap items-center gap-4 border-t border-line pt-4 text-[11px] text-sub">
+            <footer className="flex flex-wrap items-center gap-4 border-t border-line pt-4 text-[0.6875rem] text-sub">
               {(['green', 'amber', 'red'] as const).map((h) => (
                 <span key={h} className="flex items-center gap-1.5">
                   <HealthDot h={h} /> {lbl(HEALTH, h)}

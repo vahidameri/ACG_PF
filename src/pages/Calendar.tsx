@@ -111,7 +111,37 @@ export default function CalendarPage() {
           </Toolbar>
         </div>
 
-        <div className="grid gap-4 xl:grid-cols-[1fr_340px]">
+        {/* Narrow screens: agenda list of the month's days that have something on them */}
+        <div className="space-y-3 @lg:hidden">
+          {cells
+            .filter((c) => !c.out)
+            .map(({ d }) => {
+              const it = itemsOn(d)
+              const n = it.tasks.length + it.fus.length + it.ms.length + it.sprintStarts.length
+              if (!n && d !== today) return null
+              return (
+                <div key={d} className={cx('card p-4', d === today && 'ring-2 ring-ink')}>
+                  <div className="mb-2 flex items-baseline gap-2">
+                    <span className="display text-2xl num">{fa(dayNum(d))}</span>
+                    <span className="text-sm text-sub">{fmtWeekday(d)}</span>
+                    {d === today && <span className="chip ms-auto bg-ink text-surface">{L('امروز', 'Today')}</span>}
+                  </div>
+                  {n === 0 ? (
+                    <div className="text-xs text-sub">{L('برنامه‌ای نیست', 'Nothing scheduled')}</div>
+                  ) : (
+                    <div className="space-y-0.5">
+                      {it.ms.map((m) => <Row key={m.id} onClick={() => open('Milestones', m as never)} icon={<Flag size={14} className="text-bad" />} title={m.title} sub={db.Projects.find((p) => p.id === m.project_id)?.name} />)}
+                      {it.sprintStarts.map((x) => <Row key={x.id} icon={<Zap size={14} className="text-brand" />} title={x.name} sub={x.goal} />)}
+                      {it.fus.map((f) => <Row key={f.id} onClick={() => open('FollowUps', f as never)} icon={<BellRing size={14} className="text-warn" />} title={f.subject} sub={f.person} />)}
+                      {it.tasks.map((t) => <Row key={t.id} onClick={() => open('Tasks', t as never)} icon={<StatusIcon s={t.status} size={14} />} title={t.title} sub={t.assignee} />)}
+                    </div>
+                  )}
+                </div>
+              )
+            })}
+        </div>
+
+        <div className="hidden gap-4 @lg:grid @2xl:grid-cols-[1fr_22rem]">
           <div className="card overflow-hidden">
             <div className="grid grid-cols-7 border-b border-line">
               {weekdays.map((w) => (
@@ -134,11 +164,11 @@ export default function CalendarPage() {
                   <div
                     key={d}
                     onClick={() => setSel(d)}
-                    className={cx('group min-h-[124px] cursor-pointer border-b border-e border-line p-1.5 transition [&:nth-child(7n)]:border-e-0', out && 'bg-muted/40', sel === d && 'bg-brand-soft/20', 'hover:bg-muted/50')}
+                    className={cx('group min-h-[7.75rem] cursor-pointer border-b border-e border-line p-1.5 transition [&:nth-child(7n)]:border-e-0', out && 'bg-muted/40', sel === d && 'bg-brand-soft/20', 'hover:bg-muted/50')}
                   >
                     <div className="mb-1 flex items-center justify-between px-1">
                       <span className={cx('grid h-7 min-w-7 place-items-center rounded-full px-1 text-sm num', isToday ? 'bg-ink font-semibold text-surface' : out ? 'text-sub/50' : 'text-ink/80')}>{fa(dayNum(d))}</span>
-                      {all.length > 3 && <span className="text-[10px] text-sub num">+{fa(all.length - 3)}</span>}
+                      {all.length > 3 && <span className="text-[0.625rem] text-sub num">+{fa(all.length - 3)}</span>}
                     </div>
                     <div className="space-y-0.5">{all.slice(0, 3).map((x) => x.el)}</div>
                   </div>
@@ -206,7 +236,7 @@ function Pill({ tone, icon, text, onClick, done }: { tone: keyof typeof pillTone
         onClick()
       }}
       title={text}
-      className={cx('flex w-full items-center gap-1 rounded-md px-1.5 py-0.5 text-start text-[11px] leading-4 transition hover:brightness-95', pillTone[tone])}
+      className={cx('flex w-full items-center gap-1 rounded-md px-1.5 py-0.5 text-start text-[0.6875rem] leading-4 transition hover:brightness-95', pillTone[tone])}
     >
       <span className="shrink-0">{icon}</span>
       <span className={cx('truncate', done && 'line-through')}>{text}</span>
@@ -227,7 +257,7 @@ function Row({ icon, title, sub, onClick }: { icon: React.ReactNode; title: stri
       <span className="mt-0.5">{icon}</span>
       <span className="min-w-0">
         <span className="block text-sm leading-5">{title}</span>
-        {sub && <span className="block truncate text-[11px] text-sub">{sub}</span>}
+        {sub && <span className="block truncate text-[0.6875rem] text-sub">{sub}</span>}
       </span>
     </button>
   )

@@ -16,7 +16,7 @@ export function SignIn() {
         <AcgLogo className="h-6 text-white" />
         <div className="flex rounded-full border border-white/10 p-0.5">
           {(['fa', 'en'] as const).map((l) => (
-            <button key={l} onClick={() => setLang(l)} className={cx('h-7 rounded-full px-3 text-[11px] font-semibold', lang === l ? 'bg-white text-band' : 'text-white/60')}>
+            <button key={l} onClick={() => setLang(l)} className={cx('h-7 rounded-full px-3 text-[0.6875rem] font-semibold', lang === l ? 'bg-white text-band' : 'text-white/60')}>
               {l === 'fa' ? 'فا' : 'EN'}
             </button>
           ))}
@@ -40,7 +40,7 @@ export function SignIn() {
               {L('ورود', 'Enter')} <ArrowRight size={15} className="rtl:rotate-180" />
             </button>
           </form>
-          <button onClick={() => setConfig({ apiUrl: '', token: '' })} className="mt-5 font-mono text-[11px] uppercase tracking-[0.16em] text-white/50 hover:text-white">
+          <button onClick={() => setConfig({ apiUrl: '', token: '' })} className="mt-5 font-mono text-[0.6875rem] uppercase tracking-[0.16em] text-white/50 hover:text-white">
             {L('مشاهده‌ی نسخه‌ی نمایشی', 'Explore the demo')} →
           </button>
         </div>

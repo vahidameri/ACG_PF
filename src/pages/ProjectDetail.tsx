@@ -146,7 +146,7 @@ export default function ProjectDetail() {
 
         <div className="mt-4 fade-in" key={tab}>
           {tab === 'overview' && (
-            <div className="grid gap-4 xl:grid-cols-3">
+            <div className="grid gap-4 @xl:grid-cols-3">
               <Card eyebrow={L('تحلیل خودکار', 'Automatic analysis')} title={L('چرا این وضعیت؟', 'Why this status?')}>
                 <div className="mb-4 flex items-end gap-3">
                   <div className={cx('display text-5xl num', healthText[m.health])}>{fa(m.score)}</div>
@@ -165,7 +165,7 @@ export default function ProjectDetail() {
                   ))}
                 </ul>
                 <div className="mt-5">
-                  <div className="mb-1.5 flex justify-between text-[11px] text-sub">
+                  <div className="mb-1.5 flex justify-between text-[0.6875rem] text-sub">
                     <span>{L('پیشرفت', 'Progress')} {fa(m.progress)}%</span>
                     <span>{L('زمان', 'Time')} {fa(m.elapsed)}%</span>
                   </div>
@@ -185,7 +185,7 @@ export default function ProjectDetail() {
                   <div className="px-2 pb-2">{fus.length ? fus.map((f) => <FollowUpRow key={f.id} f={f} compact />) : <Empty />}</div>
                 </Card>
               </div>
-              <div className="min-w-0 xl:col-span-2">
+              <div className="min-w-0 @xl:col-span-2">
                 {updates[0] ? (
                   <>
                     <div className="eyebrow mb-2 px-1">{L('آخرین گزارش وضعیت', 'Latest status update')}</div>
@@ -221,7 +221,7 @@ export default function ProjectDetail() {
                       <div className="min-w-0 flex-1">
                         <div className="flex items-baseline gap-2 text-sm">
                           <span className="font-medium">{c.author}</span>
-                          <span className="text-[11px] text-sub">{timeAgo(stampToDate(c.created_at))}</span>
+                          <span className="text-[0.6875rem] text-sub">{timeAgo(stampToDate(c.created_at))}</span>
                         </div>
                         <div className="mt-0.5 text-sm leading-7 text-ink/85">{renderMentions(c.body, db.Team.map((t) => t.name))}</div>
                       </div>
@@ -229,7 +229,7 @@ export default function ProjectDetail() {
                   ))}
                 </div>
               </Card>
-              <Card className="xl:col-span-2" eyebrow={L('فعالیت', 'Activity')} title={L('آنچه اخیراً در این پروژه گذشت', 'What happened recently')}>
+              <Card className="@xl:col-span-2" eyebrow={L('فعالیت', 'Activity')} title={L('آنچه اخیراً در این پروژه گذشت', 'What happened recently')}>
                 <ActivityFeed items={buildActivity(db, p.id, 10)} showProject={false} />
               </Card>
               <Card eyebrow={L('مشخصات', 'Key facts')} title={L('پروژه در یک نگاه', 'At a glance')}>
@@ -250,7 +250,7 @@ export default function ProjectDetail() {
                   ))}
                 </dl>
                 <div className="mt-5">
-                  <div className="mb-1.5 flex justify-between text-[11px] text-sub">
+                  <div className="mb-1.5 flex justify-between text-[0.6875rem] text-sub">
                     <span>{L('هزینه‌شده', 'Spent')} {money(p.spent)}</span>
                     <span>{L('بودجه', 'Budget')} {money(p.budget)}</span>
                   </div>
@@ -258,7 +258,7 @@ export default function ProjectDetail() {
                     <div className={cx('h-full rounded-full', m.budgetUse > 100 ? 'bg-bad' : 'bg-ink')} style={{ width: `${Math.min(100, m.budgetUse)}%` }} />
                     <div className="absolute inset-y-0 w-[2px] bg-good" style={{ insetInlineStart: `${m.progress}%` }} title={L('پیشرفت', 'Progress')} />
                   </div>
-                  <div className="mt-1.5 text-[11px] text-sub">{L('خط سبز = پیشرفت کار؛ اگر نوار از آن جلوتر باشد، هزینه از کار جلو افتاده.', 'Green line = progress; if the bar runs past it, spend is ahead of delivery.')}</div>
+                  <div className="mt-1.5 text-[0.6875rem] text-sub">{L('خط سبز = پیشرفت کار؛ اگر نوار از آن جلوتر باشد، هزینه از کار جلو افتاده.', 'Green line = progress; if the bar runs past it, spend is ahead of delivery.')}</div>
                 </div>
                 <div className="mt-5 flex items-center justify-between rounded-2xl bg-muted/60 px-4 py-3">
                   <span className="text-xs text-sub">{L('روند سلامت (گزارش‌ها)', 'Health trend (updates)')}</span>
@@ -305,7 +305,7 @@ export default function ProjectDetail() {
                   <VelocityChart sprints={sprints} db={db} />
                 </Card>
               )}
-              <div className="grid gap-4 lg:grid-cols-2">
+              <div className="grid gap-4 @lg:grid-cols-2">
                 {sprints.map((s) => (
                   <Card
                     key={s.id}
@@ -329,7 +329,7 @@ export default function ProjectDetail() {
           )}
 
           {tab === 'scope' && (
-            <div className="grid gap-4 lg:grid-cols-2">
+            <div className="grid gap-4 @lg:grid-cols-2">
               {(['in', 'out'] as const).map((type) => (
                 <Card key={type} eyebrow={L('اسکوپ', 'Scope')} title={type === 'in' ? L('داخل اسکوپ', 'In scope') : L('خارج از اسکوپ', 'Out of scope')} action={<AddBtn sheet="Scope" label={L('آیتم', 'Item')} extra={{ type }} />}>
                   <div className="space-y-2">
@@ -352,7 +352,7 @@ export default function ProjectDetail() {
                   </div>
                 </Card>
               ))}
-              <Card className="lg:col-span-2" eyebrow="Change log" title={L('تغییرات اسکوپ', 'Scope changes')}>
+              <Card className="@lg:col-span-2" eyebrow="Change log" title={L('تغییرات اسکوپ', 'Scope changes')}>
                 {scope.filter((s) => s.status === 'changed' || s.status === 'removed').length === 0 ? (
                   <Empty text={L('تغییری در اسکوپ ثبت نشده', 'No scope changes logged')} />
                 ) : (
@@ -375,11 +375,11 @@ export default function ProjectDetail() {
           )}
 
           {tab === 'risks' && (
-            <div className="grid gap-4 lg:grid-cols-5">
-              <Card className="lg:col-span-2" eyebrow={L('ماتریس', 'Matrix')} title={L('احتمال × اثر', 'Probability × impact')}>
+            <div className="grid gap-4 @lg:grid-cols-5">
+              <Card className="@lg:col-span-2" eyebrow={L('ماتریس', 'Matrix')} title={L('احتمال × اثر', 'Probability × impact')}>
                 <RiskMatrix risks={risks.filter((r) => r.status !== 'closed')} onPick={(r) => open('Risks', r as never)} />
               </Card>
-              <Card className="lg:col-span-3" eyebrow="RAID" title={L('ریسک، مسئله، وابستگی و تصمیم', 'Risks, issues, dependencies, decisions')} action={<AddBtn sheet="Risks" label={L('مورد جدید', 'New item')} />}>
+              <Card className="@lg:col-span-3" eyebrow="RAID" title={L('ریسک، مسئله، وابستگی و تصمیم', 'Risks, issues, dependencies, decisions')} action={<AddBtn sheet="Risks" label={L('مورد جدید', 'New item')} />}>
                 <div className="space-y-2">
                   {risks.map((r, i) => (
                     <button key={r.id} onClick={() => open('Risks', r as never)} className={cx('flex w-full items-start gap-3 rounded-2xl border border-line p-3.5 text-start transition hover:border-line-strong', r.status === 'closed' && 'opacity-60')}>
@@ -391,7 +391,7 @@ export default function ProjectDetail() {
                           <Chip>{lbl(RISK_STATUS, r.status)}</Chip>
                         </div>
                         <div className="mt-1 text-xs leading-5 text-sub">{r.mitigation}</div>
-                        <div className="mt-1 text-[11px] text-sub">
+                        <div className="mt-1 text-[0.6875rem] text-sub">
                           {r.owner} · {relDays(r.due_date)}
                         </div>
                       </div>
@@ -420,7 +420,7 @@ export default function ProjectDetail() {
 
           {tab === 'team' && (
             <Card eyebrow={L('تیم', 'Team')} title={L('اعضا و درصد تخصیص', 'Members & allocation')} action={<AddBtn sheet="Allocations" label={L('تخصیص', 'Allocation')} />}>
-              <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+              <div className="grid gap-3 @sm:grid-cols-2 @lg:grid-cols-3">
                 {allocs.map((a) => {
                   const mem = db.Team.find((x) => x.id === a.member_id)
                   if (!mem) return null
@@ -438,7 +438,7 @@ export default function ProjectDetail() {
                           <Progress value={Number(a.percent)} />
                           <span className="text-xs num">{fa(a.percent)}%</span>
                         </div>
-                        {total > 100 && <div className="mt-1 text-[11px] text-bad">{L(`مجموع تخصیص ${fa(total)}٪ — بیش از ظرفیت`, `Total ${total}% — over capacity`)}</div>}
+                        {total > 100 && <div className="mt-1 text-[0.6875rem] text-bad">{L(`مجموع تخصیص ${fa(total)}٪ — بیش از ظرفیت`, `Total ${total}% — over capacity`)}</div>}
                       </div>
                     </button>
                   )
