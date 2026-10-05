@@ -1,0 +1,149 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --bg: 246 247 251;
+  --surface: 255 255 255;
+  --muted: 241 243 248;
+  --line: 228 231 239;
+  --ink: 17 24 39;
+  --sub: 100 108 128;
+  --brand: 79 70 229;
+  --good: 16 163 106;
+  --warn: 217 141 6;
+  --bad: 225 55 72;
+  color-scheme: light;
+}
+
+.dark {
+  --bg: 11 13 20;
+  --surface: 20 23 33;
+  --muted: 28 32 45;
+  --line: 40 45 61;
+  --ink: 236 238 245;
+  --sub: 148 155 176;
+  --brand: 129 120 255;
+  --good: 52 199 140;
+  --warn: 245 176 50;
+  --bad: 248 96 112;
+  color-scheme: dark;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+}
+
+body {
+  @apply bg-bg text-ink font-sans antialiased;
+  font-feature-settings: 'ss01';
+}
+
+* {
+  scrollbar-width: thin;
+  scrollbar-color: rgb(var(--line)) transparent;
+}
+
+input,
+select,
+textarea,
+button {
+  font-family: inherit;
+}
+
+@layer components {
+  .card {
+    @apply bg-surface border border-line rounded-2xl shadow-card;
+  }
+  .btn {
+    @apply inline-flex items-center justify-center gap-1.5 rounded-xl px-3.5 h-9 text-sm font-medium transition select-none disabled:opacity-50 disabled:pointer-events-none whitespace-nowrap;
+  }
+  .btn-primary {
+    @apply btn bg-brand text-white hover:brightness-110 active:brightness-95 shadow-sm;
+  }
+  .btn-ghost {
+    @apply btn text-ink/80 hover:bg-muted;
+  }
+  .btn-outline {
+    @apply btn border border-line bg-surface hover:bg-muted;
+  }
+  .btn-danger {
+    @apply btn text-bad hover:bg-bad/10;
+  }
+  .input {
+    @apply w-full h-10 rounded-xl border border-line bg-surface px-3 text-sm outline-none transition placeholder:text-sub/70 focus:border-brand focus:ring-4 focus:ring-brand/15;
+  }
+  textarea.input {
+    @apply h-auto py-2 leading-7;
+  }
+  .label {
+    @apply block text-xs font-medium text-sub mb-1.5;
+  }
+  .chip {
+    @apply inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-medium leading-5 whitespace-nowrap;
+  }
+  .th {
+    @apply text-right text-[11px] font-semibold text-sub uppercase tracking-wide px-3 py-2.5 whitespace-nowrap;
+  }
+  .td {
+    @apply px-3 py-2.5 text-sm align-middle;
+  }
+  .num {
+    font-variant-numeric: tabular-nums;
+  }
+}
+
+.fade-in {
+  animation: fade 0.18s ease-out;
+}
+.slide-in {
+  animation: slide 0.22s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+@keyframes fade {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+@keyframes slide {
+  from {
+    opacity: 0;
+    transform: translateX(-24px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+/* Recharts in RTL: keep chart internals LTR so axes don't flip oddly */
+.recharts-wrapper {
+  direction: ltr;
+}
+.recharts-tooltip-wrapper {
+  direction: rtl;
+}
+
+@media print {
+  .no-print {
+    display: none !important;
+  }
+  body {
+    background: white;
+  }
+  .card {
+    box-shadow: none;
+    break-inside: avoid;
+  }
+  .print-full {
+    margin: 0 !important;
+    padding: 0 !important;
+    max-width: none !important;
+  }
+}
