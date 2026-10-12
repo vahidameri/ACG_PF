@@ -6,7 +6,7 @@ import { uid } from '../lib/api'
 import { todayISO } from '../lib/jalali'
 import { L, tr, type T2 } from '../lib/i18n'
 import {
-  CHANNEL, FOLLOWUP_STATUS, HEALTH, MILESTONE_STATUS, PRIORITY, PROJECT_STATUS, RISK_STATUS, RISK_TYPE, SCOPE_STATUS, SPRINT_STATUS, TASK_STATUS,
+  CHANNEL, CONFIDENCE, DELIVERABLE_STATUS, MEETING_SERIES, MEETING_STATUS, TIMEOFF_KIND, FOLLOWUP_STATUS, HEALTH, MILESTONE_STATUS, PRIORITY, PROJECT_STATUS, RISK_STATUS, RISK_TYPE, SCOPE_STATUS, SPRINT_STATUS, TASK_STATUS,
 } from '../lib/labels'
 import { Sheet, cx } from './ui'
 import { DatePicker } from './DatePicker'
@@ -42,7 +42,7 @@ export const SCHEMAS: Record<Exclude<SheetName, 'Comments'>, { title: T2; prefix
       { key: 'tags', label: ['برچسب‌ها', 'Tags'], type: 'text', half: true, placeholder: ['با کاما جدا کنید', 'Comma separated'] },
       { key: 'track', label: ['تیم (ترک)', 'Track'], type: 'select', options: { '': ['خودکار از روی مسئول', 'Auto (from assignee)'], product: ['پروداکت', 'Product'], tech: ['تک', 'Tech'] }, half: true },
     ],
-    defaults: () => ({ status: 'todo', priority: 'medium', points: 0, created_at: todayISO(), track: '', depends_on: '' }),
+    defaults: () => ({ status: 'todo', priority: 'medium', points: 0, created_at: todayISO(), track: '', depends_on: '', meeting_id: '' }),
   },
   FollowUps: {
     title: ['فالوآپ', 'Follow-up'],
@@ -163,9 +163,10 @@ export const SCHEMAS: Record<Exclude<SheetName, 'Comments'>, { title: T2; prefix
       { key: 'role', label: ['نقش', 'Role'], type: 'text', half: true },
       { key: 'team', label: ['تیم', 'Team'], type: 'text', half: true },
       { key: 'track', label: ['ترک', 'Track'], type: 'select', options: { '': ['—', '—'], product: ['پروداکت', 'Product'], tech: ['تک', 'Tech'] }, half: true },
+      { key: 'capacity', label: ['ظرفیت (٪ یک نفر تمام‌وقت)', 'Capacity (% of one full-time person)'], type: 'number', half: true, placeholder: ['۱۰۰ = تمام‌وقت', '100 = full-time'] },
       { key: 'email', label: ['ایمیل', 'Email'], type: 'text' },
     ],
-    defaults: () => ({}),
+    defaults: () => ({ capacity: 100 }),
   },
   Allocations: {
     title: ['تخصیص منابع', 'Allocation'],
@@ -174,8 +175,56 @@ export const SCHEMAS: Record<Exclude<SheetName, 'Comments'>, { title: T2; prefix
       { key: 'member_id', label: ['عضو', 'Member'], type: 'member', half: true, required: true },
       { key: 'project_id', label: ['پروژه', 'Project'], type: 'project', half: true, required: true },
       { key: 'percent', label: ['درصد تخصیص', 'Allocation %'], type: 'number' },
+      { key: 'start_date', label: ['از تاریخ (خالی = از الان)', 'From (blank = now)'], type: 'date', half: true },
+      { key: 'end_date', label: ['تا تاریخ (خالی = نامحدود)', 'Until (blank = open)'], type: 'date', half: true },
     ],
-    defaults: () => ({ percent: 50 }),
+    defaults: () => ({ percent: 50, start_date: '', end_date: '' }),
+  },
+  Deliverables: {
+    title: ['تحویلی', 'Deliverable'],
+    prefix: 'D',
+    fields: [
+      { key: 'title', label: ['چه چیزی تحویل می‌شود؟', 'What gets delivered?'], type: 'text', required: true, placeholder: ['مثلاً: نسخه‌ی بتا روی محیط تست', 'e.g. Beta on staging'] },
+      { key: 'project_id', label: ['پروژه', 'Project'], type: 'project', half: true, required: true },
+      { key: 'owner', label: ['مسئول', 'Owner'], type: 'person', half: true },
+      { key: 'target_date', label: ['تاریخ تحویل', 'Target date'], type: 'date', half: true, required: true },
+      { key: 'track', label: ['تیم (ترک)', 'Track'], type: 'select', options: { '': ['خودکار از روی مسئول', 'Auto (from owner)'], product: ['پروداکت', 'Product'], tech: ['تک', 'Tech'] }, half: true },
+      { key: 'status', label: ['وضعیت', 'Status'], type: 'select', options: DELIVERABLE_STATUS, half: true },
+      { key: 'confidence', label: ['اطمینان', 'Confidence'], type: 'select', options: CONFIDENCE, half: true },
+      { key: 'baseline_date', label: ['تاریخ تعهد اولیه (برای سنجش جابجایی)', 'Baseline date (to measure slippage)'], type: 'date', half: true },
+      { key: 'delivered_date', label: ['تاریخ تحویل واقعی', 'Actual delivery'], type: 'date', half: true },
+      { key: 'notes', label: ['یادداشت', 'Notes'], type: 'textarea' },
+    ],
+    defaults: () => ({ status: 'planned', confidence: 'medium', track: '', baseline_date: '', delivered_date: '', notes: '' }),
+  },
+  Meetings: {
+    title: ['جلسه', 'Meeting'],
+    prefix: 'MT',
+    fields: [
+      { key: 'title', label: ['عنوان', 'Title'], type: 'text', required: true },
+      { key: 'series', label: ['نوع / سری', 'Series'], type: 'select', options: MEETING_SERIES, half: true },
+      { key: 'project_id', label: ['پروژه (برای ویکلی پروژه)', 'Project (for project weeklies)'], type: 'project', half: true },
+      { key: 'date', label: ['تاریخ', 'Date'], type: 'date', half: true, required: true },
+      { key: 'time', label: ['ساعت', 'Time'], type: 'text', half: true, placeholder: ['10:00', '10:00'] },
+      { key: 'facilitator', label: ['برگزارکننده', 'Facilitator'], type: 'person', half: true },
+      { key: 'status', label: ['وضعیت', 'Status'], type: 'select', options: MEETING_STATUS, half: true },
+      { key: 'attendees', label: ['حاضران (با کاما جدا کنید)', 'Attendees (comma separated)'], type: 'text' },
+      { key: 'notes', label: ['صورت‌جلسه', 'Minutes'], type: 'textarea' },
+      { key: 'decisions', label: ['تصمیم‌ها (هر خط یک مورد)', 'Decisions (one per line)'], type: 'textarea' },
+    ],
+    defaults: () => ({ series: 'portfolio', status: 'scheduled', date: todayISO(), time: '10:00', notes: '', decisions: '', project_id: '' }),
+  },
+  TimeOff: {
+    title: ['مرخصی / عدم حضور', 'Time off'],
+    prefix: 'TO',
+    fields: [
+      { key: 'member_id', label: ['عضو', 'Member'], type: 'member', half: true, required: true },
+      { key: 'kind', label: ['نوع', 'Type'], type: 'select', options: TIMEOFF_KIND, half: true },
+      { key: 'start_date', label: ['از', 'From'], type: 'date', half: true, required: true },
+      { key: 'end_date', label: ['تا', 'Until'], type: 'date', half: true },
+      { key: 'note', label: ['توضیح', 'Note'], type: 'text' },
+    ],
+    defaults: () => ({ kind: 'leave', start_date: todayISO(), note: '' }),
   },
 }
 
@@ -319,6 +368,12 @@ function EditorModal({ sheet, row, isNew, onClose }: { sheet: EditableSheet; row
     // Auto-stamp completion dates so burndown & history stay accurate.
     if (sheet === 'Tasks') out.completed_at = out.status === 'done' ? out.completed_at || todayISO() : ''
     if (sheet === 'FollowUps') out.done_at = out.status === 'done' ? out.done_at || todayISO() : ''
+    // The first committed date becomes the baseline; later moves show up as slippage.
+    if (sheet === 'Deliverables') {
+      if (!out.baseline_date) out.baseline_date = out.target_date
+      out.delivered_date = out.status === 'delivered' ? out.delivered_date || todayISO() : ''
+    }
+    if (sheet === 'TimeOff' && !out.end_date) out.end_date = out.start_date
     try {
       await upsert(sheet, out as never)
       toast(isNew ? L(`${title} ایجاد شد`, `${title} created`) : L('تغییرات ذخیره شد', 'Changes saved'))

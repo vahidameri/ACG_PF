@@ -1,4 +1,4 @@
-import type { Health, Priority, ProjectStatus, TaskStatus, FollowUpStatus, Risk, Milestone, Sprint, ScopeItem, FollowUp } from './types'
+import type { Deliverable, Meeting, MeetingSeries, TimeOff, Health, Priority, ProjectStatus, TaskStatus, FollowUpStatus, Risk, Milestone, Sprint, ScopeItem, FollowUp } from './types'
 import type { T2 } from './i18n'
 
 export const PROJECT_STATUS: Record<ProjectStatus, T2> = {
@@ -90,3 +90,33 @@ export const ROLE: Record<string, T2> = {
 
 /** Bilingual label maps as option lists for selects. */
 export const options = (map: Record<string, T2>, lang: 'fa' | 'en') => Object.entries(map).map(([value, l]) => ({ value, label: lang === 'fa' ? l[0] : l[1] }))
+
+export const DELIVERABLE_STATUS: Record<Deliverable['status'], T2> = {
+  planned: ['برنامه‌ریزی‌شده', 'Planned'],
+  in_progress: ['در جریان', 'In progress'],
+  at_risk: ['در خطر', 'At risk'],
+  delivered: ['تحویل شد', 'Delivered'],
+  dropped: ['حذف شد', 'Dropped'],
+}
+export const CONFIDENCE: Record<Deliverable['confidence'], T2> = {
+  high: ['اطمینان بالا', 'High confidence'],
+  medium: ['اطمینان متوسط', 'Medium confidence'],
+  low: ['اطمینان پایین', 'Low confidence'],
+}
+export const MEETING_SERIES: Record<MeetingSeries, T2> = {
+  portfolio: ['ویکلی پورتفولیو', 'Portfolio weekly'],
+  product: ['ویکلی پروداکت', 'Product weekly'],
+  tech: ['ویکلی تک', 'Tech weekly'],
+  project: ['ویکلی پروژه', 'Project weekly'],
+  other: ['سایر جلسات', 'Other'],
+}
+export const MEETING_STATUS: Record<Meeting['status'], T2> = {
+  scheduled: ['برنامه‌ریزی‌شده', 'Scheduled'],
+  held: ['برگزار شد', 'Held'],
+  cancelled: ['لغو شد', 'Cancelled'],
+}
+export const TIMEOFF_KIND: Record<TimeOff['kind'], T2> = {
+  leave: ['مرخصی', 'Leave'],
+  training: ['آموزش', 'Training'],
+  other: ['سایر', 'Other'],
+}

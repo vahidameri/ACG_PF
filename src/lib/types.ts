@@ -78,6 +78,8 @@ export interface Task {
   track: Track | ''
   /** comma-separated task ids this task waits on (cross-team handoffs) */
   depends_on: string
+  /** set when the task is an action item agreed in a weekly meeting */
+  meeting_id: string
 }
 
 export type Track = 'product' | 'tech'
@@ -118,6 +120,8 @@ export interface Member {
   email: string
   team: string
   track: Track | ''
+  /** availability as % of one full-time person (100 = full-time, 50 = half-time, 600 = a team of six) */
+  capacity: number
 }
 
 export interface Allocation {
@@ -125,6 +129,9 @@ export interface Allocation {
   member_id: string
   project_id: string
   percent: number
+  /** optional window; blank = open-ended */
+  start_date: string
+  end_date: string
 }
 
 export interface Update {
@@ -137,6 +144,52 @@ export interface Update {
   done: string
   next: string
   blockers: string
+}
+
+export type DeliverableStatus = 'planned' | 'in_progress' | 'at_risk' | 'delivered' | 'dropped'
+export type Confidence = 'high' | 'medium' | 'low'
+
+/** Something a project commits to hand over on a date — the unit of the delivery plan. */
+export interface Deliverable {
+  id: string
+  project_id: string
+  title: string
+  track: Track | ''
+  owner: string
+  target_date: string
+  /** first committed date; kept when the target moves so slippage stays visible */
+  baseline_date: string
+  delivered_date: string
+  status: DeliverableStatus
+  confidence: Confidence
+  notes: string
+}
+
+export type MeetingSeries = 'portfolio' | 'product' | 'tech' | 'project' | 'other'
+
+export interface Meeting {
+  id: string
+  series: MeetingSeries
+  title: string
+  project_id: string
+  date: string
+  time: string
+  facilitator: string
+  /** comma-separated names */
+  attendees: string
+  status: 'scheduled' | 'held' | 'cancelled'
+  notes: string
+  /** one decision per line */
+  decisions: string
+}
+
+export interface TimeOff {
+  id: string
+  member_id: string
+  start_date: string
+  end_date: string
+  kind: 'leave' | 'training' | 'other'
+  note: string
 }
 
 export interface Comment {
@@ -160,6 +213,9 @@ export interface DB {
   Allocations: Allocation[]
   Updates: Update[]
   Comments: Comment[]
+  Deliverables: Deliverable[]
+  Meetings: Meeting[]
+  TimeOff: TimeOff[]
 }
 
 export type SheetName = keyof DB

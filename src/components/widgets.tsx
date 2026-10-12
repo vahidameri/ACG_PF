@@ -6,6 +6,7 @@ import type { Track } from '../lib/types'
 import type { DB, Risk, Sprint, Task, TaskStatus, Update, Milestone } from '../lib/types'
 import { useStore } from '../lib/store'
 import { useEditor } from './Editor'
+import { useComposer } from './UpdateComposer'
 import { Avatar, Due, cx, HealthBadge, Chip, StatusIcon, PriorityIcon } from './ui'
 import { TASK_STATUS, TASK_STATUS_ORDER, MILESTONE_STATUS, HEALTH } from '../lib/labels'
 import type { Activity } from '../lib/activity'
@@ -239,11 +240,11 @@ export function MilestoneList({ milestones }: { milestones: Milestone[] }) {
 
 // ---------------- Weekly update card ----------------
 export function UpdateCard({ u, showProject }: { u: Update; showProject?: boolean }) {
-  const { open } = useEditor()
+  const { openComposer } = useComposer()
   const pname = useProjectName()
   const lines = (s: string) => String(s || '').split('\n').map((l) => l.trim()).filter(Boolean)
   return (
-    <div className="card card-hover cursor-pointer p-6" onClick={() => open('Updates', u as never)}>
+    <div className="card card-hover cursor-pointer p-6" onClick={() => openComposer({ update: u })}>
       <div className="flex items-center justify-between gap-2">
         <div className="flex items-center gap-3">
           <Avatar name={u.author} size="md" />

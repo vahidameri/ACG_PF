@@ -5,6 +5,8 @@ import type { DB, Health, Project } from './types'
 import { projectMetrics, riskScore, sprintDonePoints, isTaskOverdue } from './metrics'
 import { addDays, daysBetween, fa, todayISO } from './jalali'
 import { L, type T2 } from './i18n'
+import { allocActive, memberWeek } from './capacity'
+import { weekStart } from './weeks'
 
 export type Dim = 'schedule' | 'budget' | 'scope' | 'risk' | 'resourcing' | 'delivery'
 export const DIMS: Dim[] = ['schedule', 'budget', 'scope', 'risk', 'resourcing', 'delivery']
@@ -74,9 +76,12 @@ export function assess(p: Project, db: DB): Assessment {
         ? { h: 'amber', why: m.highRisks ? L('یک ریسک بحرانی', 'One critical risk') : L('اقدام ریسک عقب افتاده', 'Risk action overdue') }
         : { h: 'green', why: open.length ? L(`${fa(open.length)} ریسک کنترل‌شده`, `${open.length} risks under control`) : L('ریسک بازی نیست', 'No open risks') }
 
-  // Resourcing: people on this project who are over-allocated across the portfolio
-  const members = db.Allocations.filter((a) => a.project_id === p.id).map((a) => a.member_id)
-  const overloaded = members.filter((id) => db.Allocations.filter((a) => a.member_id === id).reduce((s, a) => s + Number(a.percent), 0) > 100)
+  // Resourcing: people on this project who are over capacity this week (net of leave)
+  const members = db.Allocations.filter((a) => a.project_id === p.id && allocActive(a, weekStart())).map((a) => a.member_id)
+  const overloaded = members.filter((id) => {
+    const mem = db.Team.find((x) => x.id === id)
+    return mem && memberWeek(db, mem).load > 100
+  })
   const resourcing: DimRating =
     overloaded.length >= 3
       ? { h: 'red', why: L(`${fa(overloaded.length)} نفر بیش از ظرفیت`, `${overloaded.length} people over capacity`) }

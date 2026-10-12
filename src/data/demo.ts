@@ -1,9 +1,10 @@
 // Sample data for the demo mode: the real ACG team and project list, with illustrative
 // (generic product-lifecycle) milestones, tasks, budgets and risks. Replace with real data
 // in the Google Sheet. Dates are relative to today so the demo always looks "live".
-import type { DB, Task, Milestone, Sprint, FollowUp, Risk, ScopeItem, Update, Allocation, Comment, Project, Health, Member } from '../lib/types'
-import { addDays, todayISO } from '../lib/jalali'
+import type { DB, Task, Milestone, Sprint, FollowUp, Risk, ScopeItem, Update, Allocation, Comment, Project, Health, Member, Deliverable, Meeting, TimeOff, Track } from '../lib/types'
+import { addDays, daysBetween, todayISO } from '../lib/jalali'
 import { locale } from '../lib/i18n'
+import { weekStart } from '../lib/weeks'
 
 const x = (fa: string, en: string) => (locale.lang === 'en' ? en : fa)
 
@@ -67,21 +68,22 @@ const MS_TEMPLATE: [number, string, string, number][] = [
 export function buildDemo(): DB {
   const t = todayISO()
   const d = (n: number) => addDays(t, n)
+  const daysBetweenToday = (iso: string) => daysBetween(t, iso)
   const me = P.vahid()
 
   const Team: Member[] = [
-    { id: 'm1', name: P.vahid(), role: x('مدیر پروگرم', 'Program Manager'), email: 'vahid.ameri@acg.example', team: 'PMO', track: '' },
-    { id: 'm2', name: P.jalil(), role: x('مدیرعامل', 'CEO'), email: 'jalil@acg.example', team: x('مدیریت', 'Leadership'), track: '' },
-    { id: 'm3', name: P.keyvan(), role: x('هد تک', 'Head of Tech'), email: 'keyvanian@acg.example', team: x('تک', 'Tech'), track: 'tech' },
-    { id: 'm4', name: P.mehrzad(), role: x('هد پروداکت', 'Head of Product'), email: 'mehrzad@acg.example', team: x('پروداکت', 'Product'), track: 'product' },
-    { id: 'm5', name: P.atena(), role: x('پروداکت منیجر', 'Product Manager'), email: 'athena@acg.example', team: x('پروداکت', 'Product'), track: 'product' },
-    { id: 'm6', name: P.sormeili(), role: x('پروداکت منیجر', 'Product Manager'), email: 'sormeili@acg.example', team: x('پروداکت', 'Product'), track: 'product' },
-    { id: 'm7', name: P.salemeh(), role: x('پروداکت منیجر', 'Product Manager'), email: 'salemeh@acg.example', team: x('پروداکت', 'Product'), track: 'product' },
-    { id: 'm8', name: P.mehrsa(), role: x('پروداکت منیجر', 'Product Manager'), email: 'mehrsa@acg.example', team: x('پروداکت', 'Product'), track: 'product' },
-    { id: 'm9', name: P.babak(), role: x('پروداکت منیجر', 'Product Manager'), email: 'babak@acg.example', team: x('پروداکت', 'Product'), track: 'product' },
-    { id: 'm10', name: P.amin(), role: x('پروداکت منیجر', 'Product Manager'), email: 'amin@acg.example', team: x('پروداکت', 'Product'), track: 'product' },
-    { id: 'm11', name: P.hanie(), role: x('پروداکت دیزاینر', 'Product Designer'), email: 'hanie@acg.example', team: x('پروداکت', 'Product'), track: 'product' },
-    { id: 'm12', name: P.tech(), role: x('مهندسی (تیمی)', 'Engineering (team)'), email: '', team: x('تک', 'Tech'), track: 'tech' },
+    { id: 'm1', name: P.vahid(), role: x('مدیر پروگرم', 'Program Manager'), email: 'vahid.ameri@acg.example', team: 'PMO', track: '', capacity: 100 },
+    { id: 'm2', name: P.jalil(), role: x('مدیرعامل', 'CEO'), email: 'jalil@acg.example', team: x('مدیریت', 'Leadership'), track: '', capacity: 100 },
+    { id: 'm3', name: P.keyvan(), role: x('هد تک', 'Head of Tech'), email: 'keyvanian@acg.example', team: x('تک', 'Tech'), track: 'tech', capacity: 100 },
+    { id: 'm4', name: P.mehrzad(), role: x('هد پروداکت', 'Head of Product'), email: 'mehrzad@acg.example', team: x('پروداکت', 'Product'), track: 'product', capacity: 100 },
+    { id: 'm5', name: P.atena(), role: x('پروداکت منیجر', 'Product Manager'), email: 'athena@acg.example', team: x('پروداکت', 'Product'), track: 'product', capacity: 100 },
+    { id: 'm6', name: P.sormeili(), role: x('پروداکت منیجر', 'Product Manager'), email: 'sormeili@acg.example', team: x('پروداکت', 'Product'), track: 'product', capacity: 100 },
+    { id: 'm7', name: P.salemeh(), role: x('پروداکت منیجر', 'Product Manager'), email: 'salemeh@acg.example', team: x('پروداکت', 'Product'), track: 'product', capacity: 100 },
+    { id: 'm8', name: P.mehrsa(), role: x('پروداکت منیجر', 'Product Manager'), email: 'mehrsa@acg.example', team: x('پروداکت', 'Product'), track: 'product', capacity: 100 },
+    { id: 'm9', name: P.babak(), role: x('پروداکت منیجر', 'Product Manager'), email: 'babak@acg.example', team: x('پروداکت', 'Product'), track: 'product', capacity: 100 },
+    { id: 'm10', name: P.amin(), role: x('پروداکت منیجر', 'Product Manager'), email: 'amin@acg.example', team: x('پروداکت', 'Product'), track: 'product', capacity: 100 },
+    { id: 'm11', name: P.hanie(), role: x('پروداکت دیزاینر', 'Product Designer'), email: 'hanie@acg.example', team: x('پروداکت', 'Product'), track: 'product', capacity: 100 },
+    { id: 'm12', name: P.tech(), role: x('مهندسی (تیمی)', 'Engineering (team)'), email: '', team: x('تک', 'Tech'), track: 'tech', capacity: 600 },
   ]
 
   const Projects: Project[] = SPECS.map((s) => ({
@@ -145,7 +147,7 @@ export function buildDemo(): DB {
     const task: Task = {
       id: `t${++tid}`, project_id: o.project_id, sprint_id: o.sprint_id || '', title: o.title, description: o.description || '', assignee: o.assignee, reporter: me, status: o.status,
       priority: o.priority || 'medium', due_date: o.due === null ? '' : d(o.due), points: o.points || 0, tags: o.tags || '', created_at: d(-24),
-      completed_at: o.status === 'done' ? d(Math.min(-1, (o.due ?? -2) - 1)) : '', track: o.track || '', depends_on: '',
+      completed_at: o.status === 'done' ? d(Math.min(-1, (o.due ?? -2) - 1)) : '', track: o.track || '', depends_on: '', meeting_id: o.meeting_id || '',
     }
     Tasks.push(task)
     return task
@@ -229,23 +231,46 @@ export function buildDemo(): DB {
 
   // ---------------------------------------------------------- allocations (people over 100% surface as a resourcing signal)
   const Allocations: Allocation[] = []
-  const A = (member_id: string, project_id: string, percent: number) => Allocations.push({ id: `a${Allocations.length + 1}`, member_id, project_id, percent })
+  const A = (member_id: string, project_id: string, percent: number, start_date = '', end_date = '') =>
+    Allocations.push({ id: `a${Allocations.length + 1}`, member_id, project_id, percent, start_date, end_date })
   const pmIds: [() => string, string][] = [[P.atena, 'm5'], [P.sormeili, 'm6'], [P.salemeh, 'm7'], [P.mehrsa, 'm8'], [P.babak, 'm9'], [P.amin, 'm10']]
+  const hamStart = d(12)
   SPECS.filter((s) => s.status !== 'completed').forEach((s) => {
     const pm = pmIds.find(([f]) => f === s.pm)?.[1]
-    // Ali Sormeili carries two critical projects at 60% each — a deliberate over-allocation signal
-    if (pm) A(pm, s.id, s.status === 'on_hold' ? 10 : s.status === 'planning' ? 20 : pm === 'm6' ? 60 : 50)
+    // Ali Sormeili carries two critical projects at 60% each until the SimiPass recovery launch
+    if (pm) {
+      if (s.id === 'p8') A(pm, s.id, 60, '', d(21))
+      else if (s.status === 'planning') A(pm, s.id, 20, '', hamStart), A(pm, s.id, 40, addDays(hamStart, 1))
+      else A(pm, s.id, s.status === 'on_hold' ? 10 : pm === 'm6' ? 60 : 50)
+    }
     if (s.status === 'active') {
       A('m3', s.id, 10)
       A('m4', s.id, 10)
+      // the engineering team, in "% of one engineer": ~0.8 FTE per live project
+      A('m12', s.id, s.mood === 'red' ? 90 : 65, '', s.id === 'p8' ? d(28) : '')
     }
   })
-  ;['p1', 'p2', 'p4', 'p6', 'p10'].forEach((pid) => A('m11', pid, 20))
+  // HamAfza pulls Tech in from kickoff — this is what tips the team over capacity
+  A('m3', 'p5', 10, hamStart)
+  A('m4', 'p5', 10, hamStart)
+  A('m12', 'p5', 120, hamStart)
+  ;['p1', 'p2', 'p4', 'p10'].forEach((pid) => A('m11', pid, 20))
+  A('m11', 'p6', 20, '', d(28))
+  A('m11', 'p5', 20, d(28))
   A('m1', 'p8', 30)
   A('m1', 'p2', 25)
   A('m1', 'p1', 20)
   A('m1', 'p5', 15)
   A('m2', 'p8', 5)
+
+  const ws = weekStart(t)
+  const W = (weeks: number, day = 0) => addDays(ws, weeks * 7 + day)
+  const TimeOff: TimeOff[] = [
+    { id: 'to1', member_id: 'm11', start_date: W(2), end_date: W(2, 4), kind: 'leave', note: x('مرخصی سالانه', 'Annual leave') },
+    { id: 'to2', member_id: 'm3', start_date: W(1, 3), end_date: W(1, 4), kind: 'training', note: x('دوره‌ی معماری ابری', 'Cloud architecture course') },
+    { id: 'to3', member_id: 'm10', start_date: W(3), end_date: W(3, 2), kind: 'leave', note: '' },
+    { id: 'to4', member_id: 'm7', start_date: W(0, 3), end_date: W(0, 4), kind: 'leave', note: '' },
+  ]
 
   // ---------------------------------------------------------- weekly updates (history drives the trend arrows)
   const Updates: Update[] = []
@@ -255,18 +280,123 @@ export function buildDemo(): DB {
     amber: [x('یک مایلستون عقب افتاده؛ برنامه‌ی جبران در جریان است.', 'One milestone slipped; recovery plan in progress.'), x('ظرفیت تیم محدود است و اولویت‌ها بازبینی شد.', 'Capacity is tight; priorities reviewed.')],
     red: [x('ددلاین در خطر است و به تصمیم مدیریت نیاز داریم.', 'Deadline at risk; leadership decision needed.'), x('هزینه از بودجه جلو زده و کار مسدود داریم.', 'Spend is ahead of budget and work is blocked.')],
   }
+  // Reports are due Sunday of each week; three projects have not reported yet this week.
+  const missingThisWeek = ['RBR', 'KDN', 'AISN']
   liveSpecs.forEach((s) => {
-    const hist: Health[] = s.mood === 'red' ? ['amber', 'amber', 'red', 'red'] : s.mood === 'amber' ? ['green', 'green', 'amber', 'amber'] : ['green', 'amber', 'green', 'green']
+    const hist: Health[] = s.mood === 'red' ? ['amber', 'amber', 'red', 'red'] : s.mood === 'amber' ? ['green', 'green', 'amber', 'amber'] : s.code === 'INO' ? ['green', 'green', 'amber', 'green'] : ['green', 'amber', 'green', 'green']
     hist.forEach((h, i) => {
-      // one green project is deliberately stale so the "no update" nudge has something to show
-      const age = (hist.length - 1 - i) * 7 + (s.code === 'RBR' ? 9 : 2)
+      const weeksAgo = hist.length - 1 - i
+      if (weeksAgo === 0 && missingThisWeek.includes(s.code)) return
+      // one report came in a day late last week, so the cycle has a "late" example
+      const day = weeksAgo === 1 && s.code === 'IXP' ? 3 : s.code === 'CXO' ? 0 : 1
+      const date = W(-weeksAgo, day)
       Updates.push({
-        id: `u${++uid}`, project_id: s.id, week_date: d(-age), author: s.pm(), health: h, summary: lines[h][i % 2],
+        id: `u${++uid}`, project_id: s.id, week_date: date > t ? t : date, author: s.pm(), health: h, summary: lines[h][i % 2],
         done: x('بستن اسپرینت\nبازبینی طراحی', 'Sprint closed\nDesign review'), next: x('تست یکپارچه\nآماده‌سازی دمو', 'Integration testing\nDemo prep'),
         blockers: h === 'green' ? '' : h === 'amber' ? x('ظرفیت تیم تک', 'Tech capacity') : x('تصمیم اسکوپ\nبودجه', 'Scope decision\nBudget'),
       })
     })
   })
+
+  // ---------------------------------------------------------- delivery plan
+  const Deliverables: Deliverable[] = []
+  const DL: [string, string, Track, number][] = [
+    ['PRD نسخه‌ی بعد', 'Next-release PRD', 'product', -3],
+    ['طراحی UI جریان اصلی', 'Core flow UI design', 'product', -1],
+    ['API و سرویس‌های بک‌اند', 'Backend APIs & services', 'tech', 0],
+    ['نسخه‌ی بتا روی محیط تست', 'Beta on staging', 'tech', 1],
+    ['داشبورد گزارش‌ها', 'Reports dashboard', 'product', 3],
+    ['پنل مدیریت', 'Admin panel', 'tech', 5],
+    ['ریلیز عمومی', 'Public release', 'tech', 8],
+  ]
+  let did = 0
+  const ownerFor = (s: Spec, tr: Track) => (tr === 'product' ? (did % 3 === 1 ? P.hanie() : s.pm()) : P.keyvan())
+  liveSpecs.forEach((s, k) => {
+    const shift = (k % 3) - 1 // spread projects across weeks
+    DL.forEach(([fa_, en, tr, wk], i) => {
+      const baseWeek = wk + shift
+      const base = W(baseWeek, 1 + (i % 4))
+      if (base > d(s.end + 7)) return
+      const red = s.mood === 'red'
+      const amber = s.mood === 'amber'
+      // red projects slipped their in-flight items by two weeks; amber by one
+      // …except one red-project item that simply ran past its date (overdue)
+      const stuck = red && i === 1
+      const slip = stuck ? 0 : baseWeek >= -1 && baseWeek <= 2 ? (red ? 14 : amber && i % 2 === 0 ? 7 : 0) : 0
+      const target = addDays(base, slip)
+      let status: Deliverable['status'] = 'planned'
+      let delivered = ''
+      if (target < t && !stuck) {
+        status = 'delivered'
+        delivered = addDays(target, red || (amber && i === 1) ? 2 : -1)
+      } else if (target < t) status = 'in_progress' // overdue
+      else if (baseWeek <= 1) status = red || (amber && i === 3) ? 'at_risk' : 'in_progress'
+      did++
+      Deliverables.push({
+        id: `d${did}`, project_id: s.id, title: x(fa_, en), track: tr, owner: ownerFor(s, tr), target_date: target, baseline_date: base, delivered_date: delivered, status,
+        confidence: status === 'delivered' ? 'high' : red ? 'low' : amber ? 'medium' : 'high',
+        notes: slip ? x('به‌دلیل وابستگی به تیم تک جابجا شد', 'Moved due to a Tech dependency') : '',
+      })
+    })
+  })
+  // HamAfza (planning) and Clarity Pass (done) have a lighter plan
+  Deliverables.push(
+    { id: `d${++did}`, project_id: 'p5', title: x('کیک‌آف و منشور پروژه', 'Kickoff & project charter'), track: 'product', owner: P.babak(), target_date: W(2, 1), baseline_date: W(2, 1), delivered_date: '', status: 'planned', confidence: 'high', notes: '' },
+    { id: `d${++did}`, project_id: 'p5', title: x('PRD نسخه‌ی اول', 'First-release PRD'), track: 'product', owner: P.babak(), target_date: W(5, 2), baseline_date: W(5, 2), delivered_date: '', status: 'planned', confidence: 'medium', notes: '' },
+    { id: `d${++did}`, project_id: 'p5', title: x('طراحی معماری', 'Architecture design'), track: 'tech', owner: P.keyvan(), target_date: W(7, 3), baseline_date: W(7, 3), delivered_date: '', status: 'planned', confidence: 'low', notes: x('به ظرفیت تیم تک بستگی دارد', 'Depends on Tech capacity') },
+    // SimiPass recovery: the launch moved from the original deadline to a reduced-scope release
+    { id: `d${++did}`, project_id: 'p8', title: x('تست پذیرش کاربر', 'User acceptance testing'), track: 'product', owner: P.sormeili(), target_date: W(1, 3), baseline_date: d(-10), delivered_date: '', status: 'at_risk', confidence: 'medium', notes: '' },
+    { id: `d${++did}`, project_id: 'p8', title: x('لانچ نسخه‌ی اول با دامنه‌ی کاهش‌یافته', 'Reduced-scope first launch'), track: 'tech', owner: P.keyvan(), target_date: W(3, 1), baseline_date: d(-6), delivered_date: '', status: 'planned', confidence: 'low', notes: x('منوط به تصمیم کاهش دامنه', 'Pending the scope-reduction decision') },
+    { id: `d${++did}`, project_id: 'p11', title: x('ریلیز عمومی', 'Public release'), track: 'tech', owner: P.keyvan(), target_date: d(-28), baseline_date: d(-35), delivered_date: d(-26), status: 'delivered', confidence: 'high', notes: '' },
+    { id: `d${++did}`, project_id: 'p7', title: x('پایلوت داخلی', 'Internal pilot'), track: 'product', owner: P.atena(), target_date: W(6, 1), baseline_date: W(-2, 1), delivered_date: '', status: 'planned', confidence: 'low', notes: x('تا تصمیم ادامه‌ی پروژه متوقف است', 'Paused until the resume decision') },
+  )
+
+  // ---------------------------------------------------------- weekly meetings (each series one row per week)
+  const Meetings: Meeting[] = []
+  const leaders = [me, P.jalil(), P.keyvan(), P.mehrzad()].join(', ')
+  const productPeople = [P.mehrzad(), me, P.atena(), P.sormeili(), P.salemeh(), P.mehrsa(), P.babak(), P.amin(), P.hanie()].join(', ')
+  const series: [Meeting['series'], string, string, number, string, () => string, string, string][] = [
+    ['portfolio', 'ویکلی پورتفولیو', 'Portfolio weekly', 2, '10:00', P.vahid, leaders, ''],
+    ['product', 'ویکلی پروداکت', 'Product weekly', 1, '14:00', P.mehrzad, productPeople, ''],
+    ['tech', 'ویکلی تک', 'Tech weekly', 3, '11:00', P.keyvan, [P.keyvan(), me, P.mehrzad()].join(', '), ''],
+    ['project', 'ویکلی SimiPass', 'SimiPass weekly', 4, '15:00', P.sormeili, [P.sormeili(), P.keyvan(), me, P.hanie()].join(', '), 'p8'],
+  ]
+  const pastNotes: Record<string, [string, string]> = {
+    portfolio: [
+      'وضعیت SimiPass و Insight X Padida بررسی شد. هر دو پروژه از بودجه فراتر رفته‌اند و تاریخ لانچ SimiPass قابل نگه‌داشتن نیست.',
+      'SimiPass and Insight X Padida reviewed. Both are over budget and the SimiPass launch date cannot hold.',
+    ],
+    product: ['اولویت‌های بک‌لاگ هر پروژه مرور شد و ظرفیت دیزاین بین پروژه‌ها تقسیم شد.', 'Backlog priorities reviewed and design capacity split across projects.'],
+    tech: ['ظرفیت تیم تک برای سه هفته‌ی آینده و شروع HamAfza بررسی شد.', 'Tech capacity for the next three weeks and the HamAfza start reviewed.'],
+    project: ['برنامه‌ی بازیابی SimiPass و گزینه‌های کاهش دامنه بررسی شد.', 'SimiPass recovery plan and scope-reduction options reviewed.'],
+  }
+  const pastDecisions: Record<string, [string, string]> = {
+    portfolio: ['برنامه‌ی بازیابی SimiPass تا هفته‌ی بعد ارائه شود\nبودجه‌ی تکمیلی Insight X Padida با یک صفحه خلاصه درخواست شود', 'SimiPass recovery plan due next week\nRequest Insight X Padida extra budget with a one-pager'],
+    product: ['هانیه روی چهار پروژه می‌ماند؛ Myca از هفته‌ی ۴ آزاد می‌شود', 'Hanie stays on four projects; Myca frees up from week 4'],
+    tech: ['شروع فنی HamAfza منوط به آزاد شدن ظرفیت SimiPass است', 'HamAfza tech start depends on SimiPass freeing capacity'],
+    project: ['اپ موبایل به فاز ۲ منتقل شد', 'Mobile app moved to phase 2'],
+  }
+  let mtid = 0
+  series.forEach(([se, fa_, en, day, time, fac, att, pid]) => {
+    for (let w = -2; w <= 1; w++) {
+      const date = W(w, day)
+      const held = date < t
+      Meetings.push({
+        id: `mt${++mtid}`, series: se, title: x(fa_, en), project_id: pid, date, time, facilitator: fac(), attendees: att, status: held ? 'held' : 'scheduled',
+        notes: held ? x(...pastNotes[se]) : '', decisions: held && w === -1 ? x(...pastDecisions[se]) : held ? x('ادامه‌ی روال فعلی', 'Continue as planned') : '',
+      })
+    }
+  })
+  const lastPortfolio = Meetings.find((m) => m.series === 'portfolio' && m.date === W(-1, 2))!
+  const prevPortfolio = Meetings.find((m) => m.series === 'portfolio' && m.date === W(-2, 2))!
+  const lastTech = Meetings.find((m) => m.series === 'tech' && m.date === W(-1, 3))!
+  // Action items agreed in meetings are ordinary tasks with a meeting_id
+  T({ project_id: 'p8', title: x('ارائه‌ی برنامه‌ی بازیابی SimiPass', 'Present the SimiPass recovery plan'), assignee: P.sormeili(), status: 'in_progress', due: daysBetweenToday(W(0, 2)), priority: 'critical', meeting_id: lastPortfolio.id })
+  T({ project_id: 'p2', title: x('یک صفحه خلاصه برای بودجه‌ی تکمیلی', 'One-pager for the extra budget'), assignee: me, status: 'done', due: daysBetweenToday(W(0, 0)), priority: 'high', meeting_id: lastPortfolio.id })
+  T({ project_id: '', title: x('برآورد ظرفیت تک برای شروع HamAfza', 'Estimate Tech capacity for the HamAfza start'), assignee: P.keyvan(), status: 'todo', due: daysBetweenToday(W(0, 0)), priority: 'high', meeting_id: lastPortfolio.id })
+  T({ project_id: 'p4', title: x('علت عقب‌افتادن مایلستون Kadiner', 'Root cause for the Kadiner slip'), assignee: P.mehrsa(), status: 'todo', due: daysBetweenToday(W(0, 4)), meeting_id: lastPortfolio.id })
+  T({ project_id: 'p10', title: x('مالک داده‌های آموزشی AISN مشخص شود', 'Name an owner for AISN training data'), assignee: P.amin(), status: 'done', due: daysBetweenToday(W(-1, 4)), meeting_id: prevPortfolio.id })
+  T({ project_id: '', title: x('جابجایی دو مهندس از Roo B Roo به SimiPass', 'Move two engineers from Roo B Roo to SimiPass'), assignee: P.keyvan(), status: 'done', due: daysBetweenToday(W(-1, 0)), meeting_id: lastTech.id, track: 'tech' })
 
   // ---------------------------------------------------------- comments
   const at = (days: number, hm: string) => `${d(days)} ${hm}`
@@ -283,5 +413,5 @@ export function buildDemo(): DB {
     { id: 'c5', entity: 'FollowUps', entity_id: 'f2', author: me, body: x('پیش‌نویس درخواست ارسال شد.', 'Request draft sent.'), created_at: at(-1, '11:00') },
   ]
 
-  return { Projects, Scope, Milestones, Sprints, Tasks, FollowUps, Risks, Team, Allocations, Updates, Comments }
+  return { Projects, Scope, Milestones, Sprints, Tasks, FollowUps, Risks, Team, Allocations, Updates, Comments, Deliverables, Meetings, TimeOff }
 }

@@ -5,7 +5,7 @@ import { buildDemo, demoMe } from '../data/demo'
 import { L, locale } from './i18n'
 
 // Demo edits are kept per language so switching language shows sample data in that language.
-const demoKey = () => `acg.demo.v2.${locale.lang}`
+const demoKey = () => `acg.demo.v3.${locale.lang}`
 const ME_KEY = 'acg.me'
 
 const NUMERIC: Partial<Record<SheetName, string[]>> = {
@@ -15,10 +15,11 @@ const NUMERIC: Partial<Record<SheetName, string[]>> = {
   Tasks: ['points'],
   Risks: ['probability', 'impact'],
   Allocations: ['percent'],
+  Team: ['capacity'],
 }
 
 function emptyDB(): DB {
-  return { Projects: [], Scope: [], Milestones: [], Sprints: [], Tasks: [], FollowUps: [], Risks: [], Team: [], Allocations: [], Updates: [], Comments: [] }
+  return { Projects: [], Scope: [], Milestones: [], Sprints: [], Tasks: [], FollowUps: [], Risks: [], Team: [], Allocations: [], Updates: [], Comments: [], Deliverables: [], Meetings: [], TimeOff: [] }
 }
 
 // Sheets return numbers as numbers or strings, dates as ISO strings. Normalize once here.
@@ -32,6 +33,7 @@ function normalize(raw: Partial<DB>): DB {
         const o: Record<string, unknown> = {}
         for (const [key, v] of Object.entries(r)) {
           if (v === null || v === undefined) o[key] = ''
+          else if (key === 'time' && typeof v === 'string' && /\d{4}-\d{2}-\d{2}[T ](\d{2}:\d{2})/.test(v)) o[key] = /[T ](\d{2}:\d{2})/.exec(v)![1]
           else if (typeof v === 'string' && /^\d{4}-\d{2}-\d{2}T/.test(v)) o[key] = v.slice(0, 10)
           else o[key] = typeof v === 'number' ? v : String(v)
           if (NUMERIC[k]?.includes(key)) o[key] = o[key] === '' ? 0 : Number(o[key]) || 0

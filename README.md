@@ -24,8 +24,10 @@ Google Sheet (دیتابیس)  ⇄  Apps Script Web App (API رایگان)  ⇄ 
 | **تسک‌ها** | همه | لیست و کانبان با کشیدن و رها کردن، فیلترهای قابل اشتراک از طریق لینک (پروژه، فرد، وضعیت، اولویت، سررسید) |
 | **فالوآپ‌ها** | مدیر برنامه | گروه‌بندی بر اساس زمان (معوق، امروز، منتظر پاسخ، این هفته) یا بر اساس فرد؛ دکمه‌های یک‌کلیکی «انجام شد»، «منتظر پاسخ» و «تعویق» |
 | **ریسک‌ها (RAID)** | لیدرشیپ | ریسک، مسئله، وابستگی و تصمیم با ماتریس احتمال × اثر |
-| **تیم و منابع** | مدیر برنامه | نقشه‌ی حرارتی تخصیص افراد به پروژه‌ها و هشدار بیش از ظرفیت |
-| **گزارش‌های هفتگی** | لیدرشیپ | روایت مدیران پروژه و هشدار پروژه‌هایی که بیش از ۷ روز گزارش نداده‌اند |
+| **برنامه‌ی تحویل** | لیدرشیپ و مدیر برنامه | چه چیزی در کدام هفته تحویل می‌شود: جدول زمانی هفته به هفته برای همه‌ی پروژه‌ها یا فهرست هفتگی؛ وضعیت هر تحویلی، میزان جابجایی نسبت به تعهد اولیه (baseline)، موارد عقب‌افتاده و نرخ تحویل به‌موقع؛ تغییر وضعیت و «یک هفته عقب» با یک کلیک |
+| **ویکلی‌ها** | مدیر برنامه و لیدرشیپ | جلسات هفتگی (پورتفولیو، پروداکت، تک، ویکلی پروژه): دستور جلسه‌ی خودکار از روی داده‌ها، مرور اقدام‌های جلسه‌ی قبل، صورت‌جلسه و تصمیم‌ها، ثبت اقدام با مسئول و سررسید (که تسک می‌شود) و ساخت جلسه‌ی هفته‌ی بعد |
+| **گزارش هفتگی (چرخه‌ی به‌روزرسانی)** | مدیران پروژه و لیدرشیپ | چه کسی گزارش داده، چه کسی دیر کرده یا نداده (مهلت: یکشنبه)؛ فرم گزارش هوشمند که از روی داده‌ها پر می‌شود و هم‌زمان وضعیت تحویلی‌ها و پیشرفت پروژه را به‌روز می‌کند؛ یادآوری یک‌کلیکی؛ روند وضعیت ۸ هفته‌ی اخیر |
+| **ظرفیت تیم و افراد** | مدیر برنامه | ظرفیت هر نفر (با کسر مرخصی) در برابر تخصیص زمان‌دار؛ پیش‌بینی ۱۲ هفته‌ی آینده برای هر نفر و برای تیم پروداکت و تک؛ هشدار بیش از ظرفیت و ماتریس تخصیص به پروژه‌ها |
 | **گزارش مدیریتی** | هیئت‌مدیره | نسخه‌ی قابل چاپ یا PDF و کپی خلاصه‌ی متنی برای ارسال در پیام‌رسان |
 
 **تجربه‌ی کاربری اپلیکیشنی:**
@@ -118,11 +120,14 @@ npm run build      # خروجی استاتیک در dist/
 | `Scope` | id, project_id, item, type (in/out), status, change_note, date |
 | `Milestones` | id, project_id, title, planned_date, actual_date, status, owner, weight |
 | `Sprints` | id, project_id, name, start_date, end_date, goal, committed_points, completed_points, status |
-| `Tasks` | id, project_id, sprint_id, title, description, assignee, reporter, status, priority, due_date, points, tags, created_at, completed_at, track (`product`/`tech`؛ خالی = از تیم مسئول), depends_on (شناسه‌ی تسک‌های پیش‌نیاز، با کاما) |
+| `Tasks` | id, project_id, sprint_id, title, description, assignee, reporter, status, priority, due_date, points, tags, created_at, completed_at, track (`product`/`tech`؛ خالی = از تیم مسئول), depends_on (شناسه‌ی تسک‌های پیش‌نیاز، با کاما), meeting_id (اگر اقدامِ یک جلسه باشد) |
 | `FollowUps` | id, project_id, subject, person, channel, due_date, status, priority, notes, created_at, done_at |
 | `Risks` | id, project_id, title, type (risk/issue/dependency/decision), probability (۱–۵), impact (۱–۵), owner, mitigation, status, due_date |
-| `Team` | id, name, role, email, team, track (`product`/`tech`) |
-| `Allocations` | id, member_id, project_id, percent |
+| `Team` | id, name, role, email, team, track (`product`/`tech`), capacity (٪ یک نفر تمام‌وقت؛ ۱۰۰ = تمام‌وقت، ۶۰۰ = تیم ۶ نفره) |
+| `Allocations` | id, member_id, project_id, percent, start_date, end_date (اختیاری؛ خالی = نامحدود) |
+| `Deliverables` | id, project_id, title, track, owner, target_date, baseline_date (تعهد اولیه)، delivered_date, status (`planned`/`in_progress`/`at_risk`/`delivered`/`dropped`), confidence (`high`/`medium`/`low`), notes |
+| `Meetings` | id, series (`portfolio`/`product`/`tech`/`project`/`other`), title, project_id, date, time, facilitator, attendees (با کاما), status (`scheduled`/`held`/`cancelled`), notes, decisions (هر خط یک تصمیم) |
+| `TimeOff` | id, member_id, start_date, end_date, kind (`leave`/`training`/`other`), note |
 | `Updates` | id, project_id, week_date, author, health, summary, done, next, blockers |
 | `Comments` | id, entity (Tasks/FollowUps/Projects/Risks), entity_id, author, body, created_at (`YYYY-MM-DD HH:mm`) |
 
@@ -139,6 +144,9 @@ npm run build      # خروجی استاتیک در dist/
 - تاریخ‌ها در شیت به‌صورت میلادی و با قالب `YYYY-MM-DD` ذخیره می‌شوند، ولی در داشبورد همه‌جا شمسی نمایش داده و انتخاب می‌شوند.
 - اگر `progress` خالی باشد، پیشرفت از وزن مایلستون‌های انجام‌شده محاسبه می‌شود.
 - برای Burndown، تاریخ `completed_at` تسک‌ها هنگام «انجام شد» خودکار ثبت می‌شود.
+- هفته از شنبه شروع می‌شود و روزهای کاری شنبه تا چهارشنبه است؛ مرخصی به همین نسبت از ظرفیت کم می‌شود.
+- با تغییر `target_date` یک تحویلی، `baseline_date` ثابت می‌ماند تا جابجایی دیده شود.
+- اگر شیت را قبلاً ساخته‌اید، یک بار `setup` را دوباره اجرا کنید تا تب‌ها و ستون‌های جدید اضافه شوند. با `installWeeklyReminder` ایمیل یادآوری گزارش هفتگی (یکشنبه ۱۴ و دوشنبه ۸) فعال می‌شود.
 - می‌توانید مستقیم در شیت هم ویرایش کنید. داشبورد هر ۲ دقیقه خودکار همگام‌سازی می‌شود و دکمه‌ی همگام‌سازی دستی هم دارد.
 
 ---

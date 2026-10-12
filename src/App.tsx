@@ -19,6 +19,9 @@ import Settings from './pages/Settings'
 import CalendarPage from './pages/Calendar'
 import Teams from './pages/Teams'
 import Pulse from './pages/Pulse'
+import Plan from './pages/Plan'
+import Weekly from './pages/Weekly'
+import { ComposerProvider } from './components/UpdateComposer'
 import { Skeleton } from './components/ui'
 import { SignIn } from './components/SignIn'
 
@@ -46,6 +49,7 @@ export default function App() {
       <I18nProvider>
       <HashRouter>
         <EditorProvider>
+        <ComposerProvider>
           <Layout>
             <Gate>
               <Routes>
@@ -57,6 +61,8 @@ export default function App() {
                 <Route path="/calendar" element={<CalendarPage />} />
                 <Route path="/teams" element={<Teams />} />
                 <Route path="/pulse" element={<Pulse />} />
+                <Route path="/plan" element={<Plan />} />
+                <Route path="/weekly" element={<Weekly />} />
                 <Route path="/sprints" element={<Sprints />} />
                 <Route path="/tasks" element={<Tasks />} />
                 <Route path="/followups" element={<FollowUps />} />
@@ -69,6 +75,7 @@ export default function App() {
               </Routes>
             </Gate>
           </Layout>
+        </ComposerProvider>
         </EditorProvider>
       </HashRouter>
       </I18nProvider>

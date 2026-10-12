@@ -5,6 +5,7 @@ import { Briefcase, ListChecks, BellRing, ShieldAlert, User, CornerDownLeft, Arr
 import { useStore } from '../lib/store'
 import { useI18n, L } from '../lib/i18n'
 import { useEditor } from './Editor'
+import { useComposer } from './UpdateComposer'
 import { cx, HealthDot, StatusIcon } from './ui'
 import { projectMetrics } from '../lib/metrics'
 
@@ -21,6 +22,7 @@ export function CommandPalette({ open, onClose }: { open: boolean; onClose: () =
   const { db, me, canEdit } = useStore()
   const { lang, setLang } = useI18n()
   const editor = useEditor()
+  const composer = useComposer()
   const navigate = useNavigate()
   const [q, setQ] = useState('')
   const [idx, setIdx] = useState(0)
@@ -44,7 +46,10 @@ export function CommandPalette({ open, onClose }: { open: boolean; onClose: () =
         ? [
             { key: 'new-task', group: G.act, label: L('تسک جدید', 'New task'), icon: ico(Plus), run: () => editor.open('Tasks', { assignee: me }) },
             { key: 'new-fu', group: G.act, label: L('فالوآپ جدید', 'New follow-up'), icon: ico(Plus), run: () => editor.open('FollowUps') },
-            { key: 'new-upd', group: G.act, label: L('گزارش هفتگی جدید', 'New weekly update'), icon: ico(Plus), run: () => editor.open('Updates') },
+            { key: 'new-upd', group: G.act, label: L('گزارش هفتگی جدید', 'New weekly update'), icon: ico(Plus), run: () => composer.openComposer() },
+            { key: 'new-del', group: G.act, label: L('تحویلی جدید', 'New deliverable'), icon: ico(Plus), run: () => editor.open('Deliverables') },
+            { key: 'new-mt', group: G.act, label: L('جلسه‌ی جدید', 'New meeting'), icon: ico(Plus), run: () => editor.open('Meetings') },
+            { key: 'new-to', group: G.act, label: L('ثبت مرخصی', 'Log time off'), icon: ico(Plus), run: () => editor.open('TimeOff') },
           ]
         : []),
       { key: 'lang', group: G.act, label: lang === 'fa' ? 'Switch to English' : 'تغییر زبان به فارسی', icon: ico(Languages), run: () => setLang(lang === 'fa' ? 'en' : 'fa') },
@@ -62,7 +67,10 @@ export function CommandPalette({ open, onClose }: { open: boolean; onClose: () =
         ['/followups', L('فالوآپ‌ها', 'Follow-ups')],
         ['/sprints', L('اسپرینت‌ها', 'Sprints')],
         ['/risks', L('ریسک‌ها', 'Risks')],
-        ['/team', L('تیم', 'Team')],
+        ['/team', L('ظرفیت تیم و افراد', 'Team capacity')],
+        ['/plan', L('برنامه‌ی تحویل', 'Delivery plan')],
+        ['/weekly', L('ویکلی‌ها', 'Weekly meetings')],
+        ['/updates', L('چرخه‌ی گزارش هفتگی', 'Weekly update cycle')],
         ['/report', L('گزارش مدیریتی', 'Executive report')],
         ['/settings', L('تنظیمات', 'Settings')],
       ] as const

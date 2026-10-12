@@ -21,20 +21,28 @@ var SCHEMA = {
   Scope: ['id', 'project_id', 'item', 'type', 'status', 'change_note', 'date'],
   Milestones: ['id', 'project_id', 'title', 'planned_date', 'actual_date', 'status', 'owner', 'weight'],
   Sprints: ['id', 'project_id', 'name', 'start_date', 'end_date', 'goal', 'committed_points', 'completed_points', 'status'],
-  Tasks: ['id', 'project_id', 'sprint_id', 'title', 'description', 'assignee', 'reporter', 'status', 'priority', 'due_date', 'points', 'tags', 'created_at', 'completed_at', 'track', 'depends_on'],
+  Tasks: ['id', 'project_id', 'sprint_id', 'title', 'description', 'assignee', 'reporter', 'status', 'priority', 'due_date', 'points', 'tags', 'created_at', 'completed_at', 'track', 'depends_on', 'meeting_id'],
   FollowUps: ['id', 'project_id', 'subject', 'person', 'channel', 'due_date', 'status', 'priority', 'notes', 'created_at', 'done_at'],
   Risks: ['id', 'project_id', 'title', 'type', 'probability', 'impact', 'owner', 'mitigation', 'status', 'due_date'],
-  Team: ['id', 'name', 'role', 'email', 'team', 'track'],
-  Allocations: ['id', 'member_id', 'project_id', 'percent'],
+  // capacity = % of one full-time person (100 = full-time, 600 = a team of six)
+  Team: ['id', 'name', 'role', 'email', 'team', 'track', 'capacity'],
+  // start_date / end_date are optional; blank = open-ended
+  Allocations: ['id', 'member_id', 'project_id', 'percent', 'start_date', 'end_date'],
   Updates: ['id', 'project_id', 'week_date', 'author', 'health', 'summary', 'done', 'next', 'blockers'],
   // Comments on tasks / follow-ups / projects. created_at is "YYYY-MM-DD HH:mm".
   Comments: ['id', 'entity', 'entity_id', 'author', 'body', 'created_at'],
+  // Delivery plan. baseline_date = first committed date (kept when target_date moves → slippage).
+  Deliverables: ['id', 'project_id', 'title', 'track', 'owner', 'target_date', 'baseline_date', 'delivered_date', 'status', 'confidence', 'notes'],
+  // Weekly meetings. series: portfolio | product | tech | project | other. attendees comma-separated; decisions one per line.
+  Meetings: ['id', 'series', 'title', 'project_id', 'date', 'time', 'facilitator', 'attendees', 'status', 'notes', 'decisions'],
+  // Leave / training — reduces capacity in the weeks it covers.
+  TimeOff: ['id', 'member_id', 'start_date', 'end_date', 'kind', 'note'],
 };
 
 var USERS_SHEET = 'Users';
 var USERS_HEADERS = ['key', 'name', 'email', 'role', 'active'];
 var LOG_SHEET = 'AuditLog';
-var DATE_COLS = ['start_date', 'end_date', 'planned_date', 'actual_date', 'due_date', 'created_at', 'completed_at', 'done_at', 'week_date', 'date'];
+var DATE_COLS = ['start_date', 'end_date', 'planned_date', 'actual_date', 'due_date', 'created_at', 'completed_at', 'done_at', 'week_date', 'date', 'target_date', 'baseline_date', 'delivered_date', 'time'];
 
 // --------------------------------------------------------------------------
 // HTTP entry points
@@ -98,7 +106,7 @@ function readSheet_(sh) {
     var o = {};
     for (var c = 0; c < headers.length; c++) {
       var v = row[c];
-      if (v instanceof Date) v = Utilities.formatDate(v, tz, v.getHours() || v.getMinutes() ? 'yyyy-MM-dd HH:mm' : 'yyyy-MM-dd');
+      if (v instanceof Date) v = headers[c] === 'time' ? Utilities.formatDate(v, tz, 'HH:mm') : Utilities.formatDate(v, tz, v.getHours() || v.getMinutes() ? 'yyyy-MM-dd HH:mm' : 'yyyy-MM-dd');
       o[headers[c]] = v;
     }
     rows.push(o);
@@ -120,6 +128,8 @@ function upsert_(name, row, user) {
   var values = headers.map(function (h) {
     var v = row[h];
     if (v === undefined || v === null) return '';
+    // keep "10:00" as text so Sheets doesn't turn it into a 1899 date-time
+    if (h === 'time' && v !== '') return "'" + v;
     return v;
   });
   var idx = findRow_(sh, row.id);
@@ -219,7 +229,17 @@ function ensureSheet_(name, headers) {
 }
 
 function setup() {
-  Object.keys(SCHEMA).forEach(function (name) { ensureSheet_(name, SCHEMA[name]); });
+  Object.keys(SCHEMA).forEach(function (name) {
+    var sh = ensureSheet_(name, SCHEMA[name]);
+    // Upgrade older sheets: append any columns added since they were created.
+    var have = sh.getRange(1, 1, 1, Math.max(1, sh.getLastColumn())).getValues()[0].map(String);
+    SCHEMA[name].forEach(function (h) {
+      if (have.indexOf(h) === -1) {
+        sh.getRange(1, have.length + 1).setValue(h).setFontWeight('bold').setBackground('#eef2ff');
+        have.push(h);
+      }
+    });
+  });
   var users = ensureSheet_(USERS_SHEET, USERS_HEADERS);
   ensureSheet_(LOG_SHEET, ['time', 'user', 'action', 'sheet', 'id']);
   var ss = SpreadsheetApp.getActive();
@@ -260,6 +280,8 @@ function onOpen() {
     .addItem('افزودن کاربر جدید…', 'promptAddUser')
     .addItem('ارسال خلاصه‌ی روزانه (همین حالا)', 'sendDailyDigest')
     .addItem('فعال‌سازی ایمیل روزانه', 'installDailyDigest')
+    .addItem('فعال‌سازی یادآوری گزارش هفتگی', 'installWeeklyReminder')
+    .addItem('ارسال یادآوری گزارش هفتگی (همین حالا)', 'remindWeeklyUpdates')
     .addToUi();
 }
 
@@ -318,6 +340,56 @@ function sendDailyDigest() {
 }
 
 // --------------------------------------------------------------------------
+// Weekly update cycle — reports are due by end of Sunday; the portfolio weekly is Monday.
+// remindWeeklyUpdates emails each project lead whose active project has no update this week
+// (week starts Saturday) and sends the PMO a list of who is missing.
+// --------------------------------------------------------------------------
+
+function installWeeklyReminder() {
+  ScriptApp.getProjectTriggers().forEach(function (t) {
+    if (t.getHandlerFunction() === 'remindWeeklyUpdates') ScriptApp.deleteTrigger(t);
+  });
+  // Sunday 14:00 (a nudge before the deadline) and Monday 08:00 (last call before the weekly)
+  ScriptApp.newTrigger('remindWeeklyUpdates').timeBased().onWeekDay(ScriptApp.WeekDay.SUNDAY).atHour(14).create();
+  ScriptApp.newTrigger('remindWeeklyUpdates').timeBased().onWeekDay(ScriptApp.WeekDay.MONDAY).atHour(8).create();
+  safeAlert_('یادآوری گزارش هفتگی یکشنبه ساعت ۱۴ و دوشنبه ساعت ۸ برای مدیران پروژه‌ای که گزارش نداده‌اند ارسال می‌شود.');
+}
+
+function weekStartISO_(tz) {
+  var x = new Date();
+  var dow = (x.getDay() + 1) % 7; // Saturday = 0
+  x.setDate(x.getDate() - dow);
+  return Utilities.formatDate(x, tz, 'yyyy-MM-dd');
+}
+
+function remindWeeklyUpdates() {
+  var data = readAll_();
+  var tz = Session.getScriptTimeZone();
+  var ws = weekStartISO_(tz);
+  var email = {};
+  data.Team.forEach(function (m) { if (m.email) email[m.name] = m.email; });
+  var missing = data.Projects.filter(function (p) {
+    if (p.status !== 'active') return false;
+    return !data.Updates.some(function (u) { return u.project_id === p.id && String(u.week_date) >= ws; });
+  });
+  var byOwner = {};
+  missing.forEach(function (p) { (byOwner[p.owner] = byOwner[p.owner] || []).push(p.name); });
+  Object.keys(byOwner).forEach(function (owner) {
+    if (!email[owner]) return;
+    MailApp.sendEmail({
+      to: email[owner],
+      subject: 'یادآوری گزارش هفتگی · ' + byOwner[owner].join('، '),
+      htmlBody: '<div dir="rtl" style="font-family:Tahoma,sans-serif;line-height:1.9">' + owner + ' عزیز، سلام<br>گزارش هفتگی این پروژه‌ها هنوز ثبت نشده است: <b>' + byOwner[owner].join('، ') +
+        '</b><br>لطفاً پیش از ویکلی پورتفولیو از صفحه‌ی «گزارش هفتگی» ثبت کنید. ممنون 🙏</div>',
+    });
+  });
+  if (missing.length) {
+    var to = PropertiesService.getScriptProperties().getProperty('DIGEST_TO') || Session.getEffectiveUser().getEmail();
+    MailApp.sendEmail({ to: to, subject: 'ACG Portfolio · ' + missing.length + ' گزارش هفتگی ارسال نشده', htmlBody: '<div dir="rtl" style="font-family:Tahoma,sans-serif">' + missing.map(function (p) { return p.name + ' — ' + p.owner; }).join('<br>') + '</div>' });
+  }
+}
+
+// --------------------------------------------------------------------------
 // Sample data (optional)
 // --------------------------------------------------------------------------
 
@@ -343,6 +415,15 @@ function seedDemo() {
     { id: 'm9', name: 'بابک معروفی', role: 'پروداکت منیجر', team: 'پروداکت', track: 'product' },
     { id: 'm10', name: 'امین ظفری', role: 'پروداکت منیجر', team: 'پروداکت', track: 'product' },
     { id: 'm11', name: 'هانیه منصورکیایی', role: 'پروداکت دیزاینر', team: 'پروداکت', track: 'product' },
+    { id: 'm12', name: 'تیم تک', role: 'مهندسی (تیمی)', team: 'تک', track: 'tech', capacity: 600 },
+  ].map(function (m) { if (!m.capacity) m.capacity = 100; return m; }));
+  // Weekly cadence: one row per meeting; the app's "schedule next week" clones it.
+  var ws = weekStartISO_(tz);
+  var on = function (day) { var x = new Date(ws + 'T00:00:00'); x.setDate(x.getDate() + day); return Utilities.formatDate(x, tz, 'yyyy-MM-dd'); };
+  put('Meetings', [
+    { id: 'mt1', series: 'portfolio', title: 'ویکلی پورتفولیو', date: on(2), time: "'10:00", facilitator: 'وحید عامری', attendees: 'وحید عامری, جلیل علیزاده, وحید کیوانیان, مهرزاد گلی', status: 'scheduled' },
+    { id: 'mt2', series: 'product', title: 'ویکلی پروداکت', date: on(1), time: "'14:00", facilitator: 'مهرزاد گلی', attendees: 'مهرزاد گلی, وحید عامری, آتنا دهقان, علی سرمیلی, علی سالمه, مهرسا دبیر, بابک معروفی, امین ظفری, هانیه منصورکیایی', status: 'scheduled' },
+    { id: 'mt3', series: 'tech', title: 'ویکلی تک', date: on(3), time: "'11:00", facilitator: 'وحید کیوانیان', attendees: 'وحید کیوانیان, وحید عامری, مهرزاد گلی', status: 'scheduled' },
   ]);
   var pm = { 'CX Orbit': 'آتنا دهقان', 'Insight X Padida': 'علی سرمیلی', 'Roo B Roo': 'علی سالمه', 'Kadiner': 'مهرسا دبیر', 'HamAfza': 'بابک معروفی', 'Myca': 'امین ظفری', 'malek': 'آتنا دهقان', 'SimiPass': 'علی سرمیلی', 'Ino School': 'مهرسا دبیر', 'AISN': 'امین ظفری', 'Clarity Pass': 'بابک معروفی' };
   put('Projects', Object.keys(pm).map(function (name, i) {

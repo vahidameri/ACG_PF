@@ -1,8 +1,8 @@
 import { useEffect, useMemo, useState, type ReactNode } from 'react'
 import { NavLink, useLocation, useNavigate, Link } from 'react-router-dom'
 import {
-  LayoutGrid, Briefcase, GanttChartSquare, Zap, ListChecks, BellRing, ShieldAlert, Users, FileText, Settings, Moon, Sun, Search, Plus, RefreshCw, Menu,
-  Sparkles, Printer, CheckCircle2, AlertCircle, Bell, PanelLeftClose, PanelLeftOpen, Languages, Star, AtSign, Flag, Clock, CircleAlert, Ban, CalendarDays, Keyboard, Radar, Workflow,
+  LayoutGrid, Briefcase, GanttChartSquare, Zap, ListChecks, BellRing, ShieldAlert, FileText, Settings, Moon, Sun, Search, Plus, RefreshCw, Menu,
+  Sparkles, Printer, CheckCircle2, AlertCircle, Bell, PanelLeftClose, PanelLeftOpen, Languages, Star, AtSign, Flag, Clock, CircleAlert, Ban, CalendarDays, Keyboard, Radar, Workflow, PackageCheck, CalendarRange, Gauge,
 } from 'lucide-react'
 import { useStore } from '../lib/store'
 import { useI18n, L } from '../lib/i18n'
@@ -11,7 +11,9 @@ import { buildInbox, type InboxItem } from '../lib/inbox'
 import { projectMetrics } from '../lib/metrics'
 import { useEditor } from './Editor'
 import { cx, Avatar, HealthDot, Popover, MenuItem } from './ui'
-import { fa, fmtDayMonth } from '../lib/jalali'
+import { fa, fmtDayMonth, todayISO as todayISOStr } from '../lib/jalali'
+import { inWeek, updateDue, weekStart } from '../lib/weeks'
+import { overloaded } from '../lib/capacity'
 import { CommandPalette } from './CommandPalette'
 import { AcgMark } from './Brand'
 import { ROLE } from '../lib/labels'
@@ -68,6 +70,12 @@ export function Layout({ children }: { children: ReactNode }) {
   const inbox = useMemo(() => buildInbox(db, me), [db, me])
   const myCount = inbox.filter((i) => i.kind === 'overdue' || i.kind === 'followup' || i.kind === 'mention').length
 
+  const ws = weekStart()
+  const updatesMissing = todayISOStr() > updateDue(ws)
+    ? db.Projects.filter((p) => p.status === 'active' && !db.Updates.some((u) => u.project_id === p.id && inWeek(u.week_date, ws))).length
+    : 0
+  const overCap = overloaded(db, ws).length
+
   const groups: { label: string; links: { to: string; label: string; icon: typeof LayoutGrid; badge?: number; count?: number }[] }[] = [
     {
       label: L('فضای کار', 'Workspace'),
@@ -87,7 +95,16 @@ export function Layout({ children }: { children: ReactNode }) {
       ],
     },
     {
-      label: L('تحویل', 'Delivery'),
+      label: L('برنامه‌ریزی و ریتم', 'Planning & cadence'),
+      links: [
+        { to: '/plan', label: L('برنامه‌ی تحویل', 'Delivery plan'), icon: PackageCheck },
+        { to: '/weekly', label: L('ویکلی‌ها', 'Weeklies'), icon: CalendarRange },
+        { to: '/updates', label: L('گزارش هفتگی', 'Weekly updates'), icon: FileText, badge: updatesMissing },
+        { to: '/team', label: L('ظرفیت تیم', 'Capacity'), icon: Gauge, badge: overCap },
+      ],
+    },
+    {
+      label: L('اجرا', 'Delivery'),
       links: [
         { to: '/teams', label: L('پروداکت و تک', 'Product & Tech'), icon: Workflow },
         { to: '/tasks', label: L('تسک‌ها', 'Tasks'), icon: ListChecks, count: db.Tasks.filter((t) => t.status !== 'done').length },
@@ -99,8 +116,6 @@ export function Layout({ children }: { children: ReactNode }) {
       label: L('راهبری', 'Governance'),
       links: [
         { to: '/risks', label: L('ریسک‌ها و تصمیم‌ها', 'Risks & decisions'), icon: ShieldAlert, count: db.Risks.filter((r) => r.status !== 'closed').length },
-        { to: '/team', label: L('ظرفیت تیم', 'Capacity'), icon: Users },
-        { to: '/updates', label: L('گزارش‌های هفتگی', 'Weekly updates'), icon: FileText },
       ],
     },
   ]

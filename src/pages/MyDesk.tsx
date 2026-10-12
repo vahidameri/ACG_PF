@@ -12,6 +12,11 @@ import { uid } from '../lib/api'
 import { PRIORITY_ORDER } from '../lib/labels'
 import { L } from '../lib/i18n'
 import type { Task } from '../lib/types'
+import { useComposer } from '../components/UpdateComposer'
+import { inWeek, updateDue, weekStart } from '../lib/weeks'
+import { deliverySummary } from '../lib/delivery'
+import { overloaded } from '../lib/capacity'
+import { CalendarRange, PackageCheck, FileText, Gauge } from 'lucide-react'
 
 const byDue = (a: { due_date: string; priority?: string }, b: { due_date: string; priority?: string }) =>
   (a.due_date || '9999') < (b.due_date || '9999') ? -1 : (a.due_date || '9999') > (b.due_date || '9999') ? 1 : (PRIORITY_ORDER[a.priority as never] ?? 2) - (PRIORITY_ORDER[b.priority as never] ?? 2)
@@ -27,9 +32,11 @@ interface Suggestion {
 export default function MyDesk() {
   const { db, me, upsert, toast, canEdit } = useStore()
   const { open } = useEditor()
+  const { openComposer } = useComposer()
   const pname = useProjectName()
   const today = todayISO()
   const weekEnd = addDays(today, 7)
+  const ws = weekStart()
 
   // ---------- Quick capture ----------
   const [kind, setKind] = useState<'task' | 'followup'>('task')
@@ -45,7 +52,7 @@ export default function MyDesk() {
     if (kind === 'task') {
       await upsert('Tasks', {
         id: uid('T'), project_id: proj, sprint_id: '', title: t, description: '', assignee: who || me, reporter: me, status: 'todo', priority: 'medium',
-        due_date: dueDate, points: 0, tags: '', created_at: today, completed_at: '', track: '', depends_on: '',
+        due_date: dueDate, points: 0, tags: '', created_at: today, completed_at: '', track: '', depends_on: '', meeting_id: '',
       })
       toast(L(`تسک برای ${who || 'شما'} ثبت شد`, `Task added for ${who || 'you'}`))
     } else {
@@ -93,13 +100,12 @@ export default function MyDesk() {
   const suggestions = useMemo<Suggestion[]>(() => {
     const out: Suggestion[] = []
     db.Projects.filter((p) => p.status === 'active').forEach((p) => {
-      const last = db.Updates.filter((u) => u.project_id === p.id).sort((a, b) => (a.week_date < b.week_date ? 1 : -1))[0]
-      const age = last ? daysBetween(last.week_date, today) : 999
-      if (age > 7)
+      const reported = db.Updates.some((u) => u.project_id === p.id && inWeek(u.week_date, ws))
+      if (!reported && today > updateDue(ws))
         out.push({
           key: `upd-${p.id}`, tone: 'warn',
-          text: last ? L(`«${p.name}» ${fa(age)} روز است گزارش هفتگی ندارد`, `“${p.name}” has no weekly update for ${age} days`) : L(`«${p.name}» هنوز گزارش هفتگی ندارد`, `“${p.name}” has no weekly update yet`),
-          action: L('ثبت گزارش', 'Write update'), run: () => open('Updates', { project_id: p.id, author: p.owner }),
+          text: p.owner === me ? L(`گزارش هفتگی «${p.name}» را هنوز ثبت نکرده‌اید`, `You haven’t submitted the “${p.name}” weekly update`) : L(`«${p.name}» گزارش این هفته را نداده (${p.owner})`, `“${p.name}” hasn’t reported this week (${p.owner})`),
+          action: L('ثبت گزارش', 'Write update'), run: () => openComposer({ projectId: p.id }),
         })
       const m = projectMetrics(p, db)
       if (m.health === 'red' && !db.FollowUps.some((f) => f.project_id === p.id && f.status !== 'done' && f.person === p.sponsor))
@@ -131,8 +137,31 @@ export default function MyDesk() {
           action: L('باز کردن', 'Open'), run: () => open('FollowUps', f as never),
         }),
       )
+    const ds = deliverySummary(db)
+    if (ds.overdue.length)
+      out.unshift({
+        key: 'dl-overdue', tone: 'bad',
+        text: L(`${fa(ds.overdue.length)} تحویلی از تاریخش گذشته و هنوز تحویل نشده`, `${ds.overdue.length} deliverable(s) are past their date`),
+        action: L('برنامه‌ی تحویل', 'Delivery plan'), run: () => (window.location.hash = '#/plan'),
+      })
+    const over = overloaded(db, ws)
+    if (over.length)
+      out.push({
+        key: 'cap', tone: 'warn',
+        text: L(`${over.map((x) => x.m.name).join('، ')} این هفته بیش از ظرفیت ${over.length > 1 ? 'هستند' : 'است'}`, `${over.map((x) => x.m.name).join(', ')} over capacity this week`),
+        action: L('ظرفیت تیم', 'Capacity'), run: () => (window.location.hash = '#/team'),
+      })
     return out.slice(0, 8)
-  }, [db, today, open, fuWaiting])
+  }, [db, today, open, fuWaiting, me, ws, openComposer])
+
+  // ---------- This week's rhythm ----------
+  const nextMeeting = db.Meetings.filter((m) => m.status === 'scheduled' && m.date >= today && names(m.attendees).includes(me)).sort((a, b) => (a.date + a.time < b.date + b.time ? -1 : 1))[0]
+  const live = db.Projects.filter((p) => p.status === 'active')
+  const reported = live.filter((p) => db.Updates.some((u) => u.project_id === p.id && inWeek(u.week_date, ws))).length
+  const myUnreported = live.filter((p) => p.owner === me && !db.Updates.some((u) => u.project_id === p.id && inWeek(u.week_date, ws)))
+  const weekDel = db.Deliverables.filter((d) => inWeek(d.target_date, ws) && d.status !== 'dropped')
+  const myActions = db.Tasks.filter((t) => t.meeting_id && t.assignee === me && t.status !== 'done')
+  const overNow = overloaded(db, ws)
 
   const first = firstName(me)
   const hello = me ? L(`${greeting()}، ${first} جان`, `${greeting()}, ${first}`) : greeting()
@@ -218,6 +247,39 @@ export default function MyDesk() {
             </div>
           </div>
         )}
+
+        <div className="grid grid-cols-2 gap-3 @xl:grid-cols-4">
+          <RhythmTile
+            to="/weekly"
+            icon={CalendarRange}
+            label={L('جلسه‌ی بعدی', 'Next meeting')}
+            value={nextMeeting ? nextMeeting.title : '—'}
+            sub={nextMeeting ? `${nextMeeting.date === today ? L('امروز', 'Today') : fmtWeekday(nextMeeting.date)} ${fa(nextMeeting.time)}${myActions.length ? L(` · ${fa(myActions.length)} اقدام باز شما`, ` · ${myActions.length} open actions`) : ''}` : L('جلسه‌ای در پیش نیست', 'Nothing scheduled')}
+          />
+          <RhythmTile
+            to="/updates"
+            icon={FileText}
+            label={L('گزارش‌های این هفته', 'This week’s updates')}
+            value={`${fa(reported)}/${fa(live.length)}`}
+            sub={myUnreported.length ? L(`${fa(myUnreported.length)} گزارش با شما`, `${myUnreported.length} due from you`) : L(`مهلت: ${fmtWeekday(updateDue(ws))}`, `Due ${fmtWeekday(updateDue(ws))}`)}
+            tone={reported < live.length && today > updateDue(ws) ? 'warn' : undefined}
+          />
+          <RhythmTile
+            to="/plan"
+            icon={PackageCheck}
+            label={L('تحویل‌های این هفته', 'Deliveries this week')}
+            value={fa(weekDel.length)}
+            sub={L(`${fa(weekDel.filter((d) => d.status === 'delivered').length)} تحویل شد`, `${weekDel.filter((d) => d.status === 'delivered').length} delivered`)}
+          />
+          <RhythmTile
+            to="/team"
+            icon={Gauge}
+            label={L('بیش از ظرفیت', 'Over capacity')}
+            value={fa(overNow.length)}
+            sub={overNow.length ? overNow.map((x) => firstName(x.m.name)).join(L('، ', ', ')) : L('همه در ظرفیت', 'Everyone within capacity')}
+            tone={overNow.length ? 'bad' : undefined}
+          />
+        </div>
 
         <div className="grid gap-4 @lg:grid-cols-5">
           <Card className="@lg:col-span-3" eyebrow={<span className="flex items-center gap-1.5"><CalendarDays size={12} /> {L('هفته‌ی پیش رو', 'The week ahead')}</span>} title={day ? `${fmtWeekday(day)} ${fmtDate(day, 'long')}` : L('برنامه‌ی ۷ روز آینده', 'Next 7 days')} action={day ? <button className="btn-ghost btn-sm" onClick={() => setDay('')}>{L('همه', 'All')} ×</button> : undefined}>
@@ -392,5 +454,19 @@ export default function MyDesk() {
         </div>
       </Overlap>
     </>
+  )
+}
+
+const names = (s: string) => String(s || '').split(',').map((x) => x.trim()).filter(Boolean)
+
+function RhythmTile({ to, icon: Icon, label, value, sub, tone }: { to: string; icon: typeof FileText; label: string; value: string; sub: string; tone?: 'bad' | 'warn' }) {
+  return (
+    <Link to={to} className="card card-hover group flex min-w-0 flex-col gap-1 p-4">
+      <span className="flex items-center gap-1.5 text-[0.6875rem] text-sub">
+        <Icon size={13} /> {label}
+      </span>
+      <span className={cx('truncate text-lg font-semibold num', tone === 'bad' ? 'text-bad' : tone === 'warn' ? 'text-warn' : '')}>{value}</span>
+      <span className="truncate text-[0.6875rem] text-sub">{sub}</span>
+    </Link>
   )
 }

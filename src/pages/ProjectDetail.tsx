@@ -15,14 +15,19 @@ import { assess } from '../lib/rag'
 import { renderMentions, stampToDate } from '../components/ItemSheet'
 import { uid } from '../lib/api'
 import { todayISO } from '../lib/jalali'
+import { useComposer } from '../components/UpdateComposer'
+import { DeliverableRow, DeliveryEmpty } from '../components/delivery'
+import { deliverySummary, isClosed } from '../lib/delivery'
+import { memberWeek } from '../lib/capacity'
 
-type Tab = 'overview' | 'scope' | 'milestones' | 'sprints' | 'tasks' | 'risks' | 'updates' | 'team'
+type Tab = 'overview' | 'scope' | 'milestones' | 'sprints' | 'tasks' | 'risks' | 'updates' | 'team' | 'delivery'
 
 export default function ProjectDetail() {
   const { id } = useParams()
   const { db, canEdit, upsert, me } = useStore()
   const { open } = useEditor()
   const [tab, setTab] = useState<Tab>('overview')
+  const { openComposer } = useComposer()
   const [taskView, setTaskView] = useState<'board' | 'list'>('board')
   const [note, setNote] = useState('')
   const p = db.Projects.find((x) => x.id === id)
@@ -130,6 +135,7 @@ export default function ProjectDetail() {
               tabs={[
                 { value: 'overview', label: L('خلاصه', 'Overview') },
                 { value: 'tasks', label: L('تسک‌ها', 'Tasks'), count: m.openTasks },
+                { value: 'delivery', label: L('برنامه‌ی تحویل', 'Delivery plan'), count: db.Deliverables.filter((d) => d.project_id === p.id && !isClosed(d)).length },
                 { value: 'milestones', label: L('مایلستون‌ها', 'Milestones'), count: ms.length },
                 { value: 'sprints', label: L('اسپرینت‌ها', 'Sprints'), count: sprints.length },
                 { value: 'scope', label: L('اسکوپ', 'Scope'), count: scope.length },
@@ -395,10 +401,16 @@ export default function ProjectDetail() {
             </div>
           )}
 
+          {tab === 'delivery' && <ProjectDelivery projectId={p.id} />}
+
           {tab === 'updates' && (
             <div className="space-y-4">
               <div className="flex justify-end">
-                <AddBtn sheet="Updates" label={L('گزارش هفتگی جدید', 'New weekly update')} extra={{ author: p.owner, health: m.health }} />
+                {canEdit && (
+                  <button className="btn-primary btn-sm" onClick={() => openComposer({ projectId: p.id })}>
+                    <Plus size={14} /> {L('ثبت گزارش هفتگی', 'Submit weekly update')}
+                  </button>
+                )}
               </div>
               {updates.length ? (
                 updates.map((u) => <UpdateCard key={u.id} u={u} />)
@@ -416,7 +428,7 @@ export default function ProjectDetail() {
                 {allocs.map((a) => {
                   const mem = db.Team.find((x) => x.id === a.member_id)
                   if (!mem) return null
-                  const total = db.Allocations.filter((x) => x.member_id === mem.id).reduce((s, x) => s + Number(x.percent), 0)
+                  const total = memberWeek(db, mem).load
                   const memTasks = tasks.filter((t) => t.assignee === mem.name && t.status !== 'done').length
                   return (
                     <button key={a.id} onClick={() => open('Allocations', a as never)} className="flex items-center gap-3 rounded-2xl border border-line p-4 text-start transition hover:border-line-strong">
@@ -430,7 +442,7 @@ export default function ProjectDetail() {
                           <Progress value={Number(a.percent)} />
                           <span className="text-xs num">{fa(a.percent)}%</span>
                         </div>
-                        {total > 100 && <div className="mt-1 text-[0.6875rem] text-bad">{L(`مجموع تخصیص ${fa(total)}٪ — بیش از ظرفیت`, `Total ${total}% — over capacity`)}</div>}
+                        {total > 100 && <div className="mt-1 text-[0.6875rem] text-bad">{L(`بار کل این هفته ${fa(total)}٪ — بیش از ظرفیت`, `Total load this week ${total}% — over capacity`)}</div>}
                       </div>
                     </button>
                   )
@@ -442,5 +454,62 @@ export default function ProjectDetail() {
         </div>
       </Overlap>
     </>
+  )
+}
+
+function ProjectDelivery({ projectId }: { projectId: string }) {
+  const { db, canEdit } = useStore()
+  const { open } = useEditor()
+  const sum = deliverySummary(db, projectId)
+  const list = [...sum.list].filter((d) => d.status !== 'dropped').sort((a, b) => (a.target_date < b.target_date ? -1 : 1))
+  const upcoming = list.filter((d) => !isClosed(d))
+  const done = list.filter((d) => d.status === 'delivered').reverse()
+  return (
+    <div className="space-y-4">
+      <div className="grid grid-cols-2 gap-3 @lg:grid-cols-4">
+        {[
+          [L('در پیش رو', 'Upcoming'), fa(upcoming.length), ''],
+          [L('عقب‌افتاده', 'Overdue'), fa(sum.overdue.length), sum.overdue.length ? 'text-bad' : ''],
+          [L('جابجا شده از تعهد', 'Moved from baseline'), fa(sum.slipped.length), sum.slipped.length ? 'text-warn' : ''],
+          [L('تحویل به‌موقع', 'On-time'), sum.onTimeRate === null ? '—' : `${fa(sum.onTimeRate)}%`, ''],
+        ].map(([l, v, c]) => (
+          <div key={l} className="card p-4">
+            <div className="text-[0.6875rem] text-sub">{l}</div>
+            <div className={cx('mt-1 text-2xl font-semibold num', c)}>{v}</div>
+          </div>
+        ))}
+      </div>
+      <Card
+        pad={false}
+        eyebrow={L('برنامه', 'Plan')}
+        title={L('تحویل‌های پیش رو', 'Upcoming deliveries')}
+        action={
+          canEdit && (
+            <button className="btn-outline btn-sm" onClick={() => open('Deliverables', { project_id: projectId })}>
+              <Plus size={14} /> {L('تحویلی', 'Deliverable')}
+            </button>
+          )
+        }
+      >
+        {upcoming.length ? (
+          <div className="divide-y divide-line border-t border-line">
+            {upcoming.map((d) => (
+              <DeliverableRow key={d.id} d={d} showProject={false} />
+            ))}
+          </div>
+        ) : (
+          <DeliveryEmpty />
+        )}
+      </Card>
+      {done.length > 0 && (
+        <Card pad={false} eyebrow={L('سابقه', 'History')} title={L('تحویل‌شده', 'Delivered')}>
+          <div className="divide-y divide-line border-t border-line">
+            {done.map((d) => (
+              <DeliverableRow key={d.id} d={d} showProject={false} />
+            ))}
+          </div>
+        </Card>
+      )}
+    </div>
   )
 }
