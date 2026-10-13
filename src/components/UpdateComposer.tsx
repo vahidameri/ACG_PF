@@ -208,7 +208,6 @@ function Composer({ projectId, update, onClose }: { projectId?: string; update?:
                   <Sparkles size={12} /> {L(`پیشنهاد سیستم: ${lbl(HEALTH, m.computedHealth)}`, `System suggests: ${lbl(HEALTH, m.computedHealth)}`)}
                 </span>
                 {m.reasons.length > 0 && <span> — {m.reasons.slice(0, 2).map((r) => r.text).join(L('؛ ', '; '))}</span>}
-                {health !== m.computedHealth && <div className="mt-1 text-warn">{L('وضعیت انتخابی با محاسبه‌ی سیستم فرق دارد؛ دلیلش را در خلاصه بنویسید.', 'Your status differs from the calculated one — explain why in the summary.')}</div>}
               </div>
             )}
           </div>
@@ -226,7 +225,7 @@ function Composer({ projectId, update, onClose }: { projectId?: string; update?:
               {L('خلاصه برای مدیریت', 'Executive summary')}
               <span className="ms-0.5 text-bad">*</span>
             </label>
-            <textarea className="input" rows={3} value={summary} onChange={(e) => setSummary(e.target.value)} placeholder={L('در یک یا دو جمله: کجا هستیم و چه چیزی از مدیریت لازم داریم؟', 'One or two sentences: where are we and what do we need from leadership?')} autoFocus />
+            <textarea className="input" rows={3} value={summary} onChange={(e) => setSummary(e.target.value)} autoFocus />
           </div>
           {(
             [
@@ -239,7 +238,6 @@ function Composer({ projectId, update, onClose }: { projectId?: string; update?:
               <label className="label flex items-center gap-1.5">
                 <span className={cx('h-1.5 w-1.5 rounded-full', dot)} />
                 {label}
-                <span className="text-[0.625rem] font-normal text-sub">{L('هر خط یک مورد', 'one per line')}</span>
               </label>
               <textarea className="input" rows={3} value={text[k]} onChange={(e) => setText((t) => ({ ...t, [k]: e.target.value }))} />
             </div>
@@ -250,7 +248,6 @@ function Composer({ projectId, update, onClose }: { projectId?: string; update?:
         <aside className="space-y-5 border-t border-line bg-muted/30 px-6 py-6 md:border-s md:border-t-0">
           <div>
             <div className="eyebrow mb-1">{L('به‌روزرسانی تحویلی‌ها', 'Update deliverables')}</div>
-            <p className="mb-3 text-[0.6875rem] leading-5 text-sub">{L('هرچه این‌جا تغییر دهید همراه گزارش در برنامه‌ی تحویل ثبت می‌شود.', 'Changes here are saved to the delivery plan with this update.')}</p>
             {facts?.due.length ? (
               <div className="space-y-2">
                 {facts.due.map((d) => {
@@ -331,7 +328,7 @@ function Composer({ projectId, update, onClose }: { projectId?: string; update?:
           {existingThisWeek && (
             <div className="flex gap-2 rounded-xl bg-warn/10 px-3 py-2 text-[0.6875rem] leading-5 text-warn">
               <AlertTriangle size={14} className="mt-0.5 shrink-0" />
-              {L('این پروژه این هفته گزارش داده است؛ ثبت دوباره همان گزارش را به‌روز می‌کند.', 'This project already reported this week; submitting updates that report.')}
+              {L('این هفته قبلاً گزارش ثبت شده', 'Already reported this week')}
             </div>
           )}
         </aside>

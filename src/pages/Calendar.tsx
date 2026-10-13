@@ -91,9 +91,7 @@ export default function CalendarPage() {
   return (
     <>
       <Band
-        eyebrow={<span>{L('برنامه‌ریزی / تقویم', 'Planning / Calendar')}</span>}
         title={L('تقویم پورتفولیو', 'Portfolio calendar')}
-        sub={L('سررسید تسک‌ها، فالوآپ‌ها، مایلستون‌ها و شروع اسپرینت‌ها در یک نگاه.', 'Task due dates, follow-ups, milestones and sprint starts at a glance.')}
         actions={
           <div className="flex items-center gap-1 rounded-full border border-white/10 bg-white/[0.04] p-1">
             <button className="icon-btn text-white/80 hover:bg-white/10 hover:text-white" onClick={() => move(-1)}>

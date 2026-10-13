@@ -23,7 +23,6 @@ export default function Sprints() {
   return (
     <>
       <Band nav={<HubNav hub="work" />}
-        eyebrow={<span>{L('اجرا / اسپرینت‌ها', 'Execution / Sprints')}</span>}
         title={L('اسپرینت‌های توسعه', 'Delivery sprints')}
         sub={L(`${fa(active.length)} اسپرینت فعال در ${fa(new Set(active.map((s) => s.project_id)).size)} پروژه`, `${active.length} active sprints across ${new Set(active.map((s) => s.project_id)).size} projects`)}
         actions={

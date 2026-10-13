@@ -118,10 +118,10 @@ export const MEETING_STATUS: Record<Meeting['status'], T2> = {
 }
 
 export const ACCESS: Record<string, T2> = {
-  super: ['سوپر ادمین (مدیر برنامه)', 'Super admin (program manager)'],
+  super: ['سوپر ادمین', 'Super admin'],
   exec: ['مدیرعامل', 'CEO'],
-  head: ['هد (پروداکت / تک)', 'Head (product / tech)'],
-  member: ['عضو تیم (فقط پروژه‌های خودش)', 'Team member (own projects only)'],
+  head: ['هد', 'Head'],
+  member: ['عضو تیم', 'Team member'],
 }
 export const CONTRACT_KIND: Record<string, T2> = {
   client: ['کارفرما', 'Client'],

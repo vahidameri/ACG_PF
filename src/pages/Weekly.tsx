@@ -66,10 +66,6 @@ export default function Weekly() {
     <>
       <Band
         title={L('جلسات', 'Meetings')}
-        sub={L(
-          `${fa(meetings.length)} جلسه در ${weekRel(ws)}. دستور جلسه خودکار ساخته می‌شود، صورت‌جلسه و فایل‌ها کنار هم‌اند و هر اقدام یک تسک با مسئول و سررسید است.`,
-          `${meetings.length} meetings ${weekRel(ws).toLowerCase()}. Agendas build themselves, minutes and files live together, and every action is a task with an owner and a due date.`,
-        )}
         actions={
           <>
             <Segmented
@@ -311,7 +307,7 @@ function MeetingRoom({ m }: { m: Meeting }) {
               ))}
             </div>
           ) : (
-            <p className="mb-3 text-xs text-sub">{L('هر اقدامی که این‌جا ثبت شود، یک تسک با مسئول و سررسید می‌شود و در میز کار آن فرد دیده می‌شود.', 'Each action becomes a task with an owner and due date, and shows up on that person’s desk.')}</p>
+            <div className="mb-3" />
           )}
           {canEdit && <AddAction m={m} me={me} today={today} />}
         </Card>

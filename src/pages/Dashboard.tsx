@@ -45,10 +45,6 @@ export default function Dashboard() {
           </>
         }
         title={L('نمای کلی پورتفولیو', 'Portfolio overview')}
-        sub={L(
-          `${fa(s.live.length)} پروژه‌ی جاری؛ ${fa(s.counts.red)} در خطر و ${fa(s.counts.amber)} نیازمند توجه. ${decisions.length ? `${fa(decisions.length)} تصمیم منتظر شماست.` : ''}`,
-          `${s.live.length} live projects · ${s.counts.red} off track, ${s.counts.amber} at risk.${decisions.length ? ` ${decisions.length} decision${decisions.length > 1 ? 's' : ''} waiting on you.` : ''}`,
-        )}
         actions={
           <>
             <Link to="/pulse" className="btn h-10 bg-white text-band">

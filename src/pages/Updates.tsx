@@ -59,12 +59,7 @@ export default function Updates() {
   return (
     <>
       <Band
-        eyebrow={<span>{L('برنامه‌ریزی / به‌روزرسانی', 'Planning / Updates')}</span>}
         title={L('چرخه‌ی گزارش هفتگی', 'Weekly update cycle')}
-        sub={L(
-          `هر مدیر پروژه تا پایان ${fmtWeekday(due)} گزارش هفته را ثبت می‌کند تا در ویکلی پورتفولیو بررسی شود. ${fa(submitted.length)} از ${fa(expected.length)} پروژه گزارش داده‌اند.`,
-          `Each lead reports by end of ${fmtWeekday(due)} for the portfolio weekly. ${submitted.length} of ${expected.length} projects have reported.`,
-        )}
         actions={
           <>
             <WeekNav ws={ws} onChange={setWs} />

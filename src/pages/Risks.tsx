@@ -30,7 +30,6 @@ export default function Risks() {
       <Band nav={<HubNav hub="overview" />}
         eyebrow={<span>RAID</span>}
         title={L('ریسک‌ها، مسائل و تصمیم‌ها', 'Risks, issues & decisions')}
-        sub={L('لاگ RAID کل پورتفولیو. امتیاز = احتمال × اثر (۱ تا ۲۵).', 'Portfolio-wide RAID log. Score = probability × impact (1–25).')}
         actions={
           canEdit && (
             <button className="btn h-10 bg-white text-band" onClick={() => open('Risks', { project_id: project })}>
@@ -61,7 +60,6 @@ export default function Risks() {
         <div className="grid gap-4 @xl:grid-cols-3">
           <Card eyebrow={L('ماتریس', 'Matrix')} title={L('احتمال × اثر', 'Probability × impact')}>
             <RiskMatrix risks={list} onPick={(r) => open('Risks', r as never)} />
-            <p className="mt-3 text-xs text-sub">{L('شماره‌ها همان ردیف جدول هستند.', 'Numbers match the table rows.')}</p>
           </Card>
           <Card className="@xl:col-span-2" pad={false}>
             {list.length === 0 ? (

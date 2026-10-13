@@ -6,8 +6,7 @@ import { can } from '../lib/access'
 import { useAuto } from '../lib/automations'
 import { Popover, cx } from './ui'
 import { L } from '../lib/i18n'
-import { addDays, daysBetween, fa, fmtDayMonth, fmtDate, todayISO } from '../lib/jalali'
-import { fte } from '../lib/capacity'
+import { addDays, daysBetween, fa, fmtDate, todayISO } from '../lib/jalali'
 
 /** Pause / resume a project. Pausing frees the team's capacity; resuming can shift the plan. */
 export function PauseButton({ p, dark, compact }: { p: Project; dark?: boolean; compact?: boolean }) {
@@ -19,7 +18,6 @@ export function PauseButton({ p, dark, compact }: { p: Project; dark?: boolean; 
   const paused = p.status === 'on_hold'
   const t = todayISO()
   const allocs = db.Allocations.filter((a) => a.project_id === p.id && (!a.end_date || a.end_date >= t))
-  const freed = allocs.reduce((s, a) => s + Number(a.percent || 0), 0)
   const people = new Set(allocs.map((a) => a.member_id)).size
   const days = p.paused_at ? Math.max(0, daysBetween(p.paused_at, t)) : 0
   const cls = dark
@@ -52,8 +50,7 @@ export function PauseButton({ p, dark, compact }: { p: Project; dark?: boolean; 
               <p className="text-xs leading-5 text-sub">
                 {L(`${fa(days)} روز متوقف بوده`, `Paused for ${days} days`)}
                 {p.pause_reason && ` — ${p.pause_reason}`}.
-                {auto.on('pause_shift') && days > 0 && p.end_date && L(` ددلاین از ${fmtDayMonth(p.end_date)} به ${fmtDate(addDays(p.end_date, days))} می‌رود و مایلستون‌ها و تحویل‌های باز هم همین‌قدر جابجا می‌شوند.`, ` The deadline moves from ${fmtDayMonth(p.end_date)} to ${fmtDate(addDays(p.end_date, days))}, and open milestones and deliverables shift by the same amount.`)}
-                {L(` ${fa(people)} نفر دوباره روی پروژه می‌آیند (معادل ${fa(fte(freed))} نفر تمام‌وقت).`, ` ${people} people come back to it (${fte(freed)} full-time equivalent).`)}
+                {auto.on('pause_shift') && days > 0 && p.end_date && L(` ددلاین جدید: ${fmtDate(addDays(p.end_date, days))}`, ` New deadline: ${fmtDate(addDays(p.end_date, days))}`)}
               </p>
               <button className="btn-primary btn-sm w-full" onClick={() => (auto.resume(p), close())}>
                 <Play size={14} /> {L('ادامه‌ی پروژه', 'Resume project')}
@@ -62,7 +59,7 @@ export function PauseButton({ p, dark, compact }: { p: Project; dark?: boolean; 
           ) : (
             <>
               <div className="text-sm font-semibold">{L(`توقف ${p.name}`, `Pause ${p.name}`)}</div>
-              <p className="text-xs leading-5 text-sub">{L(`${fa(people)} نفر آزاد می‌شوند (معادل ${fa(fte(freed))} نفر تمام‌وقت) و در صفحه‌ی ظرفیت دیده می‌شود. تخصیص‌ها حذف نمی‌شوند و با ادامه برمی‌گردند.`, `${people} people are freed (${fte(freed)} full-time equivalent) (visible on Capacity). Allocations are kept and come back on resume.`)}</p>
+              <p className="text-xs leading-5 text-sub">{L(`${fa(people)} نفر آزاد می‌شوند`, `${people} people freed`)}</p>
               <textarea className="input" rows={2} value={reason} onChange={(e) => setReason(e.target.value)} placeholder={L('دلیل توقف (برای گزارش مدیریت)', 'Reason (for the leadership report)')} />
               <button className="btn-primary btn-sm w-full" onClick={() => (auto.pause(p, reason.trim()), close())}>
                 <Pause size={14} /> {L('توقف پروژه', 'Pause project')}

@@ -333,7 +333,6 @@ function Matrix({ people }: { people: Member[] }) {
   return (
     <div className="border-t border-line">
       <div className="flex flex-wrap items-center gap-x-4 gap-y-1 px-5 py-3 text-[0.6875rem] text-sub">
-        <span>{L('روی هر خانه بزنید و درصد را بنویسید (Enter). صفر = حذف تخصیص.', 'Click a cell and type a % (Enter). Zero removes it.')}</span>
         <span className="inline-flex items-center gap-1">● {L('بازه‌ی زمانی دارد', 'has a date window')}</span>
         <span className="line-through">{L('پروژه‌ی متوقف — ظرفیت مصرف نمی‌کند', 'paused project — uses no capacity')}</span>
       </div>

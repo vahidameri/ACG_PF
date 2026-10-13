@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Plus, FileSignature, ChevronDown, Lock } from 'lucide-react'
+import { Plus, FileSignature, ChevronDown } from 'lucide-react'
 import type { Contract } from '../lib/types'
 import { useStore } from '../lib/store'
 import { useEditor } from './Editor'
@@ -42,11 +42,6 @@ export function ContractsList({ projectId }: { projectId?: string }) {
   const ending = (c: Contract) => (c.status === 'active' || c.status === 'signed') && c.end_date && daysFromToday(c.end_date) <= 30
   return (
     <div>
-      <div className="px-5 pb-3 pt-1">
-        <span className="inline-flex items-center gap-1.5 text-[0.6875rem] text-sub">
-          <Lock size={12} /> {L('فقط مدیرعامل و مدیر برنامه این بخش را می‌بینند', 'Only the CEO and the program manager can see this')}
-        </span>
-      </div>
       {list.length ? (
         <ul className="divide-y divide-line border-t border-line">
           {list.map((c) => {

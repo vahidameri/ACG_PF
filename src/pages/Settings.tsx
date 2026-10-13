@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { CheckCircle2, Link2, Loader2, RotateCcw, Unplug, XCircle, Zap, Server, MonitorSmartphone } from 'lucide-react'
+import { CheckCircle2, Link2, Loader2, RotateCcw, Unplug, XCircle, Zap } from 'lucide-react'
 import { useStore } from '../lib/store'
 import { useGoogle } from '../lib/google'
 import { useAuto, AUTOMATIONS } from '../lib/automations'
@@ -46,11 +46,6 @@ export default function Settings({ embedded }: { embedded?: boolean }) {
       setTest({ state: 'err', msg: e instanceof Error ? e.message : String(e) })
     }
   }
-  const code = (s: string) => (
-    <code className="rounded-md bg-muted px-1.5 py-0.5 font-mono text-[0.75rem]" dir="ltr">
-      {s}
-    </code>
-  )
 
   return (
     <>
@@ -69,17 +64,11 @@ export default function Settings({ embedded }: { embedded?: boolean }) {
                 </span>
                 <div className="min-w-0 flex-1">
                   <div className="text-sm font-medium">{tr(a.title)}</div>
-                  <div className="mt-0.5 text-xs leading-5 text-sub">{tr(a.desc)}</div>
-                  <span className="mt-1 inline-flex items-center gap-1 text-[0.625rem] text-sub">
-                    {a.where === 'server' ? <Server size={10} /> : <MonitorSmartphone size={10} />}
-                    {a.where === 'server' ? L('روی سرور (Apps Script)', 'On the server (Apps Script)') : L('داخل اپ', 'In the app')}
-                  </span>
                 </div>
                 <Switch on={auto.on(a.id)} onChange={(v) => auto.setOn(a.id, v)} disabled={!admin} />
               </li>
             ))}
           </ul>
-          {!admin && <p className="mt-2 text-[0.6875rem] text-sub">{L('فقط ادمین می‌تواند اتوماسیون‌ها را روشن یا خاموش کند.', 'Only an admin can switch automations.')}</p>}
           {auto.log.length > 0 && (
             <div className="mt-4 rounded-2xl bg-muted/60 p-3">
               <div className="eyebrow mb-2">{L('آخرین اجراها', 'Recent runs')}</div>
@@ -110,9 +99,7 @@ export default function Settings({ embedded }: { embedded?: boolean }) {
               {L(`پروژه‌ها ${fa(db.Projects.length)} · تسک‌ها ${fa(db.Tasks.length)} · جلسات ${fa(db.Meetings.length)} · فایل‌ها ${fa(db.Files.length)}`, `Projects ${db.Projects.length} · Tasks ${db.Tasks.length} · Meetings ${db.Meetings.length} · Files ${db.Files.length}`)}
             </div>
             {g.hosted ? (
-              <p className="rounded-2xl bg-good/10 px-4 py-3 text-xs leading-6 text-good">
-                {L('اطلس مستقیم از Google Apps Script اجرا می‌شود: ورود با حساب گوگل خودکار است و داده‌ها در همین گوگل شیت ذخیره می‌شوند. تنظیم دیگری لازم نیست.', 'Atlas runs straight from Google Apps Script: Google sign-in is automatic and data lives in this Google Sheet. Nothing else to configure.')}
-              </p>
+              <p className="rounded-2xl bg-good/10 px-4 py-3 text-xs text-good">{L('متصل از طریق Google Apps Script', 'Connected via Google Apps Script')}</p>
             ) : (
               <>
             <div>
@@ -122,7 +109,6 @@ export default function Settings({ embedded }: { embedded?: boolean }) {
             <div>
               <label className="label">Google OAuth Client ID</label>
               <input className="input font-mono text-xs" dir="ltr" value={client} onChange={(e) => setClient(e.target.value)} placeholder="1234-abc.apps.googleusercontent.com" />
-              <p className="mt-1 text-[0.6875rem] leading-5 text-sub">{L('از Google Cloud → APIs & Services → Credentials (نوع Web application). آدرس سایت را در Authorized JavaScript origins بگذارید و Calendar API را فعال کنید.', 'From Google Cloud → APIs & Services → Credentials (Web application). Add the site URL to Authorized JavaScript origins and enable the Calendar API.')}</p>
             </div>
             <details className="text-xs">
               <summary className="cursor-pointer text-sub">{L('ورود با کلید (بدون گوگل)', 'Key sign-in (without Google)')}</summary>
@@ -153,16 +139,6 @@ export default function Settings({ embedded }: { embedded?: boolean }) {
             )}
               </>
             )}
-            {!g.hosted && (
-              <ol className="space-y-2 border-t border-line pt-4 text-xs leading-6 text-sub">
-                <li>{L('راه‌اندازی کامل (فقط با گوگل، بدون سرور) در فایل README آمده است:', 'Full setup (Google only, no server) is in the README:')}</li>
-                <li>۱. {L('Google Sheet → Extensions → Apps Script → فایل‌های ', 'Google Sheet → Extensions → Apps Script → add ')}{code('Code.gs')} · {code('Index.html')} · {code('appsscript.json')}</li>
-                <li>۲. {L('اجرای ', 'Run ')}{code('setup')}</li>
-                <li>۳. {L('دو انتشار Web app: داده (Execute as: Me) و اپ (Execute as: User accessing)', 'Two Web app deployments: data (Execute as: Me) and app (Execute as: User accessing)')}</li>
-                <li>۴. {L('اجرای ', 'Run ')}{code("setApiUrl('…')")}{L(' با آدرس انتشار داده', ' with the data deployment URL')}</li>
-                <li>۵. {L('لینک انتشار اپ را برای تیم بفرستید', 'Share the app deployment link with the team')}</li>
-              </ol>
-            )}
           </div>
         </Card>
 
@@ -178,7 +154,6 @@ export default function Settings({ embedded }: { embedded?: boolean }) {
             </div>
             {mode === 'demo' && (
               <div className="border-t border-line pt-4">
-                <p className="text-xs text-sub">{L('تغییرات حالت نمایشی فقط در همین مرورگر ذخیره می‌شود. برای دیدن دسترسی‌ها، از منوی پایین سایدبار «مشاهده به‌عنوان» را عوض کنید.', 'Demo changes stay in this browser. To see permissions, switch “View as” from the menu at the bottom of the sidebar.')}</p>
                 <button className="btn-outline btn-sm mt-3" onClick={resetDemo}>
                   <RotateCcw size={14} /> {L('بازنشانی داده‌های نمونه', 'Reset sample data')}
                 </button>

@@ -133,7 +133,6 @@ export default function Roadmap() {
       <Band
         nav={<HubNav hub="plan" />}
         title={L('رودمپ', 'Roadmap')}
-        sub={L('زمان‌بندی همه‌ی پروژه‌ها و مایلستون‌ها در یک نگاه. برای دیدن وضعیتِ برنامه در هر تاریخ، روی سرستون زمان بکشید.', 'Every project and milestone on one timeline. Drag along the time header to see where the plan stands on any date.')}
       />
       <Overlap className="space-y-4">
         <Card pad={false}>

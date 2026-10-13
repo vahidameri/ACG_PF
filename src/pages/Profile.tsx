@@ -153,7 +153,7 @@ export default function Profile() {
           <Card eyebrow={L('کارها', 'Work')} title={L('تسک‌های باز', 'Open tasks')}>
             {hiddenCount ? (
               <div className="flex items-center gap-3 rounded-2xl bg-muted/60 p-4 text-sm text-sub">
-                <Lock size={18} /> {L('تسک‌های این فرد خصوصی است و فقط برای خودش و ثبت‌کننده‌ی هر تسک دیده می‌شود.', 'This person’s tasks are private — visible only to them and to whoever assigned each one.')}
+                <Lock size={18} /> {L('تسک‌ها خصوصی است', 'Tasks are private')}
               </div>
             ) : null}
             {tasks.length ? (

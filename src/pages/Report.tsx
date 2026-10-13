@@ -43,9 +43,7 @@ export default function Report() {
   return (
     <>
       <Band nav={<HubNav hub="overview" />}
-        eyebrow={<span>{L('گزارش‌دهی / مدیریتی', 'Reporting / Executive')}</span>}
         title={L('گزارش مدیریتی پورتفولیو', 'Executive portfolio report')}
-        sub={L('نسخه‌ی قابل چاپ / PDF برای هیئت‌مدیره و کمیته‌ی راهبری.', 'Print / PDF-ready for the board and steering committee.')}
         actions={
           <>
             <button className="btn h-10 border border-white/15 text-white" onClick={copyText}>

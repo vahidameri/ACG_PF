@@ -41,7 +41,6 @@ export default function Projects() {
   return (
     <>
       <Band
-        eyebrow={<span>{L('پورتفولیو / پروژه‌ها', 'Portfolio / Projects')}</span>}
         title={can.portfolio(access) ? L('پروژه‌ها', 'Projects') : L('پروژه‌های من', 'My projects')}
         sub={L(`${fa(list.length)} از ${fa(db.Projects.length)} پروژه`, `${list.length} of ${db.Projects.length} projects`)}
         actions={

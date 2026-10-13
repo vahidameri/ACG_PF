@@ -43,9 +43,7 @@ export default function FollowUps() {
   return (
     <>
       <Band nav={<HubNav hub="work" />}
-        eyebrow={<span>{L('اجرا / فالوآپ‌ها', 'Execution / Follow-ups')}</span>}
         title={L('فالوآپ‌ها', 'Follow-ups')}
-        sub={L('هر چیزی که منتظرش هستید، از هر کسی — تا وقتی بسته نشده، اینجاست.', 'Everything you’re waiting on, from anyone — it stays here until it’s closed.')}
         actions={
           canEdit && (
             <button className="btn h-10 bg-white text-band" onClick={() => open('FollowUps', { project_id: project, person })}>

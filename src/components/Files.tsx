@@ -74,7 +74,7 @@ export function Attachments({ entity, id, compact }: { entity: FileRef['entity']
           <input ref={input} type="file" multiple hidden onChange={(e) => (send(e.target.files), (e.target.value = ''))} />
           <button onClick={() => input.current?.click()} className="flex w-full items-center justify-center gap-2 rounded-xl border border-dashed border-line-strong px-3 py-2.5 text-xs text-sub transition hover:border-ink/30 hover:text-ink">
             {busy ? <Loader size={14} className="animate-spin" /> : <Paperclip size={14} />}
-            {busy ? L('در حال آپلود…', 'Uploading…') : L('افزودن فایل — یا فایل را این‌جا رها کنید', 'Attach files — or drop them here')}
+            {busy ? L('در حال آپلود…', 'Uploading…') : L('افزودن فایل', 'Attach files')}
           </button>
         </>
       )}

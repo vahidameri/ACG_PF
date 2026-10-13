@@ -29,9 +29,7 @@ export default function Teams() {
   return (
     <>
       <Band nav={<HubNav hub="plan" />}
-        eyebrow={<span>{L('اجرا / تیم‌ها', 'Execution / Teams')}</span>}
         title={L('پروداکت و تک', 'Product & Tech')}
-        sub={L('هر تیم جداگانه قابل پیگیری است و کارهایی که از یکی به دیگری تحویل می‌شود به هم وصل‌اند.', 'Track each team on its own — and see the handoffs that connect them.')}
         actions={<Segmented dark value={view} onChange={setView} options={[{ value: 'side', label: L('کنار هم', 'Side by side') }, { value: 'flow', label: L('جریان تحویل', 'Handoffs') }, { value: 'projects', label: L('به تفکیک پروژه', 'By project') }]} />}
       >
         <StatStrip

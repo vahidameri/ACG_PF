@@ -558,7 +558,6 @@ function SetupPrompt({ p }: { p: import('../lib/types').Project }) {
     <div className="card mb-4 flex flex-wrap items-center gap-4 border-warn/30 bg-warn/[0.05] p-5">
       <div className="min-w-0 flex-1">
         <div className="text-sm font-semibold">{L('اطلاعات پروژه کامل نیست', 'This project isn’t set up yet')}</div>
-        <p className="mt-1 text-xs leading-6 text-sub">{L('تا این موارد ثبت نشوند، وضعیت سلامت و رودمپ این پروژه معنادار نیست.', 'Until these are in, health and the roadmap can’t say much about this project.')}</p>
         <div className="mt-3 flex flex-wrap gap-2">
           {steps.map((x) => (
             <span key={x.label} className={cx('chip', x.done ? 'bg-good/10 text-good' : 'bg-surface text-ink ring-1 ring-line-strong')}>

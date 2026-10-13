@@ -44,12 +44,7 @@ export default function Plan() {
   return (
     <>
       <Band nav={<HubNav hub="plan" />}
-        eyebrow={<span>{L('برنامه‌ریزی / تحویل', 'Planning / Delivery')}</span>}
         title={L('برنامه‌ی تحویل', 'Delivery plan')}
-        sub={L(
-          `این هفته ${fa(thisWeek.length)} تحویل داریم (${fa(doneThisWeek)} انجام شد) و تا ۳۰ روز آینده ${fa(next30.length)} مورد. ${sum.overdue.length ? `${fa(sum.overdue.length)} مورد از تاریخش گذشته و ` : ''}${fa(sum.slipped.length)} مورد نسبت به تعهد اولیه جابجا شده.`,
-          `${thisWeek.length} deliveries this week (${doneThisWeek} done) and ${next30.length} in the next 30 days. ${sum.overdue.length ? `${sum.overdue.length} are past due and ` : ''}${sum.slipped.length} moved from their original commitment.`,
-        )}
         actions={
           canEdit && (
             <button className="btn h-10 bg-white text-band" onClick={() => open('Deliverables', { project_id: project })}>
@@ -218,10 +213,6 @@ function Legend() {
           {t}
         </span>
       ))}
-      <span className="inline-flex items-center gap-1.5">
-        <span className="font-semibold text-bad">↶ {L('۲ هفته', '2w')}</span>
-        {L('هفته‌های جابجایی از تعهد اولیه', 'weeks moved from the baseline')}
-      </span>
       <span className="inline-flex items-center gap-1.5">
         <span className="h-1.5 w-1.5 rounded-full bg-[#8a1c3c]" /> {L('پروداکت', 'Product')}
         <span className="ms-2 h-1.5 w-1.5 rounded-full bg-[#1D4F61]" /> {L('تک', 'Tech')}

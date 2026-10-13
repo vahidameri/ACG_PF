@@ -26,7 +26,6 @@ export default function Admin({ initial = 'people' }: { initial?: Tab }) {
     <>
       <Band
         title={L('بک‌آفیس', 'Back office')}
-        sub={L('افراد و دسترسی‌ها، پروژه‌ها، قراردادها و تنظیمات — فقط برای مدیر برنامه.', 'People & access, projects, contracts and settings — program manager only.')}
         actions={
           <>
             <Segmented
@@ -152,17 +151,6 @@ function People() {
             })}
           </tbody>
         </table>
-      </div>
-      <div className="grid gap-3 border-t border-line p-5 text-xs leading-5 text-sub @lg:grid-cols-4">
-        {(['super', 'exec', 'head', 'member'] as Access[]).map((a) => (
-          <div key={a}>
-            <div className="mb-1 font-semibold text-ink">{lbl(ACCESS, a)}</div>
-            {a === 'super' && L('همه چیز، به‌علاوه‌ی بک‌آفیس، قراردادها و تنظیمات.', 'Everything, plus the back office, contracts and settings.')}
-            {a === 'exec' && L('همه‌ی نماها و قراردادها. تسک‌ها و فالوآپ‌هایش خصوصی است.', 'Every view and the contracts. Their tasks and follow-ups are private.')}
-            {a === 'head' && L('نمای کلی پورتفولیو، ظرفیت و برنامه. بدون قرارداد و بک‌آفیس.', 'Portfolio overview, capacity and plans. No contracts or back office.')}
-            {a === 'member' && L('فقط پروژه‌هایی که در آن‌ها نقش دارد، تسک‌ها و فالوآپ‌های خودش.', 'Only the projects they work on, their own tasks and follow-ups.')}
-          </div>
-        ))}
       </div>
     </Card>
   )

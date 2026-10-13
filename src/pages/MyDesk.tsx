@@ -7,7 +7,7 @@ import { useEditor } from '../components/Editor'
 import { Band, Card, Empty, Overlap, Avatar, cx, Segmented, StatStrip, Chip, Ring, PriorityIcon, Due } from '../components/ui'
 import { FollowUpRow, TaskRow, useProjectName } from '../components/shared'
 import { PersonPicker, ProjectPicker } from '../components/pickers'
-import { addDays, daysFromToday, fa, fmtDate, todayISO, daysBetween, firstName, greeting, fmtWeekday, relDays, dayNum, parseISO } from '../lib/jalali'
+import { addDays, daysFromToday, fa, fmtDate, todayISO, daysBetween, firstName, greeting, fmtWeekday, dayNum, parseISO } from '../lib/jalali'
 import { isTaskOverdue, projectMetrics, riskScore } from '../lib/metrics'
 import { uid } from '../lib/api'
 import { PRIORITY_ORDER } from '../lib/labels'
@@ -175,7 +175,6 @@ export default function MyDesk() {
     .slice(0, 3)
   const dueTodayTotal = myToday.length + doneToday.length
   const dayPct = dueTodayTotal ? Math.round((doneToday.length / dueTodayTotal) * 100) : 100
-  const nextMs = db.Milestones.filter((m) => m.status !== 'done' && m.planned_date >= today).sort((a, b) => (a.planned_date < b.planned_date ? -1 : 1))[0]
   const headline = (() => {
     const parts: string[] = []
     if (myToday.length) parts.push(L(`${fa(myToday.length)} کار`, `${myToday.length} task${myToday.length > 1 ? 's' : ''}`))
@@ -187,16 +186,11 @@ export default function MyDesk() {
   return (
     <>
       <Band
-        eyebrow={<><span>{L('فضای کار', 'Workspace')}</span><span className="opacity-40">/</span><span>{fmtWeekday(today)}</span><span className="num">{fmtDate(today, 'long')}</span></>}
+        eyebrow={<><span>{fmtWeekday(today)}</span><span className="num">{fmtDate(today, 'long')}</span></>}
         title={hello}
         sub={
           <>
             {headline}
-            {nextMs && (
-              <span className="mt-1 block text-[0.8125rem] text-[#9fb3d9]">
-                {L('مایلستون بعدی پورتفولیو', 'Next portfolio milestone')}: {nextMs.title} · {relDays(nextMs.planned_date)}
-              </span>
-            )}
           </>
         }
         actions={
@@ -320,7 +314,6 @@ export default function MyDesk() {
               <span className="flex items-center gap-1.5"><span className="h-1.5 w-3 rounded-full bg-ink" /> {L('تسک', 'Tasks')}</span>
               <span className="flex items-center gap-1.5"><span className="h-1.5 w-1.5 rounded-full bg-warn" /> {L('فالوآپ', 'Follow-ups')}</span>
               <span className="flex items-center gap-1.5"><span className="h-1.5 w-1.5 rotate-45 rounded-[1px] bg-bad" /> {L('مایلستون', 'Milestone')}</span>
-              <span className="ms-auto">{L('روی هر روز بزنید تا کارهای همان روز را ببینید', 'Tap a day to see what’s due')}</span>
             </div>
           </Card>
 
