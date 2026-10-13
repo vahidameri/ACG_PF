@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { Plus } from 'lucide-react'
 import { useStore } from '../lib/store'
+import { HubNav } from '../components/HubNav'
 import { useEditor } from '../components/Editor'
 import { Band, Card, Empty, FilterSelect, Overlap, Segmented, Toolbar, Avatar, StatStrip, cx } from '../components/ui'
 import { FollowUpRow } from '../components/shared'
@@ -41,7 +42,7 @@ export default function FollowUps() {
 
   return (
     <>
-      <Band
+      <Band nav={<HubNav hub="work" />}
         eyebrow={<span>{L('اجرا / فالوآپ‌ها', 'Execution / Follow-ups')}</span>}
         title={L('فالوآپ‌ها', 'Follow-ups')}
         sub={L('هر چیزی که منتظرش هستید، از هر کسی — تا وقتی بسته نشده، اینجاست.', 'Everything you’re waiting on, from anyone — it stays here until it’s closed.')}

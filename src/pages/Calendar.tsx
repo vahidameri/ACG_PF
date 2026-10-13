@@ -8,6 +8,8 @@ import {
   dayNum, fmtWeekday, fmtDate, addDays,
 } from '../lib/jalali'
 import { L, locale } from '../lib/i18n'
+import { useAuto } from '../lib/automations'
+import { relate } from '../lib/gcal'
 
 type Kind = 'all' | 'tasks' | 'followups' | 'milestones' | 'plan'
 
@@ -15,6 +17,8 @@ type Kind = 'all' | 'tasks' | 'followups' | 'milestones' | 'plan'
 export default function CalendarPage() {
   const { db, me } = useStore()
   const { open } = useEditor()
+  const auto = useAuto()
+  const gOnly = auto.events.filter((e) => !relate(e, db).meeting)
   const today = todayISO()
   const jalali = locale.cal === 'jalali'
   const en = locale.lang === 'en'
@@ -62,6 +66,7 @@ export default function CalendarPage() {
     sprintStarts: kind === 'all' ? db.Sprints.filter((s) => s.start_date === d && pass(s.project_id)) : [],
     meets: kind === 'all' || kind === 'plan' ? db.Meetings.filter((m) => m.date === d && m.status !== 'cancelled' && (!project || m.project_id === project) && (!who || m.attendees.includes(who))) : [],
     dels: kind === 'all' || kind === 'plan' ? db.Deliverables.filter((x) => x.target_date === d && x.status !== 'dropped' && pass(x.project_id, x.owner)) : [],
+    gev: (kind === 'all' || kind === 'plan') && !project && !who ? gOnly.filter((e) => e.date === d) : [],
   })
 
   const move = (delta: number) => {
@@ -119,7 +124,7 @@ export default function CalendarPage() {
             .filter((c) => !c.out)
             .map(({ d }) => {
               const it = itemsOn(d)
-              const n = it.tasks.length + it.fus.length + it.ms.length + it.sprintStarts.length + it.meets.length + it.dels.length
+              const n = it.tasks.length + it.fus.length + it.ms.length + it.sprintStarts.length + it.meets.length + it.dels.length + it.gev.length
               if (!n && d !== today) return null
               return (
                 <div key={d} className={cx('card p-4', d === today && 'ring-2 ring-ink')}>
@@ -132,7 +137,7 @@ export default function CalendarPage() {
                     <div className="text-xs text-sub">{L('برنامه‌ای نیست', 'Nothing scheduled')}</div>
                   ) : (
                     <div className="space-y-0.5">
-                      {it.meets.map((m) => <Row key={m.id} onClick={() => (window.location.hash = '#/weekly')} icon={<CalendarRange size={14} />} title={`${fa(m.time)} · ${m.title}`} sub={m.facilitator} />)}
+                      {it.meets.map((m) => <Row key={m.id} onClick={() => (window.location.hash = '#/meetings')} icon={<CalendarRange size={14} />} title={`${fa(m.time)} · ${m.title}`} sub={m.facilitator} />)}
                       {it.dels.map((x) => <Row key={x.id} onClick={() => open('Deliverables', x as never)} icon={<Package size={14} className="text-brand" />} title={x.title} sub={db.Projects.find((p) => p.id === x.project_id)?.name} />)}
                       {it.ms.map((m) => <Row key={m.id} onClick={() => open('Milestones', m as never)} icon={<Flag size={14} className="text-bad" />} title={m.title} sub={db.Projects.find((p) => p.id === m.project_id)?.name} />)}
                       {it.sprintStarts.map((x) => <Row key={x.id} icon={<Zap size={14} className="text-brand" />} title={x.name} sub={x.goal} />)}
@@ -158,7 +163,8 @@ export default function CalendarPage() {
               {cells.map(({ d, out }) => {
                 const it = itemsOn(d)
                 const all = [
-                  ...it.meets.map((m) => ({ k: `mt${m.id}`, el: <Pill key={m.id} tone="ink" icon={<CalendarRange size={10} />} text={`${fa(m.time)} ${m.title}`} onClick={() => (window.location.hash = '#/weekly')} /> })),
+                  ...it.gev.map((e) => ({ k: `g${e.id}`, el: <Pill key={e.id} tone="plain" icon={<CalendarRange size={10} className="text-[#1a73e8]" />} text={`${fa(e.time)} ${e.title}`} onClick={() => setSel(d)} /> })),
+                  ...it.meets.map((m) => ({ k: `mt${m.id}`, el: <Pill key={m.id} tone="ink" icon={<CalendarRange size={10} />} text={`${fa(m.time)} ${m.title}`} onClick={() => (window.location.hash = '#/meetings')} /> })),
                   ...it.dels.map((x) => ({ k: `d${x.id}`, el: <Pill key={x.id} tone={x.status === 'delivered' ? 'good' : x.target_date < today ? 'bad' : 'brand'} icon={<Package size={10} />} text={`${x.title} · ${pcode(x.project_id)}`} onClick={() => open('Deliverables', x as never)} /> })),
                   ...it.ms.map((m) => ({ k: `m${m.id}`, el: <Pill key={m.id} tone={m.status === 'done' ? 'good' : m.planned_date < today ? 'bad' : 'ink'} icon={<Flag size={10} />} text={m.title} onClick={() => open('Milestones', m as never)} /> })),
                   ...it.sprintStarts.map((s) => ({ k: `s${s.id}`, el: <Pill key={s.id} tone="brand" icon={<Zap size={10} />} text={`${s.name} · ${pcode(s.project_id)}`} onClick={() => setSel(d)} /> })),
@@ -184,14 +190,21 @@ export default function CalendarPage() {
           </div>
 
           <Card eyebrow={fmtWeekday(sel)} title={fmtDate(sel, 'long')}>
-            {selItems.tasks.length + selItems.fus.length + selItems.ms.length + selItems.sprintStarts.length + selItems.meets.length + selItems.dels.length === 0 ? (
+            {selItems.tasks.length + selItems.fus.length + selItems.ms.length + selItems.sprintStarts.length + selItems.meets.length + selItems.dels.length + selItems.gev.length === 0 ? (
               <div className="py-8 text-center text-sm text-sub">{L('برای این روز چیزی ثبت نشده', 'Nothing scheduled')}</div>
             ) : (
               <div className="space-y-5">
                 {selItems.meets.length > 0 && (
                   <Group title={L('جلسه', 'Meetings')}>
                     {selItems.meets.map((m) => (
-                      <Row key={m.id} onClick={() => (window.location.hash = '#/weekly')} icon={<CalendarRange size={14} className="text-ink" />} title={`${fa(m.time)} · ${m.title}`} sub={m.facilitator} />
+                      <Row key={m.id} onClick={() => (window.location.hash = '#/meetings')} icon={<CalendarRange size={14} className="text-ink" />} title={`${fa(m.time)} · ${m.title}`} sub={m.facilitator} />
+                    ))}
+                  </Group>
+                )}
+                {selItems.gev.length > 0 && (
+                  <Group title={L('تقویم گوگل', 'Google Calendar')}>
+                    {selItems.gev.map((e) => (
+                      <Row key={e.id} onClick={() => e.meetUrl && window.open(e.meetUrl, '_blank')} icon={<CalendarRange size={14} className="text-[#1a73e8]" />} title={`${fa(e.time)} · ${e.title}`} sub={relate(e, db).related ? L('مرتبط با تیم — از «جلسات» اضافه کنید', 'Related — add it from Meetings') : L('شخصی', 'Personal')} />
                     ))}
                   </Group>
                 )}

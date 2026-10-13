@@ -52,7 +52,7 @@ export default function MyDesk() {
     if (kind === 'task') {
       await upsert('Tasks', {
         id: uid('T'), project_id: proj, sprint_id: '', title: t, description: '', assignee: who || me, reporter: me, status: 'todo', priority: 'medium',
-        due_date: dueDate, points: 0, tags: '', created_at: today, completed_at: '', track: '', depends_on: '', meeting_id: '',
+        due_date: dueDate, points: 0, tags: '', created_at: today, completed_at: '', track: '', depends_on: '', meeting_id: '', private: '',
       })
       toast(L(`تسک برای ${who || 'شما'} ثبت شد`, `Task added for ${who || 'you'}`))
     } else {
@@ -250,7 +250,7 @@ export default function MyDesk() {
 
         <div className="grid grid-cols-2 gap-3 @xl:grid-cols-4">
           <RhythmTile
-            to="/weekly"
+            to="/meetings"
             icon={CalendarRange}
             label={L('جلسه‌ی بعدی', 'Next meeting')}
             value={nextMeeting ? nextMeeting.title : '—'}

@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { Plus, Zap } from 'lucide-react'
 import { useStore } from '../lib/store'
+import { HubNav } from '../components/HubNav'
 import { useEditor } from '../components/Editor'
 import { Band, Card, Empty, Overlap, Progress, cx, Chip, MenuItem, Popover } from '../components/ui'
 import { BurndownChart, Kanban, SprintHeader, VelocityChart } from '../components/widgets'
@@ -21,7 +22,7 @@ export default function Sprints() {
 
   return (
     <>
-      <Band
+      <Band nav={<HubNav hub="work" />}
         eyebrow={<span>{L('اجرا / اسپرینت‌ها', 'Execution / Sprints')}</span>}
         title={L('اسپرینت‌های توسعه', 'Delivery sprints')}
         sub={L(`${fa(active.length)} اسپرینت فعال در ${fa(new Set(active.map((s) => s.project_id)).size)} پروژه`, `${active.length} active sprints across ${new Set(active.map((s) => s.project_id)).size} projects`)}

@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { ArrowLeft, ArrowRight, CheckCircle2, Clock, Link2 } from 'lucide-react'
 import { useStore } from '../lib/store'
+import { HubNav } from '../components/HubNav'
 import { useEditor } from '../components/Editor'
 import { Band, Card, Empty, Overlap, StatStrip, Segmented, FilterSelect, Toolbar, Ring, Avatar, cx, StatusIcon, Due } from '../components/ui'
 import { TaskRow } from '../components/shared'
@@ -27,7 +28,7 @@ export default function Teams() {
 
   return (
     <>
-      <Band
+      <Band nav={<HubNav hub="plan" />}
         eyebrow={<span>{L('اجرا / تیم‌ها', 'Execution / Teams')}</span>}
         title={L('پروداکت و تک', 'Product & Tech')}
         sub={L('هر تیم جداگانه قابل پیگیری است و کارهایی که از یکی به دیگری تحویل می‌شود به هم وصل‌اند.', 'Track each team on its own — and see the handoffs that connect them.')}

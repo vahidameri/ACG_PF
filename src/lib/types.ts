@@ -22,6 +22,9 @@ export interface Project {
   progress: number // 0..100 (manual). If empty, computed from milestones.
   health_override: Health | ''
   objective: string
+  /** set while the project is paused (status on_hold) */
+  paused_at: string
+  pause_reason: string
 }
 
 export interface ScopeItem {
@@ -78,8 +81,10 @@ export interface Task {
   track: Track | ''
   /** comma-separated task ids this task waits on (cross-team handoffs) */
   depends_on: string
-  /** set when the task is an action item agreed in a weekly meeting */
+  /** set when the task is an action item agreed in a meeting */
   meeting_id: string
+  /** '1' = only the assignee and the reporter can see it */
+  private: string
 }
 
 export type Track = 'product' | 'tech'
@@ -122,6 +127,11 @@ export interface Member {
   track: Track | ''
   /** availability as % of one full-time person (100 = full-time, 50 = half-time, 600 = a team of six) */
   capacity: number
+  /** profile photo URL (Drive thumbnail, Google profile picture or data URL in the demo) */
+  photo: string
+  /** '1' = every task assigned to this person is private (e.g. the CEO) */
+  tasks_private: string
+  phone: string
 }
 
 export interface Allocation {
@@ -165,7 +175,7 @@ export interface Deliverable {
   notes: string
 }
 
-export type MeetingSeries = 'portfolio' | 'product' | 'tech' | 'project' | 'other'
+export type MeetingSeries = 'portfolio' | 'product' | 'tech' | 'project' | 'one_on_one' | 'other'
 
 export interface Meeting {
   id: string
@@ -181,6 +191,29 @@ export interface Meeting {
   notes: string
   /** one decision per line */
   decisions: string
+  /** Google Calendar link */
+  gcal_id: string
+  meet_url: string
+  /** minutes length in minutes */
+  duration: number
+}
+
+export interface FileRef {
+  id: string
+  entity: 'Meetings' | 'Projects' | 'Tasks' | 'Team' | 'Deliverables'
+  entity_id: string
+  name: string
+  mime: string
+  size: number
+  url: string
+  uploaded_by: string
+  created_at: string
+}
+
+/** key/value settings shared by everyone (automation switches etc.); id = key */
+export interface ConfigRow {
+  id: string
+  value: string
 }
 
 export interface TimeOff {
@@ -216,6 +249,8 @@ export interface DB {
   Deliverables: Deliverable[]
   Meetings: Meeting[]
   TimeOff: TimeOff[]
+  Files: FileRef[]
+  Config: ConfigRow[]
 }
 
 export type SheetName = keyof DB

@@ -1,5 +1,7 @@
 import { HashRouter, Route, Routes } from 'react-router-dom'
 import { StoreProvider, useStore } from './lib/store'
+import { GoogleProvider } from './lib/google'
+import { AutomationProvider } from './lib/automations'
 import { I18nProvider } from './lib/i18n'
 import { EditorProvider } from './components/Editor'
 import { Layout } from './components/Layout'
@@ -21,13 +23,14 @@ import Teams from './pages/Teams'
 import Pulse from './pages/Pulse'
 import Plan from './pages/Plan'
 import Weekly from './pages/Weekly'
+import Profile from './pages/Profile'
 import { ComposerProvider } from './components/UpdateComposer'
 import { Skeleton } from './components/ui'
 import { SignIn } from './components/SignIn'
 
 function Gate({ children }: { children: React.ReactNode }) {
-  const { loading, lastSync, mode, config } = useStore()
-  if (mode === 'live' && !config.token) return <SignIn />
+  const { loading, lastSync, mode, authed } = useStore()
+  if (mode === 'live' && !authed) return <SignIn />
   if (mode === 'live' && loading && !lastSync)
     return (
       <div className="mx-auto max-w-[90rem] space-y-4 pt-8">
@@ -45,9 +48,11 @@ function Gate({ children }: { children: React.ReactNode }) {
 
 export default function App() {
   return (
+    <GoogleProvider>
     <StoreProvider>
       <I18nProvider>
       <HashRouter>
+        <AutomationProvider>
         <EditorProvider>
         <ComposerProvider>
           <Layout>
@@ -63,6 +68,9 @@ export default function App() {
                 <Route path="/pulse" element={<Pulse />} />
                 <Route path="/plan" element={<Plan />} />
                 <Route path="/weekly" element={<Weekly />} />
+                <Route path="/meetings" element={<Weekly />} />
+                <Route path="/people/:id" element={<Profile />} />
+                <Route path="/me" element={<Profile />} />
                 <Route path="/sprints" element={<Sprints />} />
                 <Route path="/tasks" element={<Tasks />} />
                 <Route path="/followups" element={<FollowUps />} />
@@ -77,8 +85,10 @@ export default function App() {
           </Layout>
         </ComposerProvider>
         </EditorProvider>
+        </AutomationProvider>
       </HashRouter>
       </I18nProvider>
     </StoreProvider>
+    </GoogleProvider>
   )
 }

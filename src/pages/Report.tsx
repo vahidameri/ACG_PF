@@ -1,5 +1,6 @@
 import { Printer, Copy } from 'lucide-react'
 import { useStore } from '../lib/store'
+import { HubNav } from '../components/HubNav'
 import { Band, HealthBadge, HealthDot, Overlap, Progress, cx, healthText } from '../components/ui'
 import { portfolioSummary, riskScore } from '../lib/metrics'
 import { fa, fmtDate, todayISO, relDays } from '../lib/jalali'
@@ -42,7 +43,7 @@ export default function Report() {
 
   return (
     <>
-      <Band
+      <Band nav={<HubNav hub="overview" />}
         eyebrow={<span>{L('گزارش‌دهی / مدیریتی', 'Reporting / Executive')}</span>}
         title={L('گزارش مدیریتی پورتفولیو', 'Executive portfolio report')}
         sub={L('نسخه‌ی قابل چاپ / PDF برای هیئت‌مدیره و کمیته‌ی راهبری.', 'Print / PDF-ready for the board and steering committee.')}

@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { Plus } from 'lucide-react'
 import { useStore } from '../lib/store'
+import { HubNav } from '../components/HubNav'
 import { useEditor } from '../components/Editor'
 import { Band, Card, Overlap, Segmented, StatStrip, FilterSelect, cx, Avatar } from '../components/ui'
 import { DeliverableChip, DeliverableRow, DeliveryEmpty, stateBar } from '../components/delivery'
@@ -42,7 +43,7 @@ export default function Plan() {
 
   return (
     <>
-      <Band
+      <Band nav={<HubNav hub="plan" />}
         eyebrow={<span>{L('برنامه‌ریزی / تحویل', 'Planning / Delivery')}</span>}
         title={L('برنامه‌ی تحویل', 'Delivery plan')}
         sub={L(

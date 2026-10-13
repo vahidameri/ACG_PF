@@ -40,13 +40,13 @@ export function Card({
 }
 
 /** ACG-style black band with grid texture; page content overlaps its bottom edge. */
-export function Band({ eyebrow, title, sub, actions, children }: { eyebrow?: ReactNode; title: ReactNode; sub?: ReactNode; actions?: ReactNode; children?: ReactNode }) {
+export function Band({ eyebrow, title, sub, actions, children, nav }: { eyebrow?: ReactNode; title: ReactNode; sub?: ReactNode; actions?: ReactNode; children?: ReactNode; nav?: ReactNode }) {
   return (
     <div className="band -mx-4 @sm:-mx-6 @lg:-mx-8 px-4 @sm:px-6 @lg:px-8 pt-9 pb-24 no-print">
       <div className="relative z-10 mx-auto max-w-[90rem] rise">
         <div className="flex flex-wrap items-end justify-between gap-4">
           <div className="min-w-0">
-            {eyebrow && <div className="band-eye mb-4"><span className="eyebrow !text-[#c3d0e8] flex items-center gap-2">{eyebrow}</span></div>}
+            {nav ? <div className="mb-5 inline-flex">{nav}</div> : eyebrow && <div className="band-eye mb-4"><span className="eyebrow !text-[#c3d0e8] flex items-center gap-2">{eyebrow}</span></div>}
             <h1 className="display text-3xl @sm:text-[2.625rem] leading-[1.15]">{title}</h1>
             {sub && <div className="mt-3 max-w-2xl text-[0.9375rem] leading-7 text-[#b9c3d6]">{sub}</div>}
           </div>
@@ -206,14 +206,27 @@ export function Progress({ value, h, className, marker }: { value: number; h?: H
 }
 
 const avatarPalette = ['#1D4F61', '#6A0421', '#3a3f47', '#4b6b77', '#8a4b5b', '#2f5d50', '#5b4a7a', '#7a5a2f']
-export function Avatar({ name, size = 'sm', ring }: { name: string; size?: 'xs' | 'sm' | 'md' | 'lg'; ring?: boolean }) {
+// name → photo URL, refreshed by the store whenever the Team tab changes
+const photoByName = new Map<string, string>()
+export function setPhotos(team: { name: string; photo?: string }[]) {
+  photoByName.clear()
+  team.forEach((m) => m.photo && photoByName.set(m.name, m.photo))
+}
+export const photoOf = (name: string) => photoByName.get(name) || ''
+
+const avatarSize = { xs: 'h-5 w-5 text-[0.625rem]', sm: 'h-7 w-7 text-xs', md: 'h-9 w-9 text-sm', lg: 'h-12 w-12 text-base', xl: 'h-24 w-24 text-3xl' }
+export function Avatar({ name, size = 'sm', ring, src }: { name: string; size?: keyof typeof avatarSize; ring?: boolean; src?: string }) {
+  const [broken, setBroken] = useState(false)
   if (!name) return null
+  const photo = src ?? photoOf(name)
   let h = 0
   for (const ch of name) h = (h * 31 + ch.charCodeAt(0)) >>> 0
-  const s = size === 'xs' ? 'h-5 w-5 text-[0.625rem]' : size === 'md' ? 'h-9 w-9 text-sm' : size === 'lg' ? 'h-12 w-12 text-base' : 'h-7 w-7 text-xs'
+  const c = avatarPalette[h % avatarPalette.length]
   const initial = name.replace(/^(دکتر|Dr\.?)\s*/, '').trim().charAt(0).toUpperCase()
+  const cls = cx('inline-flex shrink-0 items-center justify-center overflow-hidden rounded-full font-semibold text-white', avatarSize[size], ring && 'ring-2 ring-surface')
+  if (photo && !broken) return <img src={photo} alt={name} title={name} referrerPolicy="no-referrer" onError={() => setBroken(true)} className={cx(cls, 'bg-muted object-cover')} />
   return (
-    <span title={name} className={cx('inline-flex shrink-0 items-center justify-center rounded-full font-semibold text-white', s, ring && 'ring-2 ring-surface')} style={{ background: avatarPalette[h % avatarPalette.length] }}>
+    <span title={name} className={cls} style={{ background: `linear-gradient(135deg, ${c}, ${c}cc)` }}>
       {initial}
     </span>
   )

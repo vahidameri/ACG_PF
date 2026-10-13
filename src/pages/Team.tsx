@@ -7,7 +7,8 @@ import { Band, Card, Overlap, Avatar, cx, StatStrip, Segmented, Tabs } from '../
 import { addDays, fa, fmtDayMonth, todayISO } from '../lib/jalali'
 import { isTaskOverdue } from '../lib/metrics'
 import { L, lbl } from '../lib/i18n'
-import { capOf, fte, loadTone, memberWeek, trackWeek, type WeekLoad } from '../lib/capacity'
+import { allocActive, capOf, fte, loadTone, memberWeek, trackWeek, type WeekLoad } from '../lib/capacity'
+import { uid } from '../lib/api'
 import { weekLabel, weekRel, weekStart, weeksFrom } from '../lib/weeks'
 import { TRACK } from '../lib/tracks'
 import { TIMEOFF_KIND } from '../lib/labels'
@@ -27,7 +28,7 @@ const PALETTE = ['#1D4F61', '#6A0421', '#3c7d8f', '#b0475f', '#7a96a3', '#d0838f
 export default function Team() {
   const { db, canEdit } = useStore()
   const { open } = useEditor()
-  const [tab, setTab] = usePref<'people' | 'timeline' | 'matrix'>('acg.capacity.tab', 'people')
+  const [tab, setTab] = usePref<'people' | 'timeline' | 'matrix'>('acg.capacity.tab2', 'matrix')
   const [track, setTrack] = useState<Track | 'all'>('all')
   const ws0 = weekStart()
   const weeks = weeksFrom(ws0, HORIZON)
@@ -57,8 +58,7 @@ export default function Team() {
   return (
     <>
       <Band
-        eyebrow={<span>{L('برنامه‌ریزی / ظرفیت', 'Planning / Capacity')}</span>}
-        title={L('ظرفیت تیم و افراد', 'Team & people capacity')}
+        title={L('ظرفیت و تخصیص منابع', 'Capacity & resourcing')}
         sub={sentence + '.'}
         actions={
           canEdit && (
@@ -101,9 +101,9 @@ export default function Team() {
               value={tab}
               onChange={setTab}
               tabs={[
+                { value: 'matrix', label: L('تخصیص منابع', 'Allocation planner') },
                 { value: 'people', label: L('افراد', 'People') },
-                { value: 'timeline', label: L(`${fa(HORIZON)} هفته‌ی آینده`, `Next ${HORIZON} weeks`) },
-                { value: 'matrix', label: L('ماتریس پروژه‌ها', 'Project matrix') },
+                { value: 'timeline', label: L(`پیش‌بینی ${fa(HORIZON)} هفته`, `${HORIZON}-week forecast`) },
               ]}
             />
             <Segmented
@@ -191,13 +191,13 @@ function PeopleGrid({ people }: { people: Member[] }) {
         return (
           <div key={m.id} className="rounded-2xl border border-line p-4 transition hover:border-line-strong">
             <div className="flex items-start gap-3">
-              <button onClick={() => open('Team', m as never)}>
+              <Link to={`/people/${m.id}`}>
                 <Avatar name={m.name} size="md" />
-              </button>
+              </Link>
               <div className="min-w-0 flex-1">
-                <button onClick={() => open('Team', m as never)} className="block truncate text-start text-sm font-semibold hover:underline">
+                <Link to={`/people/${m.id}`} className="block truncate text-start text-sm font-semibold hover:underline">
                   {m.name}
-                </button>
+                </Link>
                 <div className="truncate text-[0.6875rem] text-sub">
                   {m.role}
                   {capOf(m) !== 100 && ` · ${L(`ظرفیت ${fa(capOf(m))}٪`, `${capOf(m)}% capacity`)}`}
@@ -320,63 +320,116 @@ function Timeline({ people, weeks }: { people: Member[]; weeks: string[] }) {
   )
 }
 
+/** Allocation planner: people × projects, edit a cell and totals, load and overloads update live. */
 function Matrix({ people }: { people: Member[] }) {
-  const { db, canEdit } = useStore()
+  const { db, canEdit, upsert, remove, toast } = useStore()
   const { open } = useEditor()
-  const projects = db.Projects.filter((p) => p.status === 'active' || p.status === 'planning' || p.status === 'on_hold')
-  const cellTone = (v: number) => (v === 0 ? '' : v >= 60 ? 'bg-ink text-surface' : v >= 30 ? 'bg-ink/45 text-surface' : 'bg-ink/[0.12] text-ink')
+  const ws0 = weekStart()
+  const projects = db.Projects.filter((p) => p.status === 'active' || p.status === 'planning' || p.status === 'on_hold').sort((a, b) => (a.status === 'on_hold' ? 1 : 0) - (b.status === 'on_hold' ? 1 : 0))
+  const [edit, setEdit] = useState<{ m: string; p: string; v: string } | null>(null)
+  // the allocation that applies now (or the next one to start)
+  const cellAlloc = (mid: string, pid: string) => {
+    const list = db.Allocations.filter((x) => x.member_id === mid && x.project_id === pid && (!x.end_date || x.end_date >= ws0)).sort((a, b) => ((a.start_date || '') < (b.start_date || '') ? -1 : 1))
+    return list.find((x) => allocActive(x, ws0)) || list[0]
+  }
+  const commit = async () => {
+    if (!edit) return
+    const v = Math.max(0, Math.min(600, Math.round(Number(edit.v) || 0)))
+    const a = cellAlloc(edit.m, edit.p)
+    setEdit(null)
+    if (a && v === Number(a.percent)) return
+    if (a && v === 0) await remove('Allocations', a.id)
+    else if (a) await upsert('Allocations', { ...a, percent: v })
+    else if (v > 0) await upsert('Allocations', { id: uid('A'), member_id: edit.m, project_id: edit.p, percent: v, start_date: '', end_date: '' })
+    else return
+    toast(L('تخصیص به‌روز شد', 'Allocation updated'))
+  }
+  const cellTone = (v: number, paused: boolean) => (paused ? 'bg-muted text-sub line-through' : v === 0 ? '' : v >= 60 ? 'bg-ink text-surface' : v >= 30 ? 'bg-ink/45 text-surface' : 'bg-ink/[0.12] text-ink')
+  const colTotal = (pid: string) => people.reduce((s, m) => s + (Number(cellAlloc(m.id, pid)?.percent) || 0), 0)
   return (
-    <div className="overflow-x-auto border-t border-line">
-      <table className="w-full min-w-[60rem]">
-        <thead className="border-b border-line">
-          <tr>
-            <th className="th sticky start-0 z-10 bg-surface">{L('عضو', 'Member')}</th>
-            {projects.map((p) => (
-              <th key={p.id} className="th text-center">
-                <Link to={`/projects/${p.id}`} className="font-mono hover:text-ink" title={p.name} dir="ltr">
-                  {p.code}
-                </Link>
-              </th>
-            ))}
-            <th className="th text-center">{L('این هفته', 'This week')}</th>
-          </tr>
-        </thead>
-        <tbody className="divide-y divide-line">
-          {people.map((m) => {
-            const w = memberWeek(db, m)
-            return (
-              <tr key={m.id} className="transition hover:bg-muted/30">
-                <td className="td sticky start-0 z-10 bg-surface">
-                  <button className="flex items-center gap-3 text-start" onClick={() => open('Team', m as never)}>
-                    <Avatar name={m.name} size="sm" />
-                    <span className="max-w-[10rem] truncate text-sm font-medium">{m.name}</span>
-                  </button>
+    <div className="border-t border-line">
+      <div className="flex flex-wrap items-center gap-x-4 gap-y-1 px-5 py-3 text-[0.6875rem] text-sub">
+        <span>{L('روی هر خانه بزنید و درصد را بنویسید (Enter). صفر = حذف تخصیص.', 'Click a cell and type a % (Enter). Zero removes it.')}</span>
+        <span className="inline-flex items-center gap-1">● {L('بازه‌ی زمانی دارد', 'has a date window')}</span>
+        <span className="line-through">{L('پروژه‌ی متوقف — ظرفیت مصرف نمی‌کند', 'paused project — uses no capacity')}</span>
+      </div>
+      <div className="overflow-x-auto">
+        <table className="w-full min-w-[60rem]">
+          <thead className="border-y border-line">
+            <tr>
+              <th className="th sticky start-0 z-10 bg-surface">{L('عضو', 'Member')}</th>
+              {projects.map((p) => (
+                <th key={p.id} className={cx('th text-center', p.status === 'on_hold' && 'opacity-50')}>
+                  <Link to={`/projects/${p.id}`} className="font-mono hover:text-ink" title={p.name} dir="ltr">
+                    {p.code}
+                  </Link>
+                </th>
+              ))}
+              <th className="th text-center">{L('بار این هفته', 'Load now')}</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-line">
+            {people.map((m) => {
+              const w = memberWeek(db, m)
+              return (
+                <tr key={m.id} className="transition hover:bg-muted/30">
+                  <td className="td sticky start-0 z-10 bg-surface">
+                    <Link to={`/people/${m.id}`} className="flex items-center gap-3 text-start">
+                      <Avatar name={m.name} size="sm" />
+                      <span className="max-w-[10rem] truncate text-sm font-medium hover:underline">{m.name}</span>
+                    </Link>
+                  </td>
+                  {projects.map((p) => {
+                    const a = cellAlloc(m.id, p.id)
+                    const v = Number(a?.percent) || 0
+                    const editing = edit?.m === m.id && edit.p === p.id
+                    return (
+                      <td key={p.id} className="px-1 py-1.5 text-center">
+                        {editing ? (
+                          <input
+                            autoFocus
+                            dir="ltr"
+                            inputMode="numeric"
+                            className="h-10 w-full min-w-[3.25rem] rounded-xl border border-brand bg-surface text-center text-xs font-semibold num outline-none ring-2 ring-brand/25"
+                            value={edit.v}
+                            onChange={(e) => setEdit({ ...edit, v: e.target.value.replace(/[^\d۰-۹]/g, '').replace(/[۰-۹]/g, (d) => String('۰۱۲۳۴۵۶۷۸۹'.indexOf(d))) })}
+                            onBlur={commit}
+                            onKeyDown={(e) => (e.key === 'Enter' ? commit() : e.key === 'Escape' && setEdit(null))}
+                          />
+                        ) : (
+                          <button
+                            onClick={() => canEdit && setEdit({ m: m.id, p: p.id, v: v ? String(v) : '' })}
+                            onDoubleClick={() => canEdit && a && open('Allocations', a as never)}
+                            className={cx('h-10 w-full min-w-[3.25rem] rounded-xl text-xs font-semibold num transition hover:ring-2 hover:ring-brand/40', cellTone(v, p.status === 'on_hold'), !v && 'bg-muted/50 text-transparent hover:text-sub')}
+                            title={a && (a.start_date || a.end_date) ? `${a.start_date ? fmtDayMonth(a.start_date) : '…'} – ${a.end_date ? fmtDayMonth(a.end_date) : '…'}` : undefined}
+                          >
+                            {v ? `${fa(v)}%` : '+'}
+                            {a && (a.start_date || a.end_date) && <span className="ms-0.5 align-super text-[0.5rem]">●</span>}
+                          </button>
+                        )}
+                      </td>
+                    )
+                  })}
+                  <td className="td text-center">
+                    <span className={cx('rounded-full px-2.5 py-1 text-sm font-semibold num', w.load > 100 ? 'bg-bad/10 text-bad' : w.load >= 85 ? 'bg-warn/12 text-warn' : 'text-sub')}>{fa(w.load)}%</span>
+                  </td>
+                </tr>
+              )
+            })}
+          </tbody>
+          <tfoot className="border-t-2 border-line">
+            <tr>
+              <td className="td sticky start-0 z-10 bg-surface text-xs font-medium text-sub">{L('جمع (FTE)', 'Total (FTE)')}</td>
+              {projects.map((p) => (
+                <td key={p.id} className="px-1 py-2 text-center text-xs font-semibold num">
+                  {fa(fte(colTotal(p.id)))}
                 </td>
-                {projects.map((p) => {
-                  const a = db.Allocations.filter((x) => x.member_id === m.id && x.project_id === p.id)
-                  const v = a.reduce((s, x) => Math.max(s, Number(x.percent)), 0)
-                  return (
-                    <td key={p.id} className="px-1 py-1.5 text-center">
-                      <button
-                        onClick={() => canEdit && open('Allocations', a[0] ? (a[0] as never) : { member_id: m.id, project_id: p.id })}
-                        className={cx('h-10 w-full min-w-[3.25rem] rounded-xl text-xs font-semibold num transition hover:ring-2 hover:ring-brand/40', cellTone(v), !v && 'bg-muted/50 text-transparent hover:text-sub')}
-                        title={a.some((x) => x.start_date || x.end_date) ? a.map((x) => `${x.percent}% ${x.start_date ? fmtDayMonth(x.start_date) : ''}–${x.end_date ? fmtDayMonth(x.end_date) : ''}`).join('\n') : undefined}
-                      >
-                        {v ? `${fa(v)}%` : '+'}
-                        {a.some((x) => x.start_date || x.end_date) && <span className="ms-0.5 align-super text-[0.5rem]">●</span>}
-                      </button>
-                    </td>
-                  )
-                })}
-                <td className="td text-center">
-                  <span className={cx('rounded-full px-2.5 py-1 text-sm font-semibold num', w.load > 100 ? 'bg-bad/10 text-bad' : w.load >= 85 ? 'bg-warn/12 text-warn' : 'text-sub')}>{fa(w.load)}%</span>
-                </td>
-              </tr>
-            )
-          })}
-        </tbody>
-      </table>
-      <div className="border-t border-line px-5 py-3 text-[0.6875rem] text-sub">{L('● تخصیص بازه‌ی زمانی دارد (شروع یا پایان مشخص)', '● allocation has a date window')}</div>
+              ))}
+              <td />
+            </tr>
+          </tfoot>
+        </table>
+      </div>
     </div>
   )
 }

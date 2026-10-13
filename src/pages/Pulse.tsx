@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { ArrowDownRight, ArrowUpRight, Minus, Gavel, Wallet, Siren, Flag } from 'lucide-react'
 import { useStore } from '../lib/store'
+import { HubNav } from '../components/HubNav'
 import { useEditor } from '../components/Editor'
 import { Band, Card, Overlap, Segmented, cx, Avatar, Progress, Empty } from '../components/ui'
 import { portfolioSummary, type ProjectMetrics } from '../lib/metrics'
@@ -39,7 +40,7 @@ export default function Pulse() {
 
   return (
     <>
-      <Band
+      <Band nav={<HubNav hub="overview" />}
         eyebrow={<span>{L('پورتفولیو / برد وضعیت', 'Portfolio / Status board')}</span>}
         title={L('برد وضعیت پورتفولیو', 'Portfolio status board')}
         sub={

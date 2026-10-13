@@ -12,6 +12,9 @@ import { usePins } from '../lib/prefs'
 import { PersonPicker, PriorityPicker } from './pickers'
 import { DatePicker } from './DatePicker'
 import { HealthTrend } from './widgets'
+import { PauseButton } from './PauseButton'
+import { isPrivateTask } from '../lib/privacy'
+import { Lock } from 'lucide-react'
 
 export function useProjectName() {
   const { db } = useStore()
@@ -50,7 +53,10 @@ export function TaskRow({ t, showProject = true, dense }: { t: Task; showProject
         <StatusIcon s={done ? 'done' : t.status} size={17} />
       </button>
       <div className="min-w-0 flex-1">
-        <div className={cx('truncate text-sm', done && 'text-sub line-through')}>{t.title}</div>
+        <div className={cx('flex items-center gap-1.5 truncate text-sm', done && 'text-sub line-through')}>
+          {isPrivateTask(t, db) && <Lock size={12} className="shrink-0 text-sub" aria-label={L('خصوصی', 'Private')} />}
+          <span className="truncate">{t.title}</span>
+        </div>
         {(showProject && t.project_id) || nComments ? (
           <div className="mt-0.5 flex items-center gap-2 text-[0.6875rem] text-sub">
             {showProject && t.project_id && <span className="max-w-[14rem] truncate">{pname(t.project_id)}</span>}
@@ -171,8 +177,20 @@ export function ProjectCard({ p }: { p: Project }) {
             <HealthDot h={m.health} pulse /> {p.status === 'active' ? lbl(HEALTH, m.health) : lbl(PROJECT_STATUS, p.status)}
           </span>
         </div>
-        <PinButton id={p.id} className="-me-2 -mt-1.5" />
+        <span className="-me-2 -mt-1.5 flex items-center gap-0.5">
+          <span className="opacity-0 transition group-hover:opacity-100">
+            <PauseButton p={p} compact />
+          </span>
+          <PinButton id={p.id} />
+        </span>
       </div>
+      {p.status === 'on_hold' && (
+        <div className="mt-2 rounded-lg bg-muted px-2 py-1 text-[0.6875rem] text-sub">
+          ⏸ {L('متوقف', 'Paused')}
+          {p.paused_at && ` · ${L(`از ${fmtDayMonth(p.paused_at)}`, `since ${fmtDayMonth(p.paused_at)}`)}`}
+          {p.pause_reason && ` — ${p.pause_reason}`}
+        </div>
+      )}
       <h3 className="mt-3 text-[1.0625rem] font-semibold leading-snug tracking-tight">{p.name}</h3>
       <p className="mt-1 line-clamp-1 text-xs leading-5 text-sub">{p.description}</p>
 

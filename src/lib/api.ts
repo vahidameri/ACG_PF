@@ -2,8 +2,18 @@ import type { DB, Role, SheetName } from './types'
 
 export interface Config {
   apiUrl: string
+  /** fallback personal key (when Google sign-in isn't configured) */
   token: string
+  /** OAuth Web client ID from Google Cloud — enables "Sign in with Google" and Calendar */
+  googleClientId?: string
 }
+
+// Google access token of the signed-in user (set by GoogleProvider); preferred over the key.
+let accessToken = ''
+export const setAccessToken = (t: string) => {
+  accessToken = t
+}
+const auth = (c: Config): Record<string, string> => (accessToken ? { access_token: accessToken } : { token: c.token })
 
 const CFG_KEY = 'acg.config'
 
@@ -13,7 +23,7 @@ export function loadConfig(): Config {
     if (raw) return JSON.parse(raw)
   } catch {}
   const env = import.meta.env
-  return { apiUrl: env.VITE_API_URL || '', token: '' }
+  return { apiUrl: env.VITE_API_URL || '', token: '', googleClientId: env.VITE_GOOGLE_CLIENT_ID || '' }
 }
 
 export function saveConfig(c: Config) {
@@ -25,6 +35,7 @@ export function saveConfig(c: Config) {
 export interface RemoteUser {
   name: string
   role: Role
+  email?: string
 }
 
 interface AllResponse {
@@ -35,7 +46,8 @@ interface AllResponse {
 }
 
 export async function fetchAll(c: Config): Promise<{ data: DB; user: RemoteUser }> {
-  const url = `${c.apiUrl}${c.apiUrl.includes('?') ? '&' : '?'}action=all&token=${encodeURIComponent(c.token)}`
+  const q = new URLSearchParams({ action: 'all', ...auth(c) }).toString()
+  const url = `${c.apiUrl}${c.apiUrl.includes('?') ? '&' : '?'}${q}`
   const res = await fetch(url, { method: 'GET', redirect: 'follow' })
   const json = (await res.json()) as AllResponse
   if (!json.ok) throw new Error(json.error || 'خطای ناشناخته از سرور')
@@ -47,7 +59,7 @@ async function post(c: Config, body: Record<string, unknown>) {
   const res = await fetch(c.apiUrl, {
     method: 'POST',
     headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-    body: JSON.stringify({ ...body, token: c.token }),
+    body: JSON.stringify({ ...body, ...auth(c) }),
     redirect: 'follow',
   })
   const json = await res.json()
@@ -61,6 +73,16 @@ export function remoteUpsert(c: Config, sheet: SheetName, row: Record<string, un
 
 export function remoteDelete(c: Config, sheet: SheetName, id: string) {
   return post(c, { action: 'delete', sheet, id })
+}
+
+/** Upload a file to the shared Drive folder; the server records it in the Files tab. */
+export function remoteUpload(c: Config, f: { name: string; mime: string; data: string; entity: string; entity_id: string }) {
+  return post(c, { action: 'upload', ...f }) as Promise<{ ok: true; row: Record<string, unknown> }>
+}
+
+/** Server-side actions (e.g. email the minutes of a meeting). */
+export function remoteAction(c: Config, action: string, payload: Record<string, unknown>) {
+  return post(c, { action, ...payload })
 }
 
 export function uid(prefix: string) {

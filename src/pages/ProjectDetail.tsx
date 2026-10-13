@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
-import { ArrowRight, Pencil, Plus, Target, Send, Crown, User } from 'lucide-react'
+import { ArrowRight, Pencil, Plus, Target, Send, Crown, User, Pause } from 'lucide-react'
 import { useStore } from '../lib/store'
 import { useEditor, type EditableSheet } from '../components/Editor'
 import { Band, Card, Empty, HealthBadge, Overlap, Progress, StatStrip, Tabs, cx, healthText, Avatar, Chip, Segmented } from '../components/ui'
@@ -9,6 +9,8 @@ import { fa, fmtDate, relDays, timeAgo } from '../lib/jalali'
 import { PROJECT_STATUS, RISK_STATUS, RISK_TYPE, SCOPE_STATUS, SPRINT_STATUS, PRIORITY } from '../lib/labels'
 import { L, lbl } from '../lib/i18n'
 import { money, TaskRow, FollowUpRow, PinButton } from '../components/shared'
+import { PauseButton } from '../components/PauseButton'
+import { Attachments } from '../components/Files'
 import { BurndownChart, Kanban, MilestoneList, RiskMatrix, SprintHeader, UpdateCard, VelocityChart, riskTone, ActivityFeed, HealthTrend, RagStrip } from '../components/widgets'
 import { buildActivity } from '../lib/activity'
 import { assess } from '../lib/rag'
@@ -82,6 +84,13 @@ export default function ProjectDetail() {
         title={p.name}
         sub={
           <>
+            {p.status === 'on_hold' && (
+              <span className="mb-3 flex w-fit items-center gap-2 rounded-full bg-white/10 px-3 py-1 text-sm text-white">
+                <Pause size={13} /> {L('متوقف', 'Paused')}
+                {p.paused_at && ` · ${L(`از ${fmtDate(p.paused_at)}`, `since ${fmtDate(p.paused_at)}`)}`}
+                {p.pause_reason && ` — ${p.pause_reason}`}
+              </span>
+            )}
             {p.description}
             {p.objective && (
               <span className="mt-3 flex items-center gap-2 text-white/80">
@@ -95,6 +104,7 @@ export default function ProjectDetail() {
             <span className="rounded-full bg-white/10 p-0.5">
               <PinButton id={p.id} className="text-white/70 hover:bg-white/10" />
             </span>
+            <PauseButton p={p} dark />
             {canEdit && (
               <button className="btn h-10 bg-white text-band" onClick={() => open('Projects', p as never)}>
                 <Pencil size={15} /> {L('ویرایش', 'Edit')}
@@ -262,6 +272,9 @@ export default function ProjectDetail() {
                   <span className="text-xs text-sub">{L('روند سلامت (گزارش‌ها)', 'Health trend (updates)')}</span>
                   <HealthTrend projectId={p.id} n={6} />
                 </div>
+              </Card>
+              <Card className="@xl:col-span-3" eyebrow={L('فایل‌ها', 'Files')} title={L('اسناد پروژه', 'Project documents')}>
+                <Attachments entity="Projects" id={p.id} />
               </Card>
             </div>
           )}

@@ -6,6 +6,7 @@ import type { FollowUp, Task, Comment, TaskStatus } from '../lib/types'
 
 type Item = Omit<Task, 'status'> & Omit<FollowUp, 'status'> & { status: Task['status'] | FollowUp['status'] }
 import { useStore } from '../lib/store'
+import { Attachments } from './Files'
 import { uid } from '../lib/api'
 import { addDays, fa, fmtDate, todayISO, timeAgo } from '../lib/jalali'
 import { L, lbl } from '../lib/i18n'
@@ -143,6 +144,13 @@ export function ItemSheet({ sheet, id, onClose }: { sheet: 'Tasks' | 'FollowUps'
           )}
 
           {isTask && <Dependencies task={item as unknown as Task} onChange={(ids) => patch({ depends_on: ids.join(',') })} />}
+
+          {isTask && (
+            <div className="mt-8">
+              <div className="eyebrow mb-3">{L('فایل‌ها', 'Files')}</div>
+              <Attachments entity="Tasks" id={id} compact />
+            </div>
+          )}
 
           <div className="mt-8">
             <div className="eyebrow mb-4 flex items-center gap-2">

@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState, type ReactNode } from 'react'
 import { Link } from 'react-router-dom'
 import {
-  Plus, CalendarPlus, CheckCircle2, RotateCcw, Pencil, Siren, Gavel, Package, Users, FileWarning, ListChecks, Workflow, ShieldAlert, Ban, Save, Repeat,
+  Plus, CalendarPlus, CheckCircle2, RotateCcw, Pencil, Siren, Gavel, Package, Users, FileWarning, ListChecks, Workflow, ShieldAlert, Ban, Save, Repeat, Video, CalendarDays, Paperclip,
 } from 'lucide-react'
 import { useStore } from '../lib/store'
 import { useEditor } from '../components/Editor'
@@ -12,6 +12,11 @@ import { PersonPicker } from '../components/pickers'
 import { DatePicker } from '../components/DatePicker'
 import { RagStrip } from '../components/widgets'
 import { useComposer } from '../components/UpdateComposer'
+import { Attachments } from '../components/Files'
+import { Segmented } from '../components/ui'
+import { useAuto } from '../lib/automations'
+import { relate, type GEvent } from '../lib/gcal'
+import { usePref } from '../lib/prefs'
 import { uid } from '../lib/api'
 import { addDays, fa, fmtDayMonth, fmtWeekday, relDays, todayISO } from '../lib/jalali'
 import { L, lbl } from '../lib/i18n'
@@ -29,6 +34,7 @@ const seriesTone: Record<Meeting['series'], string> = {
   product: 'bg-wine/10 text-wine dark:text-[#ec7892]',
   tech: 'bg-brand/10 text-brand dark:text-brand-soft',
   project: 'bg-warn/12 text-warn',
+  one_on_one: 'bg-good/10 text-good',
   other: 'bg-muted text-sub',
 }
 const names = (s: string) => String(s || '').split(',').map((x) => x.trim()).filter(Boolean)
@@ -37,10 +43,11 @@ const byWhen = (a: Meeting, b: Meeting) => (a.date + a.time < b.date + b.time ? 
 
 /** Weekly meetings: the week's meetings, an agenda built from live data, minutes, decisions and action items. */
 export default function Weekly() {
-  const { db, canEdit } = useStore()
+  const { db, canEdit, me } = useStore()
   const { open } = useEditor()
   const today = todayISO()
   const [ws, setWs] = useState(weekStart())
+  const [view, setView] = usePref<'week' | 'actions'>('acg.meetings.view', 'week')
   const meetings = db.Meetings.filter((m) => inWeek(m.date, ws)).sort(byWhen)
   const pick = () => (meetings.find((m) => m.date >= today && m.status !== 'cancelled') || meetings[meetings.length - 1])?.id || ''
   const [sel, setSel] = useState(pick)
@@ -54,23 +61,29 @@ export default function Weekly() {
   const openActions = actions.filter((t) => t.status !== 'done')
   const overdueActions = openActions.filter(isTaskOverdue)
   const decisions = meetings.filter((m) => m.status === 'held').reduce((s, m) => s + lines(m.decisions).length, 0)
-  const live = db.Projects.filter((p) => p.status === 'active')
-  const reported = live.filter((p) => db.Updates.some((u) => u.project_id === p.id && inWeek(u.week_date, ws))).length
 
   return (
     <>
       <Band
-        eyebrow={<span>{L('برنامه‌ریزی / ویکلی‌ها', 'Planning / Weeklies')}</span>}
-        title={L('ویکلی‌ها', 'Weekly meetings')}
+        title={L('جلسات', 'Meetings')}
         sub={L(
-          `${fa(meetings.length)} جلسه در ${weekRel(ws)}. دستور جلسه از روی وضعیت پروژه‌ها، تحویل‌ها و ظرفیت ساخته می‌شود؛ اقدام‌ها مستقیم تسک می‌شوند.`,
-          `${meetings.length} meetings ${weekRel(ws).toLowerCase()}. Agendas build themselves from project status, deliveries and capacity; action items become tasks.`,
+          `${fa(meetings.length)} جلسه در ${weekRel(ws)}. دستور جلسه خودکار ساخته می‌شود، صورت‌جلسه و فایل‌ها کنار هم‌اند و هر اقدام یک تسک با مسئول و سررسید است.`,
+          `${meetings.length} meetings ${weekRel(ws).toLowerCase()}. Agendas build themselves, minutes and files live together, and every action is a task with an owner and a due date.`,
         )}
         actions={
           <>
-            <WeekNav ws={ws} onChange={setWs} />
+            <Segmented
+              dark
+              value={view}
+              onChange={setView}
+              options={[
+                { value: 'week', label: L('جلسات', 'Meetings') },
+                { value: 'actions', label: L(`اکشن پلن · ${fa(openActions.length)}`, `Action plan · ${openActions.length}`) },
+              ]}
+            />
+            {view === 'week' && <WeekNav ws={ws} onChange={setWs} />}
             {canEdit && (
-              <button className="btn h-10 bg-white text-band" onClick={() => open('Meetings', { date: ws === weekStart() ? today : addDays(ws, 2) })}>
+              <button className="btn h-10 bg-white text-band" onClick={() => open('Meetings', { date: ws === weekStart() ? today : addDays(ws, 2), facilitator: me, attendees: me })}>
                 <Plus size={16} /> {L('جلسه‌ی جدید', 'New meeting')}
               </button>
             )}
@@ -81,14 +94,17 @@ export default function Weekly() {
           items={[
             { label: L('جلسات این هفته', 'Meetings this week'), value: fa(meetings.length), sub: L(`${fa(meetings.filter((m) => m.status === 'held').length)} برگزار شد`, `${meetings.filter((m) => m.status === 'held').length} held`) },
             { label: L('تصمیم‌های این هفته', 'Decisions this week'), value: fa(decisions) },
-            { label: L('اقدام باز', 'Open action items'), value: fa(openActions.length) },
+            { label: L('اقدام باز', 'Open actions'), value: fa(openActions.length) },
             { label: L('اقدام معوق', 'Overdue actions'), value: fa(overdueActions.length), tone: overdueActions.length ? 'red' : 'green' },
-            { label: L('گزارش‌های هفته', 'Updates in'), value: `${fa(reported)}/${fa(live.length)}`, tone: reported < live.length ? 'amber' : 'green' },
-            { label: L('سری‌های فعال', 'Active series'), value: fa(new Set(db.Meetings.map((m) => m.series + m.title)).size) },
           ]}
         />
       </Band>
 
+      {view === 'actions' ? (
+        <Overlap>
+          <ActionPlan />
+        </Overlap>
+      ) : (
       <Overlap>
         <div className="grid items-start gap-4 @xl:grid-cols-[16rem_1fr] @3xl:grid-cols-[19rem_1fr]">
           <Card pad={false} className="@xl:sticky @xl:top-20">
@@ -121,10 +137,12 @@ export default function Weekly() {
             ) : (
               <Empty text={L('جلسه‌ای در این هفته نیست', 'No meetings this week')} />
             )}
+            <CalendarPanel ws={ws} onPick={setSel} />
           </Card>
           {current ? <MeetingRoom key={current.id} m={current} /> : <Card><Empty text={L('یک جلسه انتخاب کنید', 'Pick a meeting')} /></Card>}
         </div>
       </Overlap>
+      )}
     </>
   )
 }
@@ -132,6 +150,7 @@ export default function Weekly() {
 function MeetingRoom({ m }: { m: Meeting }) {
   const { db, canEdit, upsert, toast, me } = useStore()
   const { open } = useEditor()
+  const auto = useAuto()
   const today = todayISO()
   const project = db.Projects.find((p) => p.id === m.project_id)
   const series = db.Meetings.filter((x) => x.series === m.series && x.title === m.title).sort(byWhen)
@@ -150,6 +169,7 @@ function MeetingRoom({ m }: { m: Meeting }) {
   const save = async (patch: Partial<Meeting> = {}) => {
     await upsert('Meetings', { ...m, notes, decisions, ...patch })
     toast(patch.status === 'held' ? L('جلسه بسته شد', 'Meeting closed') : L('صورت‌جلسه ذخیره شد', 'Minutes saved'))
+    if (patch.status === 'held') auto.meetingHeld({ ...m, notes, decisions, ...patch })
   }
   const scheduleNext = async () => {
     await upsert('Meetings', { ...m, id: uid('MT'), date: addDays(m.date, 7), status: 'scheduled', notes: '', decisions: '' })
@@ -184,8 +204,20 @@ function MeetingRoom({ m }: { m: Meeting }) {
               </span>
             </div>
           </div>
+          <div className="flex flex-wrap gap-2">
+            {m.meet_url && m.status !== 'held' && (
+              <a href={m.meet_url} target="_blank" rel="noreferrer" className="btn-sm btn bg-[#1a73e8] text-white hover:bg-[#1665cf]">
+                <Video size={14} /> {L('ورود به Meet', 'Join Meet')}
+              </a>
+            )}
+            {m.gcal_id && (
+              <span className="chip h-8 bg-muted px-3 text-sub" title={L('به تقویم گوگل وصل است', 'Linked to Google Calendar')}>
+                <CalendarDays size={13} /> {L('در تقویم گوگل', 'In Google Calendar')}
+              </span>
+            )}
+          </div>
           {canEdit && (
-            <div className="flex flex-wrap gap-2">
+            <div className="flex w-full flex-wrap gap-2 @lg:w-auto">
               {m.status !== 'held' ? (
                 <button className="btn-primary btn-sm" onClick={() => save({ status: 'held' })}>
                   <CheckCircle2 size={14} /> {L('برگزار شد', 'Mark held')}
@@ -195,7 +227,7 @@ function MeetingRoom({ m }: { m: Meeting }) {
                   <RotateCcw size={14} /> {L('بازگشایی', 'Reopen')}
                 </button>
               )}
-              {!nextExists && (
+              {!nextExists && !auto.on('next_meeting') && (
                 <button className="btn-outline btn-sm" onClick={scheduleNext}>
                   <Repeat size={14} /> {L('جلسه‌ی هفته‌ی بعد', 'Schedule next week')}
                 </button>
@@ -265,6 +297,10 @@ function MeetingRoom({ m }: { m: Meeting }) {
           <textarea className="input" rows={5} value={notes} disabled={!canEdit} onChange={(e) => setNotes(e.target.value)} placeholder={L('نکات اصلی بحث…', 'Key discussion points…')} />
           <label className="label mt-4">{L('تصمیم‌ها (هر خط یک تصمیم)', 'Decisions (one per line)')}</label>
           <textarea className="input" rows={4} value={decisions} disabled={!canEdit} onChange={(e) => setDecisions(e.target.value)} placeholder={L('مثلاً: لانچ SimiPass دو هفته عقب می‌رود', 'e.g. SimiPass launch moves two weeks')} />
+          <label className="label mt-4 flex items-center gap-1.5">
+            <Paperclip size={12} /> {L('فایل‌های جلسه', 'Meeting files')}
+          </label>
+          <Attachments entity="Meetings" id={m.id} compact />
         </Card>
 
         <Card eyebrow={L('اقدام‌ها', 'Action items')} title={L('چه کسی، چه کاری، تا کی', 'Who does what, by when')} action={<span className="text-xs text-sub num">{fa(mine.length)}</span>}>
@@ -293,7 +329,7 @@ function AddAction({ m, me, today }: { m: Meeting; me: string; today: string }) 
     if (!title.trim()) return
     const t: Task = {
       id: uid('T'), project_id: m.project_id, sprint_id: '', title: title.trim(), description: L(`از ${m.title} — ${fmtDayMonth(m.date)}`, `From ${m.title} — ${fmtDayMonth(m.date)}`), assignee: who, reporter: me,
-      status: 'todo', priority: 'high', due_date: due, points: 0, tags: 'action', created_at: today, completed_at: '', track: '', depends_on: '', meeting_id: m.id,
+      status: 'todo', priority: 'high', due_date: due, points: 0, tags: 'action', created_at: today, completed_at: '', track: '', depends_on: '', meeting_id: m.id, private: '',
     }
     await upsert('Tasks', t)
     setTitle('')
@@ -491,6 +527,107 @@ function Agenda({ m }: { m: Meeting }) {
           </li>
         ))}
       </ol>
+    </Card>
+  )
+}
+
+/** Google Calendar events of the week that aren't meetings here yet. */
+function CalendarPanel({ ws, onPick }: { ws: string; onPick: (id: string) => void }) {
+  const { db, canEdit } = useStore()
+  const auto = useAuto()
+  const evs = auto.events.filter((e) => inWeek(e.date, ws)).map((e) => ({ e, r: relate(e, db) })).filter((x) => !x.r.meeting)
+  const status =
+    auto.calStatus === 'live' ? L('متصل به تقویم گوگل', 'Google Calendar connected') : auto.calStatus === 'demo' ? L('تقویم گوگل (نمایشی)', 'Google Calendar (demo)') : auto.calStatus === 'error' ? L('خطا در خواندن تقویم', 'Calendar error') : L('برای اتصال تقویم با گوگل وارد شوید', 'Sign in with Google to connect your calendar')
+  const add = async (e: GEvent) => {
+    const m = await auto.importEvent(e)
+    if (m) onPick(m.id)
+  }
+  return (
+    <div className="border-t border-line px-3 pb-3 pt-3">
+      <div className="mb-2 flex items-center gap-1.5 px-2 text-[0.6875rem] text-sub">
+        <span className={cx('h-1.5 w-1.5 rounded-full', auto.calStatus === 'live' || auto.calStatus === 'demo' ? 'bg-good' : 'bg-line-strong')} />
+        {status}
+      </div>
+      {evs.length > 0 && (
+        <ul className="space-y-0.5">
+          {evs
+            .sort((a, b) => Number(b.r.related) - Number(a.r.related) || (a.e.date + a.e.time < b.e.date + b.e.time ? -1 : 1))
+            .map(({ e, r }) => (
+              <li key={e.id} className={cx('flex items-center gap-2 rounded-xl px-2 py-1.5 text-xs', !r.related && 'opacity-55')}>
+                <CalendarDays size={13} className="shrink-0 text-[#1a73e8]" />
+                <span className="min-w-0 flex-1">
+                  <span className="block truncate">{e.title}</span>
+                  <span className="block text-[0.625rem] text-sub num">
+                    {fmtWeekday(e.date, true)} {fa(e.time)}
+                    {r.related && ` · ${r.projectId ? db.Projects.find((p) => p.id === r.projectId)?.name : L(`${fa(r.members.length)} نفر از تیم`, `${r.members.length} teammates`)}`}
+                  </span>
+                </span>
+                {canEdit && (
+                  <button className="icon-btn h-7 w-7" title={L('افزودن به جلسات', 'Add to meetings')} onClick={() => add(e)}>
+                    <Plus size={13} />
+                  </button>
+                )}
+              </li>
+            ))}
+        </ul>
+      )}
+    </div>
+  )
+}
+
+/** Every open action agreed in a meeting, grouped by owner. */
+function ActionPlan() {
+  const { db } = useStore()
+  const [series, setSeries] = useState<Meeting['series'] | ''>('')
+  const meetingOf = (t: Task) => db.Meetings.find((m) => m.id === t.meeting_id)
+  const actions = db.Tasks.filter((t) => t.meeting_id && t.status !== 'done' && (!series || meetingOf(t)?.series === series))
+  const done = db.Tasks.filter((t) => t.meeting_id && t.status === 'done' && t.completed_at >= addDays(todayISO(), -14)).length
+  const by = new Map<string, Task[]>()
+  actions.sort((a, b) => ((a.due_date || '9') < (b.due_date || '9') ? -1 : 1)).forEach((t) => by.set(t.assignee || '—', [...(by.get(t.assignee || '—') || []), t]))
+  const groups = [...by.entries()].sort((a, b) => b[1].filter(isTaskOverdue).length - a[1].filter(isTaskOverdue).length || b[1].length - a[1].length)
+  return (
+    <Card
+      pad={false}
+      eyebrow={L(`${fa(done)} اقدام در دو هفته‌ی اخیر انجام شد`, `${done} actions done in the last two weeks`)}
+      title={L('اکشن پلن — اقدام‌های باز جلسات', 'Action plan — open meeting actions')}
+      action={
+        <Segmented
+          value={series}
+          onChange={setSeries}
+          options={[{ value: '' as const, label: L('همه', 'All') }, ...(['portfolio', 'product', 'tech', 'project'] as const).map((s) => ({ value: s, label: lbl(MEETING_SERIES, s) }))]}
+        />
+      }
+    >
+      {groups.length ? (
+        <div className="grid gap-px border-t border-line bg-line @2xl:grid-cols-2">
+          {groups.map(([who, list]) => (
+            <section key={who} className="bg-surface p-4">
+              <header className="mb-2 flex items-center gap-2.5">
+                <Avatar name={who} size="md" />
+                <div className="min-w-0 flex-1">
+                  <div className="truncate text-sm font-semibold">{who}</div>
+                  <div className="text-[0.6875rem] text-sub">
+                    {L(`${fa(list.length)} اقدام باز`, `${list.length} open`)}
+                    {list.filter(isTaskOverdue).length > 0 && <span className="text-bad"> · {L(`${fa(list.filter(isTaskOverdue).length)} معوق`, `${list.filter(isTaskOverdue).length} overdue`)}</span>}
+                  </div>
+                </div>
+              </header>
+              <div className="-mx-2">
+                {list.map((t) => (
+                  <div key={t.id}>
+                    <TaskRow t={t} dense />
+                    <div className="-mt-1 mb-1 ps-11 text-[0.625rem] text-sub">
+                      {L('از', 'from')} {meetingOf(t)?.title} · {fmtDayMonth(meetingOf(t)?.date || '')}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </section>
+          ))}
+        </div>
+      ) : (
+        <Empty text={L('اقدام بازی نیست', 'No open actions')} />
+      )}
     </Card>
   )
 }

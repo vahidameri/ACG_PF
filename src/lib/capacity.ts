@@ -30,7 +30,9 @@ export function memberWeek(db: DB, m: Member, ws: string = weekStart()): WeekLoa
     db.TimeOff.filter((t) => t.member_id === m.id).reduce((s, t) => s + workdaysInWeek(ws, t.start_date, t.end_date || t.start_date), 0),
   )
   const available = Math.round(capacity * (1 - leaveDays / WORKDAYS))
-  const projects = db.Allocations.filter((a) => a.member_id === m.id && allocActive(a, ws)).map((a) => ({ project_id: a.project_id, percent: Number(a.percent) || 0 }))
+  // paused, finished or cancelled projects don't consume anyone's capacity
+  const idle = new Set(db.Projects.filter((p) => p.status === 'on_hold' || p.status === 'completed' || p.status === 'cancelled').map((p) => p.id))
+  const projects = db.Allocations.filter((a) => a.member_id === m.id && !idle.has(a.project_id) && allocActive(a, ws)).map((a) => ({ project_id: a.project_id, percent: Number(a.percent) || 0 }))
   const allocated = projects.reduce((s, p) => s + p.percent, 0)
   const load = available > 0 ? Math.round((allocated / available) * 100) : allocated > 0 ? 999 : 0
   return { ws, capacity, available, allocated, load, leaveDays, free: available - allocated, projects }

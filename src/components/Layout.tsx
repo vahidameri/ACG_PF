@@ -1,8 +1,8 @@
 import { useEffect, useMemo, useState, type ReactNode } from 'react'
 import { NavLink, useLocation, useNavigate, Link } from 'react-router-dom'
 import {
-  LayoutGrid, Briefcase, GanttChartSquare, Zap, ListChecks, BellRing, ShieldAlert, FileText, Settings, Moon, Sun, Search, Plus, RefreshCw, Menu,
-  Sparkles, Printer, CheckCircle2, AlertCircle, Bell, PanelLeftClose, PanelLeftOpen, Languages, Star, AtSign, Flag, Clock, CircleAlert, Ban, CalendarDays, Keyboard, Radar, Workflow, PackageCheck, CalendarRange, Gauge,
+  LayoutGrid, Briefcase, ListChecks, BellRing, ShieldAlert, FileText, Settings, Moon, Sun, Search, Plus, RefreshCw, Menu,
+  Sparkles, CheckCircle2, AlertCircle, Bell, PanelLeftClose, PanelLeftOpen, Languages, Star, AtSign, Flag, Clock, CircleAlert, Ban, CalendarDays, Keyboard, PackageCheck, CalendarRange, Gauge, UserRound, LogOut,
 } from 'lucide-react'
 import { useStore } from '../lib/store'
 import { useI18n, L } from '../lib/i18n'
@@ -14,13 +14,18 @@ import { cx, Avatar, HealthDot, Popover, MenuItem } from './ui'
 import { fa, fmtDayMonth, todayISO as todayISOStr } from '../lib/jalali'
 import { inWeek, updateDue, weekStart } from '../lib/weeks'
 import { overloaded } from '../lib/capacity'
+import { useGoogle } from '../lib/google'
+import { APP_NAME } from '../lib/brand'
+import { hubOf, type Hub } from './HubNav'
 import { CommandPalette } from './CommandPalette'
 import { AcgMark } from './Brand'
 import { ROLE } from '../lib/labels'
 import { lbl } from '../lib/i18n'
 
 export function Layout({ children }: { children: ReactNode }) {
-  const { db, me, mode, loading, error, refresh, lastSync, toasts, canEdit, role, dismissToast } = useStore()
+  const { db, me, setMe, mode, loading, error, refresh, lastSync, toasts, canEdit, role, dismissToast, config, setConfig } = useStore()
+  const { signOut } = useGoogle()
+  const myMember = db.Team.find((m) => m.name === me)
   const { lang, setLang } = useI18n()
   const { open } = useEditor()
   const { pins } = usePins()
@@ -76,46 +81,24 @@ export function Layout({ children }: { children: ReactNode }) {
     : 0
   const overCap = overloaded(db, ws).length
 
-  const groups: { label: string; links: { to: string; label: string; icon: typeof LayoutGrid; badge?: number; count?: number }[] }[] = [
+  const groups: { label: string; links: { to: string; label: string; icon: typeof LayoutGrid; badge?: number; count?: number; hub?: Hub }[] }[] = [
     {
-      label: L('فضای کار', 'Workspace'),
+      label: L('کار من', 'My work'),
       links: [
-        { to: '/my', label: L('میز کار من', 'My desk'), icon: Sparkles, badge: myCount },
+        { to: '/my', label: L('خانه', 'Home'), icon: Sparkles, badge: myCount },
         { to: '/calendar', label: L('تقویم', 'Calendar'), icon: CalendarDays },
+        { to: '/meetings', label: L('جلسات', 'Meetings'), icon: CalendarRange },
+        { to: '/tasks', label: L('کارها', 'Work'), icon: ListChecks, count: db.Tasks.filter((t) => t.status !== 'done').length, hub: 'work' },
       ],
     },
     {
       label: L('پورتفولیو', 'Portfolio'),
       links: [
-        { to: '/', label: L('نمای کلی', 'Overview'), icon: LayoutGrid },
-        { to: '/pulse', label: L('برد وضعیت', 'Status board'), icon: Radar },
+        { to: '/', label: L('نمای کلی', 'Overview'), icon: LayoutGrid, hub: 'overview' },
         { to: '/projects', label: L('پروژه‌ها', 'Projects'), icon: Briefcase, count: db.Projects.filter((p) => p.status === 'active').length },
-        { to: '/roadmap', label: L('رودمپ', 'Roadmap'), icon: GanttChartSquare },
-        { to: '/report', label: L('گزارش مدیریتی', 'Exec report'), icon: Printer },
-      ],
-    },
-    {
-      label: L('برنامه‌ریزی و ریتم', 'Planning & cadence'),
-      links: [
-        { to: '/plan', label: L('برنامه‌ی تحویل', 'Delivery plan'), icon: PackageCheck },
-        { to: '/weekly', label: L('ویکلی‌ها', 'Weeklies'), icon: CalendarRange },
+        { to: '/plan', label: L('برنامه و تحویل', 'Plan & delivery'), icon: PackageCheck, hub: 'plan' },
         { to: '/updates', label: L('گزارش هفتگی', 'Weekly updates'), icon: FileText, badge: updatesMissing },
-        { to: '/team', label: L('ظرفیت تیم', 'Capacity'), icon: Gauge, badge: overCap },
-      ],
-    },
-    {
-      label: L('اجرا', 'Delivery'),
-      links: [
-        { to: '/teams', label: L('پروداکت و تک', 'Product & Tech'), icon: Workflow },
-        { to: '/tasks', label: L('تسک‌ها', 'Tasks'), icon: ListChecks, count: db.Tasks.filter((t) => t.status !== 'done').length },
-        { to: '/followups', label: L('فالوآپ‌ها', 'Follow-ups'), icon: BellRing, count: db.FollowUps.filter((f) => f.status !== 'done').length },
-        { to: '/sprints', label: L('اسپرینت‌ها', 'Sprints'), icon: Zap },
-      ],
-    },
-    {
-      label: L('راهبری', 'Governance'),
-      links: [
-        { to: '/risks', label: L('ریسک‌ها و تصمیم‌ها', 'Risks & decisions'), icon: ShieldAlert, count: db.Risks.filter((r) => r.status !== 'closed').length },
+        { to: '/team', label: L('ظرفیت و منابع', 'Capacity & resourcing'), icon: Gauge, badge: overCap },
       ],
     },
   ]
@@ -139,7 +122,7 @@ export function Layout({ children }: { children: ReactNode }) {
           <AcgMark className="h-7 text-white" />
           {wide && (
             <div className="leading-tight">
-              <div className="text-sm font-semibold tracking-tight">{L('پورتفولیو', 'Portfolio')}</div>
+              <div className="text-sm font-semibold tracking-tight">{APP_NAME()}</div>
               <div className="font-mono text-[0.625rem] uppercase tracking-[0.18em] text-band-sub">ACG · PMO</div>
             </div>
           )}
@@ -156,15 +139,18 @@ export function Layout({ children }: { children: ReactNode }) {
                   to={l.to}
                   end={l.to === '/'}
                   title={!wide ? l.label : undefined}
-                  className={({ isActive }) =>
-                    cx(
+                  className={({ isActive: a }) => {
+                    const isActive = a || (!!l.hub && hubOf(loc.pathname) === l.hub) || (l.to === '/team' && loc.pathname.startsWith('/people'))
+                    return cx(
                       'group relative flex h-10 items-center gap-3 rounded-xl text-sm transition',
                       wide ? 'px-3' : 'justify-center',
                       isActive ? 'bg-white/[0.09] text-white' : 'text-white/60 hover:bg-white/[0.05] hover:text-white',
                     )
-                  }
+                  }}
                 >
-                  {({ isActive }) => (
+                  {({ isActive: a }) => {
+                    const isActive = a || (!!l.hub && hubOf(loc.pathname) === l.hub) || (l.to === '/team' && loc.pathname.startsWith('/people'))
+                    return (
                     <>
                       {isActive && <span className="absolute inset-y-2 start-0 w-[3px] rounded-full bg-brand-soft" />}
                       <l.icon size={18} strokeWidth={1.7} />
@@ -174,7 +160,8 @@ export function Layout({ children }: { children: ReactNode }) {
                         <span className={cx('rounded-full bg-[#c4314b] text-[0.625rem] font-semibold text-white num leading-[18px]', wide ? 'px-1.5' : 'absolute end-2 top-1.5 h-2 w-2 overflow-hidden text-transparent')}>{fa(l.badge)}</span>
                       )}
                     </>
-                  )}
+                    )
+                  }}
                 </NavLink>
               ))}
             </div>
@@ -222,6 +209,23 @@ export function Layout({ children }: { children: ReactNode }) {
                 <div className="text-xs text-sub">{mode === 'demo' ? L('حالت نمایشی با داده‌ی نمونه', 'Demo mode with sample data') : L('متصل به Google Sheets', 'Connected to Google Sheets')}</div>
               </div>
               <div className="my-1 h-px bg-line" />
+              {myMember && (
+                <MenuItem icon={<UserRound size={15} />} onClick={() => { close(); navigate(`/people/${myMember.id}`) }}>
+                  {L('پروفایل من', 'My profile')}
+                </MenuItem>
+              )}
+              {mode === 'demo' && (
+                <div className="px-2.5 pb-1 pt-2">
+                  <div className="mb-1 text-[0.6875rem] text-sub">{L('مشاهده به‌عنوان (نمایشی)', 'View as (demo)')}</div>
+                  <select className="input h-9 text-xs" value={me} onChange={(e) => { setMe(e.target.value); close() }}>
+                    {db.Team.filter((m) => m.email).map((m) => (
+                      <option key={m.id} value={m.name}>
+                        {m.name} — {m.role}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              )}
               <MenuItem icon={<Languages size={15} />} hint={lang === 'fa' ? 'EN' : 'فا'} onClick={() => { setLang(lang === 'fa' ? 'en' : 'fa'); close() }}>
                 {L('English', 'فارسی')}
               </MenuItem>
@@ -235,8 +239,13 @@ export function Layout({ children }: { children: ReactNode }) {
                 {L('میانبرهای صفحه‌کلید', 'Keyboard shortcuts')}
               </MenuItem>
               <MenuItem icon={<Settings size={15} />} onClick={() => { close(); navigate('/settings') }}>
-                {L('تنظیمات و اتصال', 'Settings & connection')}
+                {L('تنظیمات، اتصال و اتوماسیون', 'Settings, connection & automations')}
               </MenuItem>
+              {mode === 'live' && (
+                <MenuItem icon={<LogOut size={15} />} danger onClick={() => { close(); signOut(); setConfig({ ...config, token: '' }) }}>
+                  {L('خروج', 'Sign out')}
+                </MenuItem>
+              )}
             </>
           )}
         </Popover>

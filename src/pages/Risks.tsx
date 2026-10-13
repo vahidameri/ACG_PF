@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { Plus } from 'lucide-react'
 import { useStore } from '../lib/store'
+import { HubNav } from '../components/HubNav'
 import { useEditor } from '../components/Editor'
 import { Band, Card, Empty, FilterSelect, Overlap, Toolbar, Person, Chip, cx, StatStrip } from '../components/ui'
 import { RiskMatrix, riskTone } from '../components/widgets'
@@ -26,7 +27,7 @@ export default function Risks() {
 
   return (
     <>
-      <Band
+      <Band nav={<HubNav hub="overview" />}
         eyebrow={<span>RAID</span>}
         title={L('ریسک‌ها، مسائل و تصمیم‌ها', 'Risks, issues & decisions')}
         sub={L('لاگ RAID کل پورتفولیو. امتیاز = احتمال × اثر (۱ تا ۲۵).', 'Portfolio-wide RAID log. Score = probability × impact (1–25).')}

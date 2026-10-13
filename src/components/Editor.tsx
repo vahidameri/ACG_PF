@@ -11,6 +11,7 @@ import {
 import { Sheet, cx } from './ui'
 import { DatePicker } from './DatePicker'
 import { ItemSheet } from './ItemSheet'
+import { useAuto } from '../lib/automations'
 
 type FieldType = 'text' | 'textarea' | 'select' | 'date' | 'number' | 'project' | 'person' | 'sprint' | 'member' | 'scale'
 export interface Field {
@@ -23,9 +24,9 @@ export interface Field {
   placeholder?: T2
 }
 
-export type EditableSheet = Exclude<SheetName, 'Comments'>
+export type EditableSheet = Exclude<SheetName, 'Comments' | 'Files' | 'Config'>
 
-export const SCHEMAS: Record<Exclude<SheetName, 'Comments'>, { title: T2; prefix: string; fields: Field[]; defaults: () => Record<string, unknown> }> = {
+export const SCHEMAS: Record<EditableSheet, { title: T2; prefix: string; fields: Field[]; defaults: () => Record<string, unknown> }> = {
   Tasks: {
     title: ['تسک', 'Task'],
     prefix: 'T',
@@ -41,8 +42,9 @@ export const SCHEMAS: Record<Exclude<SheetName, 'Comments'>, { title: T2; prefix
       { key: 'points', label: ['استوری‌پوینت', 'Story points'], type: 'number', half: true },
       { key: 'tags', label: ['برچسب‌ها', 'Tags'], type: 'text', half: true, placeholder: ['با کاما جدا کنید', 'Comma separated'] },
       { key: 'track', label: ['تیم (ترک)', 'Track'], type: 'select', options: { '': ['خودکار از روی مسئول', 'Auto (from assignee)'], product: ['پروداکت', 'Product'], tech: ['تک', 'Tech'] }, half: true },
+      { key: 'private', label: ['دیده‌شدن', 'Visibility'], type: 'select', options: { '': ['همه‌ی تیم', 'Whole team'], '1': ['خصوصی (فقط مسئول و ثبت‌کننده)', 'Private (assignee & reporter only)'] }, half: true },
     ],
-    defaults: () => ({ status: 'todo', priority: 'medium', points: 0, created_at: todayISO(), track: '', depends_on: '', meeting_id: '' }),
+    defaults: () => ({ private: '', status: 'todo', priority: 'medium', points: 0, created_at: todayISO(), track: '', depends_on: '', meeting_id: '' }),
   },
   FollowUps: {
     title: ['فالوآپ', 'Follow-up'],
@@ -80,7 +82,7 @@ export const SCHEMAS: Record<Exclude<SheetName, 'Comments'>, { title: T2; prefix
       { key: 'spent', label: ['هزینه‌شده (ریال)', 'Spent'], type: 'number', half: true },
       { key: 'health_override', label: ['سلامت دستی (خالی = محاسبه‌ی خودکار)', 'Health override (blank = automatic)'], type: 'select', options: { '': ['خودکار', 'Automatic'], ...HEALTH } },
     ],
-    defaults: () => ({ status: 'planning', priority: 'medium', start_date: todayISO(), budget: 0, spent: 0, progress: '', health_override: '' }),
+    defaults: () => ({ status: 'planning', priority: 'medium', start_date: todayISO(), budget: 0, spent: 0, progress: '', health_override: '', paused_at: '', pause_reason: '' }),
   },
   Milestones: {
     title: ['مایلستون', 'Milestone'],
@@ -164,9 +166,11 @@ export const SCHEMAS: Record<Exclude<SheetName, 'Comments'>, { title: T2; prefix
       { key: 'team', label: ['تیم', 'Team'], type: 'text', half: true },
       { key: 'track', label: ['ترک', 'Track'], type: 'select', options: { '': ['—', '—'], product: ['پروداکت', 'Product'], tech: ['تک', 'Tech'] }, half: true },
       { key: 'capacity', label: ['ظرفیت (٪ یک نفر تمام‌وقت)', 'Capacity (% of one full-time person)'], type: 'number', half: true, placeholder: ['۱۰۰ = تمام‌وقت', '100 = full-time'] },
-      { key: 'email', label: ['ایمیل', 'Email'], type: 'text' },
+      { key: 'email', label: ['ایمیل گوگل (برای ورود)', 'Google email (for sign-in)'], type: 'text', half: true },
+      { key: 'phone', label: ['تلفن', 'Phone'], type: 'text', half: true },
+      { key: 'tasks_private', label: ['تسک‌های این فرد', 'This person’s tasks'], type: 'select', options: { '': ['برای تیم قابل مشاهده', 'Visible to the team'], '1': ['خصوصی (فقط خودش و ثبت‌کننده)', 'Private (only them & the reporter)'] } },
     ],
-    defaults: () => ({ capacity: 100 }),
+    defaults: () => ({ capacity: 100, photo: '', tasks_private: '', phone: '' }),
   },
   Allocations: {
     title: ['تخصیص منابع', 'Allocation'],
@@ -206,13 +210,15 @@ export const SCHEMAS: Record<Exclude<SheetName, 'Comments'>, { title: T2; prefix
       { key: 'project_id', label: ['پروژه (برای ویکلی پروژه)', 'Project (for project weeklies)'], type: 'project', half: true },
       { key: 'date', label: ['تاریخ', 'Date'], type: 'date', half: true, required: true },
       { key: 'time', label: ['ساعت', 'Time'], type: 'text', half: true, placeholder: ['10:00', '10:00'] },
+      { key: 'duration', label: ['مدت (دقیقه)', 'Duration (min)'], type: 'number', half: true },
+      { key: 'meet_url', label: ['لینک Google Meet (خالی = ساخت خودکار)', 'Google Meet link (blank = auto)'], type: 'text', half: true },
       { key: 'facilitator', label: ['برگزارکننده', 'Facilitator'], type: 'person', half: true },
       { key: 'status', label: ['وضعیت', 'Status'], type: 'select', options: MEETING_STATUS, half: true },
       { key: 'attendees', label: ['حاضران (با کاما جدا کنید)', 'Attendees (comma separated)'], type: 'text' },
       { key: 'notes', label: ['صورت‌جلسه', 'Minutes'], type: 'textarea' },
       { key: 'decisions', label: ['تصمیم‌ها (هر خط یک مورد)', 'Decisions (one per line)'], type: 'textarea' },
     ],
-    defaults: () => ({ series: 'portfolio', status: 'scheduled', date: todayISO(), time: '10:00', notes: '', decisions: '', project_id: '' }),
+    defaults: () => ({ series: 'portfolio', status: 'scheduled', date: todayISO(), time: '10:00', duration: 45, notes: '', decisions: '', project_id: '', gcal_id: '', meet_url: '' }),
   },
   TimeOff: {
     title: ['مرخصی / عدم حضور', 'Time off'],
@@ -352,6 +358,7 @@ export function FieldInput({ f, value, set, form, disabled, autoFocus, onSubmit 
 
 function EditorModal({ sheet, row, isNew, onClose }: { sheet: EditableSheet; row: Record<string, unknown>; isNew: boolean; onClose: () => void }) {
   const { upsert, remove, toast, canEdit } = useStore()
+  const auto = useAuto()
   const schema = SCHEMAS[sheet]
   const [form, setForm] = useState<Record<string, unknown>>(row)
   const [saving, setSaving] = useState(false)
@@ -376,6 +383,7 @@ function EditorModal({ sheet, row, isNew, onClose }: { sheet: EditableSheet; row
     if (sheet === 'TimeOff' && !out.end_date) out.end_date = out.start_date
     try {
       await upsert(sheet, out as never)
+      if (sheet === 'Meetings' && isNew) auto.meetingCreated(out as never)
       toast(isNew ? L(`${title} ایجاد شد`, `${title} created`) : L('تغییرات ذخیره شد', 'Changes saved'))
       onClose()
     } catch {

@@ -4,6 +4,7 @@ import { Plus, ArrowUpDown, MessageSquare, Link2 } from 'lucide-react'
 import { trackOf, waitingOn } from '../lib/tracks'
 import { TrackBadge } from '../components/ItemSheet'
 import { useStore } from '../lib/store'
+import { HubNav } from '../components/HubNav'
 import { useEditor } from '../components/Editor'
 import { Band, Card, Empty, FilterSelect, Overlap, Segmented, Toolbar, Due, cx, SearchInput, StatusIcon } from '../components/ui'
 import { Kanban } from '../components/widgets'
@@ -77,7 +78,7 @@ export default function Tasks() {
 
   return (
     <>
-      <Band
+      <Band nav={<HubNav hub="work" />}
         eyebrow={<span>{L('اجرا / تسک‌ها', 'Execution / Tasks')}</span>}
         title={L('تسک‌ها', 'Tasks')}
         sub={L(`${fa(list.length)} تسک · ${fa(db.Tasks.filter(isTaskOverdue).length)} معوق · ${fa(db.Tasks.filter((t) => t.status === 'blocked').length)} مسدود`, `${list.length} tasks · ${db.Tasks.filter(isTaskOverdue).length} overdue · ${db.Tasks.filter((t) => t.status === 'blocked').length} blocked`)}

@@ -2,6 +2,7 @@ import { useMemo, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { ChevronDown, ChevronRight, ChevronLeft } from 'lucide-react'
 import { useStore } from '../lib/store'
+import { HubNav } from '../components/HubNav'
 import { useEditor } from '../components/Editor'
 import { Band, Overlap, Segmented, Toolbar, FilterSelect, HealthDot, cx, healthColor, Avatar } from '../components/ui'
 import type { Project } from '../lib/types'
@@ -109,7 +110,7 @@ export default function Roadmap() {
 
   return (
     <>
-      <Band eyebrow={<span>{L('پورتفولیو / رودمپ', 'Portfolio / Roadmap')}</span>} title={L('رودمپ پورتفولیو', 'Portfolio roadmap')} sub={L('خط قرمز امروز است. نشانگر آبی را بکشید تا ببینید در هر تاریخ پروژه‌ها کجا باید باشند؛ با ‹ › بازه را جابه‌جا کنید.', 'The red line is today. Drag the blue cursor to see where projects should be on any date; use ‹ › to move the window.')} />
+      <Band nav={<HubNav hub="plan" />} eyebrow={<span>{L('پورتفولیو / رودمپ', 'Portfolio / Roadmap')}</span>} title={L('رودمپ پورتفولیو', 'Portfolio roadmap')} sub={L('خط قرمز امروز است. نشانگر آبی را بکشید تا ببینید در هر تاریخ پروژه‌ها کجا باید باشند؛ با ‹ › بازه را جابه‌جا کنید.', 'The red line is today. Drag the blue cursor to see where projects should be on any date; use ‹ › to move the window.')} />
       <Overlap>
         <div className="card mb-4 p-3">
           <Toolbar className="!mb-0">

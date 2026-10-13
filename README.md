@@ -1,10 +1,53 @@
-# ACG Portfolio — سیستم مدیریت و مانیتورینگ پورتفولیو پروژه‌ها
+# سکان (ACG Helm) — مرکز هدایت پروژه‌های ACG
 
 داشبورد وب برای **مدیر برنامه** (دستیار روزانه: تسک‌ها، فالوآپ‌ها و پیشنهادهای هوشمند) و **لیدرشیپ** (مانیتورینگ دقیق سلامت، رودمپ، ریسک و بودجه). داده‌ها در **Google Sheets** نگهداری می‌شوند و به سرور اختصاصی نیازی نیست.
 
 ```
 Google Sheet (دیتابیس)  ⇄  Apps Script Web App (API رایگان)  ⇄  وب‌اپ React (هاست استاتیک رایگان)
 ```
+
+---
+
+## ورود با گوگل، دسترسی و حریم خصوصی
+
+- **ورود با حساب گوگل:** هر نفر با Google وارد می‌شود. سرور توکن را از گوگل تأیید می‌کند و نقش او (admin / editor / viewer) را از روی ایمیلش در تب `Users` تعیین می‌کند. ورود با کلید شخصی فقط به‌عنوان جایگزین باقی مانده است.
+- **تسک‌های خصوصی:** هر تسکی که `private = 1` باشد، و همه‌ی تسک‌های کسی که در تب `Team` مقدار `tasks_private = 1` دارد (مثلاً مدیرعامل)، فقط برای مسئول همان تسک و کسی که آن را ثبت کرده ارسال می‌شود. این فیلتر روی **سرور** اعمال می‌شود؛ یعنی این ردیف‌ها حتی به مرورگر بقیه هم نمی‌رسند. یادداشت‌ها و فایل‌های آن تسک‌ها هم همین‌طورند و در ایمیل‌های گروهی هم نمی‌آیند.
+- **پروفایل:** هر نفر یک صفحه دارد (`/people/:id`) با عکس، تماس، بار کاری ۸ هفته، پروژه‌ها، تسک‌ها، جلسات و مرخصی. عکس را خودش (یا ادمین) آپلود می‌کند. اگر عکسی نداشته باشد، عکس پروفایل گوگلش خودکار گذاشته می‌شود.
+
+## تقویم گوگل، جلسات و فایل‌ها
+
+- **تقویم گوگل:** با همان ورود گوگل، رویدادهای تقویم هر نفر خوانده می‌شود. رویدادی که نام یا کد پروژه را دارد، یا دو نفر یا بیشتر از تیم در آن هستند، «مرتبط» حساب می‌شود و خودکار به «جلسات» اضافه می‌شود. برای جلسه‌ای که داخل اپ ساخته شود، رویداد تقویم با لینک Google Meet ساخته می‌شود و حاضران دعوت‌نامه می‌گیرند.
+- **جلسات:** دستور جلسه‌ی خودکار، مرور اقدام‌های جلسه‌ی قبل، صورت‌جلسه و تصمیم‌ها، فایل‌های جلسه و اقدام‌هایی که مستقیم تسک می‌شوند. نمای **اکشن پلن** همه‌ی اقدام‌های باز جلسات را بر اساس مسئول نشان می‌دهد.
+- **فایل‌ها:** روی جلسه، پروژه و تسک می‌شود فایل آپلود کرد (تا ۱۰ مگابایت، با کشیدن و رها کردن). فایل‌ها در یک پوشه‌ی مشترک Drive به نام «ACG Helm files» ذخیره و در تب `Files` فهرست می‌شوند.
+
+## اتوماسیون‌ها
+
+همه از صفحه‌ی تنظیمات روشن یا خاموش می‌شوند و این تنظیم در تب `Config` برای همه‌ی تیم یکسان است. برای نصب اتوماسیون‌های سمت سرور، `installAutomations` را یک بار اجرا کنید.
+
+| اتوماسیون | کجا اجرا می‌شود |
+|---|---|
+| آوردن ایونت‌های مرتبط تقویم گوگل به جلسات | اپ |
+| ساخت رویداد تقویم با لینک Meet برای جلسه‌ی جدید | اپ |
+| ساخت جلسه‌ی هفته‌ی بعد بعد از بستن ویکلی | اپ |
+| ایمیل صورت‌جلسه و اکشن پلن به حاضران | سرور |
+| فالوآپ خودکار برای تسکی که بیش از ۳ روز مسدود مانده | اپ |
+| جابجایی ددلاین، مایلستون‌ها و تحویل‌ها بعد از ادامه‌ی پروژه‌ی متوقف | اپ |
+| عکس پروفایل از حساب گوگل | اپ |
+| یادآوری گزارش هفتگی (یکشنبه ۱۴، دوشنبه ۸) | سرور |
+| یادآوری روزانه‌ی اقدام‌های معوق | سرور |
+| خلاصه‌ی صبحگاهی | سرور |
+
+## توقف و ادامه‌ی پروژه
+
+دکمه‌ی **توقف** در صفحه و کارت هر پروژه وضعیت را `on_hold` می‌کند و تاریخ و دلیل توقف را ثبت می‌کند. تخصیص‌های پروژه‌ی متوقف دیگر از ظرفیت کسی کم نمی‌کنند، پس ظرفیت آزادشده بلافاصله در صفحه‌ی «ظرفیت و منابع» دیده می‌شود. با **ادامه**، پروژه دوباره فعال می‌شود و (اگر اتوماسیونش روشن باشد) ددلاین و برنامه به اندازه‌ی روزهای توقف جلو می‌رود.
+
+## راه‌اندازی ورود با گوگل
+
+۱. در Google Cloud Console یک پروژه بسازید و **Google Calendar API** را فعال کنید.
+۲. در OAuth consent screen، اسکوپ‌های `openid`، `email`، `profile` و `calendar.events` را اضافه کنید.
+۳. در Credentials → Create credentials → OAuth client ID، نوع **Web application** را انتخاب کنید و آدرس سایت را در *Authorized JavaScript origins* بگذارید.
+۴. Client ID را در صفحه‌ی تنظیمات اپ وارد کنید (یا هنگام build در `VITE_GOOGLE_CLIENT_ID`). در Apps Script هم آن را در Project Settings → Script properties با نام `GOOGLE_CLIENT_ID` ذخیره کنید.
+۵. ایمیل گوگل هر نفر را در تب `Users` (برای نقش) و در تب `Team` (برای اتصال به پروفایل و تقویم) وارد کنید.
 
 ---
 
@@ -116,17 +159,19 @@ npm run build      # خروجی استاتیک در dist/
 
 | تب | ستون‌ها |
 |---|---|
-| `Projects` | id, code, name, description, category, owner, sponsor, status, priority, phase, start_date, end_date, budget, spent, progress, health_override, objective |
+| `Projects` | id, code, name, description, category, owner, sponsor, status, priority, phase, start_date, end_date, budget, spent, progress, health_override, objective, paused_at, pause_reason |
 | `Scope` | id, project_id, item, type (in/out), status, change_note, date |
 | `Milestones` | id, project_id, title, planned_date, actual_date, status, owner, weight |
 | `Sprints` | id, project_id, name, start_date, end_date, goal, committed_points, completed_points, status |
-| `Tasks` | id, project_id, sprint_id, title, description, assignee, reporter, status, priority, due_date, points, tags, created_at, completed_at, track (`product`/`tech`؛ خالی = از تیم مسئول), depends_on (شناسه‌ی تسک‌های پیش‌نیاز، با کاما), meeting_id (اگر اقدامِ یک جلسه باشد) |
+| `Tasks` | id, project_id, sprint_id, title, description, assignee, reporter, status, priority, due_date, points, tags, created_at, completed_at, track (`product`/`tech`؛ خالی = از تیم مسئول), depends_on (شناسه‌ی تسک‌های پیش‌نیاز، با کاما), meeting_id (اگر اقدامِ یک جلسه باشد), private (`1` = خصوصی) |
 | `FollowUps` | id, project_id, subject, person, channel, due_date, status, priority, notes, created_at, done_at |
 | `Risks` | id, project_id, title, type (risk/issue/dependency/decision), probability (۱–۵), impact (۱–۵), owner, mitigation, status, due_date |
-| `Team` | id, name, role, email, team, track (`product`/`tech`), capacity (٪ یک نفر تمام‌وقت؛ ۱۰۰ = تمام‌وقت، ۶۰۰ = تیم ۶ نفره) |
+| `Team` | id, name, role, email (ایمیل گوگل), team, track (`product`/`tech`), capacity (٪ یک نفر تمام‌وقت؛ ۱۰۰ = تمام‌وقت، ۶۰۰ = تیم ۶ نفره), photo, tasks_private (`1` = تسک‌های این فرد خصوصی), phone |
+| `Files` | id, entity, entity_id, name, mime, size, url, uploaded_by, created_at |
+| `Config` | id (کلید؛ مثلاً `auto.minutes_mail`), value (`on`/`off`) |
 | `Allocations` | id, member_id, project_id, percent, start_date, end_date (اختیاری؛ خالی = نامحدود) |
 | `Deliverables` | id, project_id, title, track, owner, target_date, baseline_date (تعهد اولیه)، delivered_date, status (`planned`/`in_progress`/`at_risk`/`delivered`/`dropped`), confidence (`high`/`medium`/`low`), notes |
-| `Meetings` | id, series (`portfolio`/`product`/`tech`/`project`/`other`), title, project_id, date, time, facilitator, attendees (با کاما), status (`scheduled`/`held`/`cancelled`), notes, decisions (هر خط یک تصمیم) |
+| `Meetings` | id, series (`portfolio`/`product`/`tech`/`project`/`one_on_one`/`other`), title, project_id, date, time, duration, facilitator, attendees (با کاما), status (`scheduled`/`held`/`cancelled`), notes, decisions (هر خط یک تصمیم), gcal_id, meet_url |
 | `TimeOff` | id, member_id, start_date, end_date, kind (`leave`/`training`/`other`), note |
 | `Updates` | id, project_id, week_date, author, health, summary, done, next, blockers |
 | `Comments` | id, entity (Tasks/FollowUps/Projects/Risks), entity_id, author, body, created_at (`YYYY-MM-DD HH:mm`) |

@@ -108,6 +108,7 @@ export const MEETING_SERIES: Record<MeetingSeries, T2> = {
   product: ['ویکلی پروداکت', 'Product weekly'],
   tech: ['ویکلی تک', 'Tech weekly'],
   project: ['ویکلی پروژه', 'Project weekly'],
+  one_on_one: ['جلسه‌ی ۱:۱', 'One-on-one'],
   other: ['سایر جلسات', 'Other'],
 }
 export const MEETING_STATUS: Record<Meeting['status'], T2> = {

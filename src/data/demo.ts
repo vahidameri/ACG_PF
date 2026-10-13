@@ -1,7 +1,7 @@
 // Sample data for the demo mode: the real ACG team and project list, with illustrative
 // (generic product-lifecycle) milestones, tasks, budgets and risks. Replace with real data
 // in the Google Sheet. Dates are relative to today so the demo always looks "live".
-import type { DB, Task, Milestone, Sprint, FollowUp, Risk, ScopeItem, Update, Allocation, Comment, Project, Health, Member, Deliverable, Meeting, TimeOff, Track } from '../lib/types'
+import type { DB, Task, Milestone, Sprint, FollowUp, Risk, ScopeItem, Update, Allocation, Comment, Project, Health, Member, Deliverable, Meeting, TimeOff, Track, FileRef, ConfigRow } from '../lib/types'
 import { addDays, daysBetween, todayISO } from '../lib/jalali'
 import { locale } from '../lib/i18n'
 import { weekStart } from '../lib/weeks'
@@ -72,18 +72,18 @@ export function buildDemo(): DB {
   const me = P.vahid()
 
   const Team: Member[] = [
-    { id: 'm1', name: P.vahid(), role: x('مدیر پروگرم', 'Program Manager'), email: 'vahid.ameri@acg.example', team: 'PMO', track: '', capacity: 100 },
-    { id: 'm2', name: P.jalil(), role: x('مدیرعامل', 'CEO'), email: 'jalil@acg.example', team: x('مدیریت', 'Leadership'), track: '', capacity: 100 },
-    { id: 'm3', name: P.keyvan(), role: x('هد تک', 'Head of Tech'), email: 'keyvanian@acg.example', team: x('تک', 'Tech'), track: 'tech', capacity: 100 },
-    { id: 'm4', name: P.mehrzad(), role: x('هد پروداکت', 'Head of Product'), email: 'mehrzad@acg.example', team: x('پروداکت', 'Product'), track: 'product', capacity: 100 },
-    { id: 'm5', name: P.atena(), role: x('پروداکت منیجر', 'Product Manager'), email: 'athena@acg.example', team: x('پروداکت', 'Product'), track: 'product', capacity: 100 },
-    { id: 'm6', name: P.sormeili(), role: x('پروداکت منیجر', 'Product Manager'), email: 'sormeili@acg.example', team: x('پروداکت', 'Product'), track: 'product', capacity: 100 },
-    { id: 'm7', name: P.salemeh(), role: x('پروداکت منیجر', 'Product Manager'), email: 'salemeh@acg.example', team: x('پروداکت', 'Product'), track: 'product', capacity: 100 },
-    { id: 'm8', name: P.mehrsa(), role: x('پروداکت منیجر', 'Product Manager'), email: 'mehrsa@acg.example', team: x('پروداکت', 'Product'), track: 'product', capacity: 100 },
-    { id: 'm9', name: P.babak(), role: x('پروداکت منیجر', 'Product Manager'), email: 'babak@acg.example', team: x('پروداکت', 'Product'), track: 'product', capacity: 100 },
-    { id: 'm10', name: P.amin(), role: x('پروداکت منیجر', 'Product Manager'), email: 'amin@acg.example', team: x('پروداکت', 'Product'), track: 'product', capacity: 100 },
-    { id: 'm11', name: P.hanie(), role: x('پروداکت دیزاینر', 'Product Designer'), email: 'hanie@acg.example', team: x('پروداکت', 'Product'), track: 'product', capacity: 100 },
-    { id: 'm12', name: P.tech(), role: x('مهندسی (تیمی)', 'Engineering (team)'), email: '', team: x('تک', 'Tech'), track: 'tech', capacity: 600 },
+    { id: 'm1', name: P.vahid(), role: x('مدیر پروگرم', 'Program Manager'), email: 'vahid.ameri@acg.example', team: 'PMO', track: '', capacity: 100, photo: '', tasks_private: '', phone: '' },
+    { id: 'm2', name: P.jalil(), role: x('مدیرعامل', 'CEO'), email: 'jalil@acg.example', team: x('مدیریت', 'Leadership'), track: '', capacity: 100, photo: '', tasks_private: '1', phone: '' },
+    { id: 'm3', name: P.keyvan(), role: x('هد تک', 'Head of Tech'), email: 'keyvanian@acg.example', team: x('تک', 'Tech'), track: 'tech', capacity: 100, photo: '', tasks_private: '', phone: '' },
+    { id: 'm4', name: P.mehrzad(), role: x('هد پروداکت', 'Head of Product'), email: 'mehrzad@acg.example', team: x('پروداکت', 'Product'), track: 'product', capacity: 100, photo: '', tasks_private: '', phone: '' },
+    { id: 'm5', name: P.atena(), role: x('پروداکت منیجر', 'Product Manager'), email: 'athena@acg.example', team: x('پروداکت', 'Product'), track: 'product', capacity: 100, photo: '', tasks_private: '', phone: '' },
+    { id: 'm6', name: P.sormeili(), role: x('پروداکت منیجر', 'Product Manager'), email: 'sormeili@acg.example', team: x('پروداکت', 'Product'), track: 'product', capacity: 100, photo: '', tasks_private: '', phone: '' },
+    { id: 'm7', name: P.salemeh(), role: x('پروداکت منیجر', 'Product Manager'), email: 'salemeh@acg.example', team: x('پروداکت', 'Product'), track: 'product', capacity: 100, photo: '', tasks_private: '', phone: '' },
+    { id: 'm8', name: P.mehrsa(), role: x('پروداکت منیجر', 'Product Manager'), email: 'mehrsa@acg.example', team: x('پروداکت', 'Product'), track: 'product', capacity: 100, photo: '', tasks_private: '', phone: '' },
+    { id: 'm9', name: P.babak(), role: x('پروداکت منیجر', 'Product Manager'), email: 'babak@acg.example', team: x('پروداکت', 'Product'), track: 'product', capacity: 100, photo: '', tasks_private: '', phone: '' },
+    { id: 'm10', name: P.amin(), role: x('پروداکت منیجر', 'Product Manager'), email: 'amin@acg.example', team: x('پروداکت', 'Product'), track: 'product', capacity: 100, photo: '', tasks_private: '', phone: '' },
+    { id: 'm11', name: P.hanie(), role: x('پروداکت دیزاینر', 'Product Designer'), email: 'hanie@acg.example', team: x('پروداکت', 'Product'), track: 'product', capacity: 100, photo: '', tasks_private: '', phone: '' },
+    { id: 'm12', name: P.tech(), role: x('مهندسی (تیمی)', 'Engineering (team)'), email: '', team: x('تک', 'Tech'), track: 'tech', capacity: 600, photo: '', tasks_private: '', phone: '' },
   ]
 
   const Projects: Project[] = SPECS.map((s) => ({
@@ -104,6 +104,8 @@ export function buildDemo(): DB {
     progress: s.progress,
     health_override: '',
     objective: '',
+    paused_at: s.status === 'on_hold' ? d(-21) : '',
+    pause_reason: s.status === 'on_hold' ? x('منتظر تصمیم کمیته‌ی فصلی', 'Waiting for the quarterly committee decision') : '',
   }))
 
   // ---------------------------------------------------------- milestones
@@ -147,7 +149,7 @@ export function buildDemo(): DB {
     const task: Task = {
       id: `t${++tid}`, project_id: o.project_id, sprint_id: o.sprint_id || '', title: o.title, description: o.description || '', assignee: o.assignee, reporter: me, status: o.status,
       priority: o.priority || 'medium', due_date: o.due === null ? '' : d(o.due), points: o.points || 0, tags: o.tags || '', created_at: d(-24),
-      completed_at: o.status === 'done' ? d(Math.min(-1, (o.due ?? -2) - 1)) : '', track: o.track || '', depends_on: '', meeting_id: o.meeting_id || '',
+      completed_at: o.status === 'done' ? d(Math.min(-1, (o.due ?? -2) - 1)) : '', track: o.track || '', depends_on: '', meeting_id: o.meeting_id || '', private: o.private || '',
     }
     Tasks.push(task)
     return task
@@ -180,6 +182,17 @@ export function buildDemo(): DB {
   T({ project_id: '', title: x('به‌روزرسانی رودمپ فصل', 'Update the quarterly roadmap'), assignee: me, status: 'todo', due: 3 })
   T({ project_id: 'p5', title: x('کیک‌آف HamAfza و تعیین تیم', 'HamAfza kickoff & team setup'), assignee: me, status: 'todo', due: 6, priority: 'high' })
   T({ project_id: '', title: x('جلسه‌ی ۱:۱ با هد پروداکت و هد تک', '1:1 with Head of Product & Head of Tech'), assignee: me, status: 'done', due: -1 })
+
+  // The CEO's own tasks are private: only he (and whoever assigned one) can see them.
+  const ceo = P.jalil()
+  const CT = (title: string, due: number, status: Task['status'] = 'todo', priority: Task['priority'] = 'high', reporter = ceo) => {
+    const k = T({ project_id: '', title, assignee: ceo, status, due, priority })
+    k.reporter = reporter
+  }
+  CT(x('جلسه با سرمایه‌گذار درباره‌ی راند بعدی', 'Investor meeting on the next round'), 2, 'todo', 'critical')
+  CT(x('بازبینی ساختار سازمانی سال آینده', 'Review next year’s org structure'), 9)
+  CT(x('مذاکره‌ی قرارداد با شریک پدیدا', 'Negotiate the Padida partner contract'), 4, 'in_progress')
+  CT(x('تأیید بودجه‌ی تکمیلی Insight X Padida', 'Approve Insight X Padida extra budget'), 1, 'todo', 'critical', me)
 
   // ---------------------------------------------------------- follow-ups
   let fid = 0
@@ -384,6 +397,7 @@ export function buildDemo(): DB {
       Meetings.push({
         id: `mt${++mtid}`, series: se, title: x(fa_, en), project_id: pid, date, time, facilitator: fac(), attendees: att, status: held ? 'held' : 'scheduled',
         notes: held ? x(...pastNotes[se]) : '', decisions: held && w === -1 ? x(...pastDecisions[se]) : held ? x('ادامه‌ی روال فعلی', 'Continue as planned') : '',
+        gcal_id: `g-${se}-${w}`, meet_url: se === 'project' ? '' : `https://meet.google.com/acg-${se.slice(0, 3)}-${w + 3}`, duration: se === 'portfolio' ? 60 : 45,
       })
     }
   })
@@ -413,5 +427,10 @@ export function buildDemo(): DB {
     { id: 'c5', entity: 'FollowUps', entity_id: 'f2', author: me, body: x('پیش‌نویس درخواست ارسال شد.', 'Request draft sent.'), created_at: at(-1, '11:00') },
   ]
 
-  return { Projects, Scope, Milestones, Sprints, Tasks, FollowUps, Risks, Team, Allocations, Updates, Comments, Deliverables, Meetings, TimeOff }
+  const Files: FileRef[] = [
+    { id: 'fl1', entity: 'Meetings', entity_id: lastPortfolio.id, name: x('ارائه-وضعیت-پورتفولیو.pdf', 'portfolio-status.pdf'), mime: 'application/pdf', size: 1_420_000, url: '', uploaded_by: me, created_at: W(-1, 2) },
+    { id: 'fl2', entity: 'Projects', entity_id: 'p8', name: x('برنامه-بازیابی-SimiPass.xlsx', 'SimiPass-recovery-plan.xlsx'), mime: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', size: 86_000, url: '', uploaded_by: P.sormeili(), created_at: d(-2) },
+  ]
+  const Config: ConfigRow[] = []
+  return { Projects, Scope, Milestones, Sprints, Tasks, FollowUps, Risks, Team, Allocations, Updates, Comments, Deliverables, Meetings, TimeOff, Files, Config }
 }

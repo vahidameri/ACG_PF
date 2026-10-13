@@ -1,0 +1,225 @@
+// Automations: small rules that save the PMO repetitive work. App rules run here (in the browser
+// of an editor); server rules run as Apps Script time triggers. Every rule has an on/off switch
+// stored in the Config tab, so the whole team shares the same behaviour.
+import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
+import { CalendarPlus, CalendarSync, Repeat, Mail, Unlock, Image, PauseCircle, BellRing, Sunrise, FileWarning } from 'lucide-react'
+import type { Meeting, Project, Task } from './types'
+import { useStore } from './store'
+import { useGoogle } from './google'
+import { L, locale, type T2 } from './i18n'
+import { createEvent, demoEvents, fetchEvents, relate, seriesFor, type GEvent } from './gcal'
+import { addDays, daysBetween, fa, todayISO } from './jalali'
+import { weekStart } from './weeks'
+import { uid } from './api'
+
+export interface AutomationDef {
+  id: string
+  where: 'app' | 'server'
+  icon: typeof Repeat
+  title: T2
+  desc: T2
+}
+
+export const AUTOMATIONS: AutomationDef[] = [
+  { id: 'gcal_import', where: 'app', icon: CalendarSync, title: ['آوردن ایونت‌های مرتبط تقویم گوگل', 'Bring in related Google Calendar events'], desc: ['ایونتی که نام پروژه را دارد یا دو نفر از تیم در آن هستند، خودکار به «جلسات» اضافه می‌شود.', 'Events that name a project or include two or more teammates are added to Meetings.'] },
+  { id: 'gcal_create', where: 'app', icon: CalendarPlus, title: ['ساخت رویداد تقویم و لینک Meet برای جلسه‌ی جدید', 'Create a calendar event + Meet link for new meetings'], desc: ['حاضران از طرف گوگل دعوت‌نامه می‌گیرند.', 'Attendees get a Google invitation.'] },
+  { id: 'next_meeting', where: 'app', icon: Repeat, title: ['ساخت جلسه‌ی هفته‌ی بعد پس از بستن ویکلی', 'Schedule next week after a weekly is closed'], desc: ['برای ویکلی‌های پورتفولیو، پروداکت، تک و پروژه.', 'For portfolio, product, tech and project weeklies.'] },
+  { id: 'minutes_mail', where: 'server', icon: Mail, title: ['ایمیل صورت‌جلسه و اکشن‌پلن به حاضران', 'Email minutes & action plan to attendees'], desc: ['وقتی جلسه «برگزار شد» زده می‌شود.', 'When a meeting is marked held.'] },
+  { id: 'blocked_followup', where: 'app', icon: Unlock, title: ['فالوآپ برای تسکی که بیش از ۳ روز مسدود مانده', 'Follow-up for tasks blocked over 3 days'], desc: ['با مسئول تسک، در فالوآپ‌های مدیر برنامه.', 'With the assignee, on the program manager’s follow-ups.'] },
+  { id: 'pause_shift', where: 'app', icon: PauseCircle, title: ['جابجایی ددلاین بعد از ادامه‌ی پروژه‌ی متوقف', 'Shift dates when a paused project resumes'], desc: ['ددلاین، مایلستون‌ها و تحویل‌های باز به اندازه‌ی روزهای توقف جلو می‌روند.', 'Deadline, milestones and open deliverables move by the paused days.'] },
+  { id: 'google_photo', where: 'app', icon: Image, title: ['عکس پروفایل از حساب گوگل', 'Profile photo from Google'], desc: ['برای کسی که هنوز عکس آپلود نکرده.', 'For anyone who hasn’t uploaded one.'] },
+  { id: 'update_reminder', where: 'server', icon: FileWarning, title: ['یادآوری گزارش هفتگی', 'Weekly update reminder'], desc: ['یکشنبه ۱۴ و دوشنبه ۸ به مدیر پروژه‌هایی که گزارش نداده‌اند.', 'Sunday 14:00 and Monday 08:00 to leads who haven’t reported.'] },
+  { id: 'action_reminder', where: 'server', icon: BellRing, title: ['یادآوری اکشن‌های معوق', 'Overdue action reminders'], desc: ['هر صبح به مسئول هر اکشن عقب‌افتاده.', 'Every morning, to the owner of each overdue action.'] },
+  { id: 'daily_digest', where: 'server', icon: Sunrise, title: ['خلاصه‌ی صبحگاهی', 'Morning digest'], desc: ['ساعت ۷:۳۰ برای مدیر برنامه.', '07:30, to the program manager.'] },
+]
+
+const WEEKLY = ['portfolio', 'product', 'tech', 'project']
+const names = (s: string) => String(s || '').split(',').map((x) => x.trim()).filter(Boolean)
+
+interface Ctx {
+  on: (id: string) => boolean
+  setOn: (id: string, v: boolean) => Promise<void>
+  events: GEvent[]
+  calStatus: 'demo' | 'live' | 'off' | 'error'
+  reloadCal: () => void
+  importEvent: (e: GEvent) => Promise<Meeting | undefined>
+  meetingCreated: (m: Meeting) => Promise<void>
+  meetingHeld: (m: Meeting) => Promise<void>
+  pause: (p: Project, reason: string) => Promise<void>
+  resume: (p: Project) => Promise<void>
+  log: { at: Date; text: string }[]
+}
+const C = createContext<Ctx | null>(null)
+export const useAuto = () => useContext(C)!
+
+export function AutomationProvider({ children }: { children: ReactNode }) {
+  const store = useStore()
+  const { db, mode, me, canEdit, role, upsert, toast, setting, setSetting, action } = store
+  const { session } = useGoogle()
+  const [log, setLog] = useState<{ at: Date; text: string }[]>([])
+  const [live, setLive] = useState<GEvent[]>([])
+  const [calStatus, setCalStatus] = useState<Ctx['calStatus']>(mode === 'demo' ? 'demo' : 'off')
+  const [calTick, setCalTick] = useState(0)
+  const ran = useRef(new Set<string>())
+  const dbRef = useRef(db)
+  dbRef.current = db
+
+  const on = useCallback((id: string) => setting(`auto.${id}`, 'on') !== 'off', [setting])
+  const setOn = (id: string, v: boolean) => setSetting(`auto.${id}`, v ? 'on' : 'off')
+  const fire = useCallback(
+    (text: string) => {
+      setLog((l) => [{ at: new Date(), text }, ...l].slice(0, 30))
+      toast(`⚡ ${text}`)
+    },
+    [toast],
+  )
+
+  // ---------------------------------------------------------- calendar
+  const demoCal = useMemo(() => (mode === 'demo' ? demoEvents(db, locale.lang) : []), [mode, db])
+  useEffect(() => {
+    if (mode === 'demo') return setCalStatus('demo')
+    if (!session) return setCalStatus('off')
+    const ws = weekStart()
+    fetchEvents(session.token, addDays(ws, -14), addDays(ws, 42))
+      .then((e) => {
+        setLive(e)
+        setCalStatus('live')
+      })
+      .catch(() => setCalStatus('error'))
+  }, [mode, session, calTick])
+  const events = mode === 'demo' ? demoCal : live
+
+  const importEvent = useCallback(
+    async (e: GEvent) => {
+      const d = dbRef.current
+      const r = relate(e, d)
+      if (r.meeting) return r.meeting
+      const attendees = d.Team.filter((m) => m.email && e.attendees.includes(m.email.toLowerCase())).map((m) => m.name)
+      const organizer = d.Team.find((m) => m.email && m.email.toLowerCase() === e.organizer)?.name || me
+      const m: Meeting = {
+        id: uid('MT'), series: seriesFor(e, r), title: e.title, project_id: r.projectId, date: e.date, time: e.time, duration: e.duration || 45, facilitator: organizer,
+        attendees: (attendees.length ? attendees : [me]).join(', '), status: e.date < todayISO() ? 'held' : 'scheduled', notes: '', decisions: '', gcal_id: e.id, meet_url: e.meetUrl,
+      }
+      await upsert('Meetings', m)
+      return m
+    },
+    [me, upsert],
+  )
+
+  // gcal_import: related, not-yet-linked events in the coming three weeks
+  useEffect(() => {
+    if (!canEdit || !on('gcal_import') || !events.length) return
+    const t = todayISO()
+    const todo = events.filter((e) => e.date >= addDays(t, -1) && e.date <= addDays(t, 21) && !ran.current.has('ev:' + e.id)).filter((e) => {
+      const r = relate(e, dbRef.current)
+      return r.related && !r.meeting
+    })
+    if (!todo.length) return
+    todo.forEach((e) => ran.current.add('ev:' + e.id))
+    ;(async () => {
+      for (const e of todo) await importEvent(e)
+      fire(L(`${fa(todo.length)} ایونت مرتبط از تقویم گوگل به جلسات اضافه شد`, `${todo.length} related Google Calendar event(s) added to Meetings`))
+    })()
+  }, [events, canEdit, on, importEvent, fire])
+
+  // blocked_followup: only the admin's session runs it, so it isn't duplicated
+  useEffect(() => {
+    if (!on('blocked_followup') || !(mode === 'demo' || role === 'admin') || ran.current.has('blocked')) return
+    ran.current.add('blocked')
+    const t = todayISO()
+    const stuck = db.Tasks.filter((k: Task) => k.status === 'blocked' && ((k.due_date && daysBetween(k.due_date, t) >= 3) || (k.created_at && daysBetween(k.created_at, t) >= 3)))
+    const subject = (k: Task) => L(`رفع انسداد: ${k.title}`, `Unblock: ${k.title}`)
+    const fresh = stuck.filter((k) => !db.FollowUps.some((f) => f.subject === subject(k)))
+    if (!fresh.length) return
+    ;(async () => {
+      for (const k of fresh)
+        await upsert('FollowUps', {
+          id: uid('F'), project_id: k.project_id, subject: subject(k), person: k.assignee, channel: 'chat', due_date: t, status: 'open', priority: 'high',
+          notes: L('خودکار: این تسک بیش از ۳ روز مسدود مانده است.', 'Automatic: this task has been blocked for over 3 days.'), created_at: t, done_at: '',
+        })
+      fire(L(`${fa(fresh.length)} فالوآپ برای تسک‌های مسدود ساخته شد`, `${fresh.length} follow-up(s) created for blocked tasks`))
+    })()
+  }, [db, mode, role, on, upsert, fire])
+
+  // google_photo
+  useEffect(() => {
+    if (!session?.picture || !on('google_photo') || ran.current.has('photo')) return
+    const mem = db.Team.find((m) => m.email && m.email.toLowerCase() === session.email)
+    if (!mem || mem.photo) return
+    ran.current.add('photo')
+    upsert('Team', { ...mem, photo: session.picture }).then(() => fire(L('عکس پروفایل از حساب گوگل شما گذاشته شد', 'Your Google profile photo was added')))
+  }, [session, db.Team, on, upsert, fire])
+
+  // ---------------------------------------------------------- meeting rules
+  const meetingCreated = useCallback(
+    async (m: Meeting) => {
+      if (!on('gcal_create') || m.gcal_id) return
+      const d = dbRef.current
+      const emails = names(m.attendees).map((n) => d.Team.find((t) => t.name === n)?.email || '').filter(Boolean)
+      if (mode === 'demo') {
+        await upsert('Meetings', { ...m, gcal_id: `g-${m.id}`, meet_url: m.meet_url || `https://meet.google.com/acg-${m.id.slice(-6)}` })
+        return fire(L(`رویداد تقویم با لینک Meet ساخته شد و ${fa(emails.length)} نفر دعوت شدند (نمایشی)`, `Calendar event + Meet link created, ${emails.length} invited (demo)`))
+      }
+      if (!session) return
+      try {
+        const ev = await createEvent(session.token, m, emails, L('ساخته‌شده از سکان ACG', 'Created from ACG Helm'))
+        await upsert('Meetings', { ...m, gcal_id: ev.id, meet_url: ev.meetUrl || m.meet_url })
+        fire(L(`رویداد تقویم با لینک Meet ساخته شد و ${fa(emails.length)} نفر دعوت شدند`, `Calendar event + Meet link created, ${emails.length} invited`))
+        setCalTick((n) => n + 1)
+      } catch {
+        toast(L('ساخت رویداد تقویم انجام نشد', 'Could not create the calendar event'), 'err')
+      }
+    },
+    [on, mode, session, upsert, fire, toast],
+  )
+
+  const meetingHeld = useCallback(
+    async (m: Meeting) => {
+      const d = dbRef.current
+      if (on('next_meeting') && WEEKLY.includes(m.series) && !d.Meetings.some((x) => x.title === m.title && x.date === addDays(m.date, 7))) {
+        const next: Meeting = { ...m, id: uid('MT'), date: addDays(m.date, 7), status: 'scheduled', notes: '', decisions: '', gcal_id: '', meet_url: m.meet_url }
+        await upsert('Meetings', next)
+        fire(L(`جلسه‌ی هفته‌ی بعد (${m.title}) ساخته شد`, `Next week’s ${m.title} scheduled`))
+      }
+      if (on('minutes_mail')) {
+        const n = names(m.attendees).length
+        if (mode === 'demo') fire(L(`صورت‌جلسه و اکشن‌پلن برای ${fa(n)} نفر ایمیل شد (نمایشی)`, `Minutes & action plan emailed to ${n} (demo)`))
+        else
+          action('mailMinutes', { meeting_id: m.id })
+            .then(() => fire(L(`صورت‌جلسه و اکشن‌پلن برای ${fa(n)} نفر ایمیل شد`, `Minutes & action plan emailed to ${n}`)))
+            .catch(() => toast(L('ارسال ایمیل صورت‌جلسه انجام نشد', 'Could not email the minutes'), 'err'))
+      }
+    },
+    [on, mode, upsert, action, fire, toast],
+  )
+
+  // ---------------------------------------------------------- pause / resume
+  const pause = useCallback(
+    async (p: Project, reason: string) => {
+      await upsert('Projects', { ...p, status: 'on_hold', paused_at: todayISO(), pause_reason: reason })
+      const d = dbRef.current
+      const freed = d.Allocations.filter((a) => a.project_id === p.id && (!a.end_date || a.end_date >= todayISO())).reduce((s, a) => s + Number(a.percent || 0), 0)
+      toast(L(`${p.name} متوقف شد؛ ${fa(Math.round(freed / 10) / 10)} FTE ظرفیت آزاد شد`, `${p.name} paused; ${Math.round(freed / 10) / 10} FTE freed`))
+    },
+    [upsert, toast],
+  )
+  const resume = useCallback(
+    async (p: Project) => {
+      const t = todayISO()
+      const days = p.paused_at ? Math.max(0, daysBetween(p.paused_at, t)) : 0
+      const shift = on('pause_shift') && days > 0
+      await upsert('Projects', { ...p, status: 'active', paused_at: '', pause_reason: '', end_date: shift && p.end_date ? addDays(p.end_date, days) : p.end_date })
+      if (!shift) return toast(L(`${p.name} دوباره فعال شد`, `${p.name} resumed`))
+      const d = dbRef.current
+      // an approved re-plan: move the baseline too, so it doesn't read as slippage
+      for (const x of d.Deliverables.filter((x) => x.project_id === p.id && x.status !== 'delivered' && x.status !== 'dropped'))
+        await upsert('Deliverables', { ...x, target_date: addDays(x.target_date, days), baseline_date: x.baseline_date ? addDays(x.baseline_date, days) : '' })
+      for (const ms of d.Milestones.filter((x) => x.project_id === p.id && x.status !== 'done')) await upsert('Milestones', { ...ms, planned_date: addDays(ms.planned_date, days), status: ms.status === 'missed' ? 'pending' : ms.status })
+      fire(L(`${p.name} ادامه یافت؛ ددلاین و برنامه ${fa(days)} روز جلو رفت`, `${p.name} resumed; dates moved by ${days} days`))
+    },
+    [on, upsert, toast, fire],
+  )
+
+  const value: Ctx = { on, setOn, events, calStatus, reloadCal: () => setCalTick((n) => n + 1), importEvent, meetingCreated, meetingHeld, pause, resume, log }
+  return <C.Provider value={value}>{children}</C.Provider>
+}

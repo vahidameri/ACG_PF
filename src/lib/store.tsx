@@ -1,11 +1,16 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import type { DB, Role, Row, SheetName } from './types'
-import { fetchAll, loadConfig, remoteDelete, remoteUpsert, saveConfig, type Config } from './api'
+import { fetchAll, loadConfig, remoteAction, remoteDelete, remoteUpload, remoteUpsert, saveConfig, uid, type Config } from './api'
+import { useGoogle } from './google'
+import type { FileRef } from './types'
+import { todayISO } from './jalali'
 import { buildDemo, demoMe } from '../data/demo'
 import { L, locale } from './i18n'
+import { visibleDB } from './privacy'
+import { setPhotos } from '../components/ui'
 
 // Demo edits are kept per language so switching language shows sample data in that language.
-const demoKey = () => `acg.demo.v3.${locale.lang}`
+const demoKey = () => `acg.demo.v4.${locale.lang}`
 const ME_KEY = 'acg.me'
 
 const NUMERIC: Partial<Record<SheetName, string[]>> = {
@@ -16,10 +21,12 @@ const NUMERIC: Partial<Record<SheetName, string[]>> = {
   Risks: ['probability', 'impact'],
   Allocations: ['percent'],
   Team: ['capacity'],
+  Files: ['size'],
+  Meetings: ['duration'],
 }
 
 function emptyDB(): DB {
-  return { Projects: [], Scope: [], Milestones: [], Sprints: [], Tasks: [], FollowUps: [], Risks: [], Team: [], Allocations: [], Updates: [], Comments: [], Deliverables: [], Meetings: [], TimeOff: [] }
+  return { Projects: [], Scope: [], Milestones: [], Sprints: [], Tasks: [], FollowUps: [], Risks: [], Team: [], Allocations: [], Updates: [], Comments: [], Deliverables: [], Meetings: [], TimeOff: [], Files: [], Config: [] }
 }
 
 // Sheets return numbers as numbers or strings, dates as ISO strings. Normalize once here.
@@ -70,6 +77,14 @@ interface Store {
   remove: (sheet: SheetName, id: string) => Promise<void>
   resetDemo: () => void
   canEdit: boolean
+  /** signed in (key or Google) — live mode needs it */
+  authed: boolean
+  email: string
+  upload: (entity: FileRef['entity'], entity_id: string, file: File) => Promise<FileRef>
+  action: (name: string, payload: Record<string, unknown>) => Promise<void>
+  /** shared setting from the Config tab */
+  setting: (key: string, fallback?: string) => string
+  setSetting: (key: string, value: string) => Promise<void>
   toasts: Toast[]
   toast: (text: string, kind?: Toast['kind'], action?: Toast['action']) => void
   dismissToast: (id: number) => void
@@ -88,6 +103,9 @@ function loadDemo(): DB {
 export function StoreProvider({ children }: { children: ReactNode }) {
   const [config, setConfigState] = useState<Config>(loadConfig)
   const mode: Mode = config.apiUrl ? 'live' : 'demo'
+  const { session } = useGoogle()
+  const authed = mode === 'demo' || !!session || !!config.token
+  const [remoteEmail, setRemoteEmail] = useState('')
   const [db, setDb] = useState<DB>(() => (mode === 'demo' ? loadDemo() : emptyDB()))
   const [role, setRole] = useState<Role>(mode === 'demo' ? 'admin' : 'viewer')
   const [remoteName, setRemoteName] = useState('')
@@ -104,6 +122,13 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   const [toasts, setToasts] = useState<Toast[]>([])
   const dbRef = useRef(db)
   dbRef.current = db
+
+  // In live mode the signed-in identity wins; in the demo "view as" switches the viewer.
+  const me = mode === 'live' ? remoteName || meLocal : meLocal || demoMe()
+  // the demo has no sign-in: the viewer's email comes from their Team row
+  const email = mode === 'live' ? remoteEmail || session?.email || '' : db.Team.find((m) => m.name === me)?.email || ''
+  const shown = useMemo(() => visibleDB(db, me), [db, me])
+  setPhotos(db.Team)
 
   const dismissToast = useCallback((id: number) => setToasts((t) => t.filter((x) => x.id !== id)), [])
   const toast = useCallback((text: string, kind: Toast['kind'] = 'ok', action?: Toast['action']) => {
@@ -123,12 +148,14 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       setLastSync(new Date())
       return
     }
+    if (!authed) return
     setLoading(true)
     try {
       const { data, user } = await fetchAll(config)
       setDb(normalize(data))
       setRole(user?.role || 'viewer')
       setRemoteName(user?.name || '')
+      setRemoteEmail(user?.email || session?.email || '')
       setError('')
       setLastSync(new Date())
     } catch (e) {
@@ -136,7 +163,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     } finally {
       setLoading(false)
     }
-  }, [config, mode])
+  }, [config, mode, authed, session?.token]) // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     if (mode === 'demo') {
@@ -175,6 +202,8 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       const list = prev[sheet] as Row<S>[]
       const exists = list.some((r) => r.id === row.id)
       const next = { ...prev, [sheet]: exists ? list.map((r) => (r.id === row.id ? row : r)) : [...list, row] } as DB
+      // keep the ref current so back-to-back writes build on each other
+      dbRef.current = next
       setDb(next)
       if (mode === 'demo') {
         persistDemo(next)
@@ -184,6 +213,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         await remoteUpsert(config, sheet, row as unknown as Record<string, unknown>)
         setLastSync(new Date())
       } catch (e) {
+        dbRef.current = prev
         setDb(prev)
         toast(`${L('ذخیره نشد', 'Not saved')}: ${e instanceof Error ? e.message : e}`, 'err')
         throw e
@@ -196,6 +226,8 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     async (sheet: SheetName, id: string) => {
       const prev = dbRef.current
       const next = { ...prev, [sheet]: (prev[sheet] as { id: string }[]).filter((r) => r.id !== id) } as DB
+      // keep the ref current so back-to-back writes build on each other
+      dbRef.current = next
       setDb(next)
       if (mode === 'demo') {
         persistDemo(next)
@@ -212,6 +244,49 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     [config, mode, toast],
   )
 
+  // Files: Drive in live mode, an in-browser data URL in the demo (small files only).
+  const upload = useCallback(
+    async (entity: FileRef['entity'], entity_id: string, file: File): Promise<FileRef> => {
+      if (file.size > 10 * 1024 * 1024) {
+        toast(L('حداکثر حجم فایل ۱۰ مگابایت است', 'Files are limited to 10 MB'), 'err')
+        throw new Error('too large')
+      }
+      const dataUrl = await new Promise<string>((res, rej) => {
+        const r = new FileReader()
+        r.onload = () => res(String(r.result))
+        r.onerror = () => rej(r.error)
+        r.readAsDataURL(file)
+      })
+      const base: FileRef = { id: uid('FL'), entity, entity_id, name: file.name, mime: file.type || 'application/octet-stream', size: file.size, url: '', uploaded_by: me, created_at: todayISO() }
+      if (mode === 'demo') {
+        const row = { ...base, url: file.size <= 1.5 * 1024 * 1024 ? dataUrl : '' }
+        const next = { ...dbRef.current, Files: [...dbRef.current.Files, row] }
+        dbRef.current = next
+        setDb(next)
+        persistDemo(next)
+        return row
+      }
+      const res = await remoteUpload(config, { name: file.name, mime: base.mime, data: dataUrl.split(',')[1], entity, entity_id })
+      const row = { ...base, ...(res.row as Partial<FileRef>) } as FileRef
+      setDb((d) => ({ ...d, Files: [...d.Files, row] }))
+      return row
+    },
+    [config, mode, me, toast], // eslint-disable-line react-hooks/exhaustive-deps
+  )
+
+  const action = useCallback(
+    async (name: string, payload: Record<string, unknown>) => {
+      if (mode === 'demo') return
+      await remoteAction(config, name, payload)
+    },
+    [config, mode],
+  )
+
+  const setting = (key: string, fallback = '') => db.Config.find((r) => r.id === key)?.value ?? fallback
+  const setSetting = async (key: string, value: string) => {
+    await upsert('Config', { id: key, value })
+  }
+
   const resetDemo = () => {
     try {
       localStorage.removeItem(demoKey())
@@ -227,12 +302,11 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     } catch {}
   }
 
-  const me = meLocal || remoteName || (mode === 'demo' ? demoMe() : '')
 
   const value = useMemo<Store>(
-    () => ({ db, mode, role, me, setMe, loading, error, lastSync, config, setConfig, refresh, upsert, remove, resetDemo, canEdit: role !== 'viewer', toasts, toast, dismissToast }),
+    () => ({ db: shown, mode, role, me, setMe, loading, error, lastSync, config, setConfig, refresh, upsert, remove, resetDemo, canEdit: role !== 'viewer', authed, email, upload, action, setting, setSetting, toasts, toast, dismissToast }),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [db, mode, role, me, loading, error, lastSync, config, refresh, upsert, remove, toasts, toast, dismissToast],
+    [shown, mode, role, me, authed, email, upload, action, loading, error, lastSync, config, refresh, upsert, remove, toasts, toast, dismissToast],
   )
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>
 }

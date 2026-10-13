@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { ArrowUpRight, Gavel, Printer, LayoutGrid } from 'lucide-react'
 import { useStore } from '../lib/store'
+import { HubNav } from '../components/HubNav'
 import { portfolioSummary, riskScore } from '../lib/metrics'
 import { Band, Card, Empty, HealthBadge, Overlap, Progress, StatStrip, cx, Avatar, Segmented } from '../components/ui'
 import { fa, fmtDate, fmtDayMonth, relDays, todayISO } from '../lib/jalali'
@@ -32,7 +33,7 @@ export default function Dashboard() {
 
   return (
     <>
-      <Band
+      <Band nav={<HubNav hub="overview" />}
         eyebrow={
           <>
             <span>{L('پورتفولیو', 'Portfolio')}</span>
