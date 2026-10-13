@@ -4,7 +4,7 @@ import { Plus, Pencil, Lock } from 'lucide-react'
 import { useStore } from '../lib/store'
 import { useEditor } from '../components/Editor'
 import { Band, Card, Overlap, Segmented, StatStrip, Avatar, cx } from '../components/ui'
-import { ContractsList, NewContractButton } from '../components/Contracts'
+import { ContractsList } from '../components/Contracts'
 import { PauseButton } from '../components/PauseButton'
 import Settings from './Settings'
 import { L, lbl } from '../lib/i18n'
@@ -49,6 +49,11 @@ export default function Admin({ initial = 'people' }: { initial?: Tab }) {
                 <Plus size={16} /> {L('پروژه‌ی جدید', 'New project')}
               </button>
             )}
+            {tab === 'contracts' && (
+              <button className="btn h-10 bg-white text-band" onClick={() => open('Contracts')}>
+                <Plus size={16} /> {L('قرارداد جدید', 'New contract')}
+              </button>
+            )}
           </>
         }
       >
@@ -65,7 +70,7 @@ export default function Admin({ initial = 'people' }: { initial?: Tab }) {
         {tab === 'people' && <People />}
         {tab === 'projects' && <ProjectsAdmin />}
         {tab === 'contracts' && (
-          <Card pad={false} eyebrow={L('محرمانه', 'Confidential')} title={L('قراردادهای همه‌ی پروژه‌ها', 'Contracts across projects')} action={<NewContractButton />}>
+          <Card pad={false} eyebrow={L('محرمانه', 'Confidential')} title={L('قراردادهای همه‌ی پروژه‌ها', 'Contracts across projects')}>
             <ContractsList />
           </Card>
         )}
