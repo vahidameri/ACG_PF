@@ -6,6 +6,9 @@ import { useStore } from '../lib/store'
 import { useI18n, L } from '../lib/i18n'
 import { useEditor } from './Editor'
 import { useComposer } from './UpdateComposer'
+import { can } from '../lib/access'
+
+const LEADER_ONLY: string[] = ['/', '/pulse', '/teams', '/roadmap', '/risks', '/team', '/report']
 import { cx, HealthDot, StatusIcon } from './ui'
 import { projectMetrics } from '../lib/metrics'
 
@@ -19,7 +22,7 @@ interface Item {
 }
 
 export function CommandPalette({ open, onClose }: { open: boolean; onClose: () => void }) {
-  const { db, me, canEdit } = useStore()
+  const { db, me, canEdit, access } = useStore()
   const { lang, setLang } = useI18n()
   const editor = useEditor()
   const composer = useComposer()
@@ -73,15 +76,17 @@ export function CommandPalette({ open, onClose }: { open: boolean; onClose: () =
         ['/me', L('پروفایل من', 'My profile')],
         ['/updates', L('چرخه‌ی گزارش هفتگی', 'Weekly update cycle')],
         ['/report', L('گزارش مدیریتی', 'Executive report')],
-        ['/settings', L('تنظیمات', 'Settings')],
+        ['/admin', L('بک‌آفیس و تنظیمات', 'Back office & settings')],
       ] as const
-    ).map(([to, label]) => ({ key: `nav-${to}`, group: G.nav, label, icon: <ArrowRight size={16} className="rtl:-scale-x-100" />, run: () => navigate(to) }))
+    )
+      .filter(([to]) => (LEADER_ONLY.includes(to) ? can.portfolio(access) : to === '/admin' ? can.backoffice(access) : true))
+      .map(([to, label]) => ({ key: `nav-${to}`, group: G.nav, label, icon: <ArrowRight size={16} className="rtl:-scale-x-100" />, run: () => navigate(to) }))
     const data: Item[] = [
       ...db.Projects.map((p) => ({ key: p.id, group: G.proj, label: p.name, sub: p.code, icon: <HealthDot h={projectMetrics(p, db).health} />, run: () => navigate(`/projects/${p.id}`) })),
       ...db.Tasks.map((t) => ({ key: t.id, group: G.task, label: t.title, sub: [pname(t.project_id), t.assignee].filter(Boolean).join(' · '), icon: <StatusIcon s={t.status} size={15} />, run: () => editor.open('Tasks', t as never) })),
       ...db.FollowUps.map((f) => ({ key: f.id, group: G.fu, label: f.subject, sub: f.person, icon: ico(BellRing), run: () => editor.open('FollowUps', f as never) })),
       ...db.Risks.map((r) => ({ key: r.id, group: G.risk, label: r.title, sub: pname(r.project_id), icon: ico(ShieldAlert), run: () => editor.open('Risks', r as never) })),
-      ...db.Team.map((m) => ({ key: m.id, group: G.ppl, label: m.name, sub: m.role, icon: ico(User), run: () => navigate(`/tasks?assignee=${encodeURIComponent(m.name)}`) })),
+      ...db.Team.map((m) => ({ key: m.id, group: G.ppl, label: m.name, sub: m.role, icon: ico(User), run: () => navigate(`/people/${m.id}`) })),
     ]
     const s = q.trim().toLowerCase()
     if (!s) return [...actions, ...navs.slice(0, 6), ...data.filter((d) => d.group === G.proj).slice(0, 5)]

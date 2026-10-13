@@ -24,7 +24,6 @@ export interface ProjectMetrics {
   totalTasks: number
   highRisks: number
   openRisks: number
-  budgetUse: number // spent / budget %
   activeSprint?: Sprint
   score: number // 0..100, higher = healthier
 }
@@ -71,7 +70,6 @@ export function projectMetrics(p: Project, db: DB): ProjectMetrics {
   const overdueTasks = tasks.filter(isTaskOverdue).length
   const blockedTasks = tasks.filter((t) => t.status === 'blocked').length
   const highRisks = risks.filter((r) => riskScore(r) >= 15).length
-  const budgetUse = Number(p.budget) > 0 ? (Number(p.spent) / Number(p.budget)) * 100 : 0
   const activeSprint = sprints.find((s) => s.status === 'active')
 
   // ---- Health engine: every rule contributes a penalty and a human-readable reason ----
@@ -96,8 +94,6 @@ export function projectMetrics(p: Project, db: DB): ProjectMetrics {
     if (highRisks >= 2) add('red', 20, L(`${fa(highRisks)} ریسک با شدت بالا باز است`, `${highRisks} high-severity risks open`))
     else if (highRisks === 1) add('amber', 10, L('یک ریسک با شدت بالا باز است', 'One high-severity risk open'))
 
-    if (budgetUse > 100) add('red', 20, L(`مصرف بودجه ${fa(Math.round(budgetUse))}٪ (بیش از بودجه)`, `Budget at ${Math.round(budgetUse)}% (over budget)`))
-    else if (budgetUse - progress > 20) add('amber', 10, L(`مصرف بودجه (${fa(Math.round(budgetUse))}٪) از پیشرفت جلوتر است`, `Spend (${Math.round(budgetUse)}%) is ahead of progress`))
 
     if (blockedTasks >= 3) add('amber', 10, L(`${fa(blockedTasks)} تسک مسدود`, `${blockedTasks} blocked tasks`))
     if (overdueTasks >= 5) add('amber', 10, L(`${fa(overdueTasks)} تسک عقب‌افتاده`, `${overdueTasks} overdue tasks`))
@@ -131,7 +127,6 @@ export function projectMetrics(p: Project, db: DB): ProjectMetrics {
     totalTasks: tasks.length,
     highRisks,
     openRisks: risks.length,
-    budgetUse: Math.round(budgetUse),
     activeSprint,
     score,
   }
@@ -177,8 +172,6 @@ export function portfolioSummary(db: DB) {
   const ms = new Map(db.Projects.map((p) => [p.id, projectMetrics(p, db)]))
   const counts = { green: 0, amber: 0, red: 0 } as Record<Health, number>
   live.forEach((p) => counts[ms.get(p.id)!.health]++)
-  const budget = live.reduce((a, p) => a + (Number(p.budget) || 0), 0)
-  const spent = live.reduce((a, p) => a + (Number(p.spent) || 0), 0)
   const avgProgress = live.length ? Math.round(live.reduce((a, p) => a + ms.get(p.id)!.progress, 0) / live.length) : 0
   const today = todayISO()
   const in30 = addDays(today, 30)
@@ -186,7 +179,7 @@ export function portfolioSummary(db: DB) {
     a.planned_date < b.planned_date ? -1 : 1,
   )
   const overdueMilestones = db.Milestones.filter((m) => m.status !== 'done' && m.planned_date && m.planned_date < today)
-  return { live, metrics: ms, counts, budget, spent, avgProgress, upcomingMilestones, overdueMilestones }
+  return { live, metrics: ms, counts, avgProgress, upcomingMilestones, overdueMilestones }
 }
 
 export function inRange(iso: string, from: string, to: string) {

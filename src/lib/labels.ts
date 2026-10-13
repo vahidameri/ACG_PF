@@ -121,3 +121,25 @@ export const TIMEOFF_KIND: Record<TimeOff['kind'], T2> = {
   training: ['آموزش', 'Training'],
   other: ['سایر', 'Other'],
 }
+
+export const ACCESS: Record<string, T2> = {
+  super: ['سوپر ادمین (مدیر برنامه)', 'Super admin (program manager)'],
+  exec: ['مدیرعامل', 'CEO'],
+  head: ['هد (پروداکت / تک)', 'Head (product / tech)'],
+  member: ['عضو تیم (فقط پروژه‌های خودش)', 'Team member (own projects only)'],
+}
+export const CONTRACT_KIND: Record<string, T2> = {
+  client: ['کارفرما', 'Client'],
+  vendor: ['تأمین‌کننده', 'Vendor'],
+  partner: ['شریک', 'Partner'],
+  nda: ['محرمانگی (NDA)', 'NDA'],
+  other: ['سایر', 'Other'],
+}
+export const CONTRACT_STATUS: Record<string, T2> = {
+  draft: ['پیش‌نویس', 'Draft'],
+  negotiation: ['در مذاکره', 'Negotiation'],
+  signed: ['امضا شده', 'Signed'],
+  active: ['در حال اجرا', 'Active'],
+  expired: ['پایان یافته', 'Expired'],
+  terminated: ['فسخ شده', 'Terminated'],
+}

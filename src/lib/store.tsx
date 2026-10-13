@@ -7,14 +7,16 @@ import { todayISO } from './jalali'
 import { buildDemo, demoMe } from '../data/demo'
 import { L, locale } from './i18n'
 import { visibleDB } from './privacy'
+import { accessOf, scopeDB } from './access'
+import { mapDB, mapRow, nameMaps } from './names'
+import type { Access } from './types'
 import { setPhotos } from '../components/ui'
 
 // Demo edits are kept per language so switching language shows sample data in that language.
-const demoKey = () => `acg.demo.v4.${locale.lang}`
+const demoKey = () => `acg.demo.v5.${locale.lang}`
 const ME_KEY = 'acg.me'
 
 const NUMERIC: Partial<Record<SheetName, string[]>> = {
-  Projects: ['budget', 'spent'],
   Milestones: ['weight'],
   Sprints: ['committed_points', 'completed_points'],
   Tasks: ['points'],
@@ -26,7 +28,7 @@ const NUMERIC: Partial<Record<SheetName, string[]>> = {
 }
 
 function emptyDB(): DB {
-  return { Projects: [], Scope: [], Milestones: [], Sprints: [], Tasks: [], FollowUps: [], Risks: [], Team: [], Allocations: [], Updates: [], Comments: [], Deliverables: [], Meetings: [], TimeOff: [], Files: [], Config: [] }
+  return { Projects: [], Scope: [], Milestones: [], Sprints: [], Tasks: [], FollowUps: [], Risks: [], Team: [], Allocations: [], Updates: [], Comments: [], Deliverables: [], Meetings: [], TimeOff: [], Files: [], Config: [], Contracts: [] }
 }
 
 // Sheets return numbers as numbers or strings, dates as ISO strings. Normalize once here.
@@ -77,6 +79,7 @@ interface Store {
   remove: (sheet: SheetName, id: string) => Promise<void>
   resetDemo: () => void
   canEdit: boolean
+  access: Access
   /** signed in (key or Google) — live mode needs it */
   authed: boolean
   email: string
@@ -124,10 +127,19 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   dbRef.current = db
 
   // In live mode the signed-in identity wins; in the demo "view as" switches the viewer.
-  const me = mode === 'live' ? remoteName || meLocal : meLocal || demoMe()
+  // meLocal holds a member id (older versions stored a name)
+  const picked = db.Team.find((m) => m.id === meLocal) || db.Team.find((m) => m.name === meLocal || m.name_en === meLocal)
+  const canonMe = mode === 'live' ? remoteName || picked?.name || '' : picked?.name || demoMe()
   // the demo has no sign-in: the viewer's email comes from their Team row
-  const email = mode === 'live' ? remoteEmail || session?.email || '' : db.Team.find((m) => m.name === me)?.email || ''
-  const shown = useMemo(() => visibleDB(db, me), [db, me])
+  const email = mode === 'live' ? remoteEmail || session?.email || '' : db.Team.find((m) => m.name === canonMe)?.email || ''
+  const access: Access = accessOf(db, canonMe, mode === 'demo')
+  // English interface: show name_en, map back on save
+  const lang = locale.lang
+  const maps = useMemo(() => (lang === 'en' ? nameMaps(db) : { toEn: new Map<string, string>(), toCanon: new Map<string, string>() }), [db, lang])
+  const toCanonRef = useRef(maps.toCanon)
+  toCanonRef.current = maps.toCanon
+  const me = maps.toEn.get(canonMe) || canonMe
+  const shown = useMemo(() => mapDB(scopeDB(visibleDB(db, canonMe), canonMe, access), maps.toEn), [db, canonMe, access, maps])
   setPhotos(db.Team)
 
   const dismissToast = useCallback((id: number) => setToasts((t) => t.filter((x) => x.id !== id)), [])
@@ -197,7 +209,8 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   }
 
   const upsert = useCallback(
-    async <S extends SheetName>(sheet: S, row: Row<S>) => {
+    async <S extends SheetName>(sheet: S, input: Row<S>) => {
+      const row = mapRow(sheet, input as unknown as Record<string, unknown>, toCanonRef.current) as unknown as Row<S>
       const prev = dbRef.current
       const list = prev[sheet] as Row<S>[]
       const exists = list.some((r) => r.id === row.id)
@@ -296,17 +309,18 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   }
 
   const setMe = (n: string) => {
-    setMeLocal(n)
+    const id = db.Team.find((m) => m.name === n || m.name_en === n)?.id || n
+    setMeLocal(id)
     try {
-      localStorage.setItem(ME_KEY, n)
+      localStorage.setItem(ME_KEY, id)
     } catch {}
   }
 
 
   const value = useMemo<Store>(
-    () => ({ db: shown, mode, role, me, setMe, loading, error, lastSync, config, setConfig, refresh, upsert, remove, resetDemo, canEdit: role !== 'viewer', authed, email, upload, action, setting, setSetting, toasts, toast, dismissToast }),
+    () => ({ db: shown, mode, role, me, setMe, loading, error, lastSync, config, setConfig, refresh, upsert, remove, resetDemo, canEdit: role !== 'viewer', access, authed, email, upload, action, setting, setSetting, toasts, toast, dismissToast }),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [shown, mode, role, me, authed, email, upload, action, loading, error, lastSync, config, refresh, upsert, remove, toasts, toast, dismissToast],
+    [shown, access, mode, role, me, authed, email, upload, action, loading, error, lastSync, config, refresh, upsert, remove, toasts, toast, dismissToast],
   )
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>
 }

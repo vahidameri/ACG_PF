@@ -341,7 +341,7 @@ export function ItemSheet({ sheet, id, onClose }: { sheet: 'Tasks' | 'FollowUps'
                   onClick={() =>
                     upsert('FollowUps', {
                       id: uid('F'), project_id: item.project_id, subject: L(`رفع مانع: ${item.title}`, `Unblock: ${item.title}`), person: item.assignee, channel: 'chat',
-                      due_date: addDays(todayISO(), 1), status: 'open', priority: 'high', notes: item.description, created_at: todayISO(), done_at: '',
+                      due_date: addDays(todayISO(), 1), status: 'open', priority: 'high', notes: item.description, created_at: todayISO(), done_at: '', owner: me,
                     }).then(() => toast(L('فالوآپ ساخته شد', 'Follow-up created')))
                   }
                 >

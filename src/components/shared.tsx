@@ -220,8 +220,8 @@ export function ProjectCard({ p }: { p: Project }) {
           </div>
         </div>
         <div className="px-3 py-2">
-          <div className="text-[0.625rem] text-sub">{L('بودجه', 'Budget')}</div>
-          <div className={cx('mt-0.5 text-sm font-semibold num', m.budgetUse > 100 ? 'text-bad' : m.budgetUse > m.progress + 20 ? 'text-warn' : '')}>{fa(m.budgetUse)}%</div>
+          <div className="text-[0.625rem] text-sub">{L('ریسک باز', 'Open risks')}</div>
+          <div className={cx('mt-0.5 text-sm font-semibold num', m.highRisks > 0 && 'text-bad')}>{fa(m.openRisks)}</div>
         </div>
         <div className="px-3 py-2">
           <div className="text-[0.625rem] text-sub">{L('روند', 'Trend')}</div>

@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { Pause, Play } from 'lucide-react'
 import type { Project } from '../lib/types'
 import { useStore } from '../lib/store'
+import { can } from '../lib/access'
 import { useAuto } from '../lib/automations'
 import { Popover, cx } from './ui'
 import { L } from '../lib/i18n'
@@ -10,7 +11,8 @@ import { fte } from '../lib/capacity'
 
 /** Pause / resume a project. Pausing frees the team's capacity; resuming can shift the plan. */
 export function PauseButton({ p, dark, compact }: { p: Project; dark?: boolean; compact?: boolean }) {
-  const { db, canEdit } = useStore()
+  const { db, canEdit: editor, access } = useStore()
+  const canEdit = editor && can.manage(access)
   const auto = useAuto()
   const [reason, setReason] = useState('')
   if (!canEdit || (p.status !== 'active' && p.status !== 'on_hold' && p.status !== 'planning')) return null

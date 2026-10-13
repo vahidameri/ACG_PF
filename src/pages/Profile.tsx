@@ -19,7 +19,8 @@ import { weekStart, weeksFrom, inWeek } from '../lib/weeks'
 /** A person's page: photo, contact, load, projects, open work, meetings and time off. */
 export default function Profile() {
   const { id } = useParams()
-  const { db, me, role, canEdit } = useStore()
+  const { db, me, access, canEdit } = useStore()
+  const role = access === 'super' ? 'admin' : ''
   const { open } = useEditor()
   const m = db.Team.find((x) => x.id === id) || db.Team.find((x) => x.name === me)
   if (!m) return <Empty text={L('این فرد پیدا نشد', 'Person not found')} />

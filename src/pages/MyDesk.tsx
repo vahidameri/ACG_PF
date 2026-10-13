@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { Send, Copy, Lightbulb, UserCheck, ListChecks, BellRing, Hourglass, Sparkles, CalendarDays, Target } from 'lucide-react'
 import { useStore } from '../lib/store'
+import { can } from '../lib/access'
 import { useEditor } from '../components/Editor'
 import { Band, Card, Empty, Overlap, Avatar, cx, Segmented, StatStrip, Chip, Ring, PriorityIcon, Due } from '../components/ui'
 import { FollowUpRow, TaskRow, useProjectName } from '../components/shared'
@@ -30,7 +31,7 @@ interface Suggestion {
 }
 
 export default function MyDesk() {
-  const { db, me, upsert, toast, canEdit } = useStore()
+  const { db, me, upsert, toast, canEdit, access } = useStore()
   const { open } = useEditor()
   const { openComposer } = useComposer()
   const pname = useProjectName()
@@ -57,7 +58,7 @@ export default function MyDesk() {
       toast(L(`تسک برای ${who || 'شما'} ثبت شد`, `Task added for ${who || 'you'}`))
     } else {
       await upsert('FollowUps', {
-        id: uid('F'), project_id: proj, subject: t, person: who, channel: 'meeting', due_date: dueDate, status: 'open', priority: 'medium', notes: '', created_at: today, done_at: '',
+        id: uid('F'), project_id: proj, subject: t, person: who, channel: 'meeting', due_date: dueDate, status: 'open', priority: 'medium', notes: '', created_at: today, done_at: '', owner: me,
       })
       toast(L('فالوآپ ثبت شد', 'Follow-up added'))
     }
@@ -271,6 +272,7 @@ export default function MyDesk() {
             value={fa(weekDel.length)}
             sub={L(`${fa(weekDel.filter((d) => d.status === 'delivered').length)} تحویل شد`, `${weekDel.filter((d) => d.status === 'delivered').length} delivered`)}
           />
+          {can.portfolio(access) && (
           <RhythmTile
             to="/team"
             icon={Gauge}
@@ -279,6 +281,7 @@ export default function MyDesk() {
             sub={overNow.length ? overNow.map((x) => firstName(x.m.name)).join(L('، ', ', ')) : L('همه در ظرفیت', 'Everyone within capacity')}
             tone={overNow.length ? 'bad' : undefined}
           />
+          )}
         </div>
 
         <div className="grid gap-4 @lg:grid-cols-5">

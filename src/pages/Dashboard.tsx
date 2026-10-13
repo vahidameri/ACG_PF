@@ -2,13 +2,14 @@ import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { ArrowUpRight, Gavel, Printer, LayoutGrid } from 'lucide-react'
 import { useStore } from '../lib/store'
+import { deliverySummary } from '../lib/delivery'
 import { HubNav } from '../components/HubNav'
 import { portfolioSummary, riskScore } from '../lib/metrics'
 import { Band, Card, Empty, HealthBadge, Overlap, Progress, StatStrip, cx, Avatar, Segmented } from '../components/ui'
 import { fa, fmtDate, fmtDayMonth, relDays, todayISO } from '../lib/jalali'
 import { PROJECT_STATUS, RISK_TYPE } from '../lib/labels'
 import { L, lbl } from '../lib/i18n'
-import { money, useProjectName, ProjectCard } from '../components/shared'
+import { useProjectName, ProjectCard } from '../components/shared'
 import { useEditor } from '../components/Editor'
 import { ActivityFeed, HealthTrend } from '../components/widgets'
 import { buildActivity } from '../lib/activity'
@@ -28,7 +29,7 @@ export default function Dashboard() {
   const topRisks = db.Risks.filter((r) => r.status !== 'closed' && r.type !== 'decision').sort((a, b) => riskScore(b) - riskScore(a)).slice(0, 5)
   const decisions = db.Risks.filter((r) => r.type === 'decision' && r.status !== 'closed')
   const sorted = [...s.live].sort((a, b) => s.metrics.get(a.id)!.score - s.metrics.get(b.id)!.score)
-  const budgetPct = s.budget ? Math.round((s.spent / s.budget) * 100) : 0
+  const ds = deliverySummary(db)
   const critical = db.Risks.filter((r) => r.status !== 'closed' && riskScore(r) >= 15).length
 
   return (
@@ -64,7 +65,7 @@ export default function Dashboard() {
             { label: L('پروژه‌های جاری', 'Live projects'), value: fa(s.live.length), sub: L(`${fa(db.Projects.filter((p) => p.status === 'completed').length)} تکمیل‌شده`, `${db.Projects.filter((p) => p.status === 'completed').length} completed`) },
             { label: L('میانگین پیشرفت', 'Avg. progress'), value: `${fa(s.avgProgress)}%` },
             { label: L('در خطر', 'Off track'), value: fa(s.counts.red), tone: s.counts.red ? 'red' : 'green', sub: L(`${fa(s.counts.amber)} نیازمند توجه`, `${s.counts.amber} at risk`) },
-            { label: L('مصرف بودجه', 'Budget used'), value: `${fa(budgetPct)}%`, tone: budgetPct > 100 ? 'red' : undefined, sub: `${money(s.spent)} / ${money(s.budget)}` },
+            { label: L('تحویل به‌موقع (۹۰ روز)', 'On-time delivery (90d)'), value: ds.onTimeRate === null ? '—' : `${fa(ds.onTimeRate)}%`, tone: ds.onTimeRate !== null && ds.onTimeRate < 70 ? 'amber' : undefined, sub: L(`${fa(ds.overdue.length)} تحویل عقب‌افتاده`, `${ds.overdue.length} overdue deliveries`) },
             { label: L('مایلستون معوق', 'Overdue milestones'), value: fa(s.overdueMilestones.length), tone: s.overdueMilestones.length ? 'amber' : 'green', sub: L(`${fa(s.upcomingMilestones.length)} در ۳۰ روز آینده`, `${s.upcomingMilestones.length} in next 30 days`) },
             { label: L('ریسک بحرانی', 'Critical risks'), value: fa(critical), tone: critical ? 'red' : 'green', sub: L(`${fa(db.Risks.filter((r) => r.status !== 'closed').length)} ریسک باز`, `${db.Risks.filter((r) => r.status !== 'closed').length} open`) },
           ]}
@@ -150,7 +151,7 @@ export default function Dashboard() {
                     <th className="th">{L('روند', 'Trend')}</th>
                     <th className="th w-60">{L('پیشرفت / زمان', 'Progress / time')}</th>
                     <th className="th">{L('ددلاین', 'Deadline')}</th>
-                    <th className="th">{L('بودجه', 'Budget')}</th>
+                    <th className="th">{L('ریسک', 'Risks')}</th>
                     <th className="th">{L('مایلستون بعدی', 'Next milestone')}</th>
                     <th className="th">{L('ریسک', 'Risks')}</th>
                     <th className="th">{L('مدیر', 'Lead')}</th>
@@ -189,8 +190,8 @@ export default function Dashboard() {
                           <div className={cx('text-[0.6875rem]', m.daysLeft < 0 ? 'font-semibold text-bad' : 'text-sub')}>{relDays(p.end_date)}</div>
                         </td>
                         <td className="td">
-                          <div className={cx('text-sm font-semibold num', m.budgetUse > 100 ? 'text-bad' : m.budgetUse > m.progress + 20 ? 'text-warn' : '')}>{fa(m.budgetUse)}%</div>
-                          <div className="text-[0.6875rem] text-sub">{money(p.budget)}</div>
+                          <div className={cx('text-sm font-semibold num', m.highRisks > 0 && 'text-bad')}>{fa(m.openRisks)}</div>
+                          <div className="text-[0.6875rem] text-sub">{m.highRisks ? L(`${fa(m.highRisks)} بحرانی`, `${m.highRisks} critical`) : L('ریسک باز', 'open risks')}</div>
                         </td>
                         <td className="td max-w-[13rem]">
                           {m.nextMilestone ? (

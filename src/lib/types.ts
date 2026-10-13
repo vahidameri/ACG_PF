@@ -17,8 +17,6 @@ export interface Project {
   phase: string
   start_date: string
   end_date: string
-  budget: number
-  spent: number
   progress: number // 0..100 (manual). If empty, computed from milestones.
   health_override: Health | ''
   objective: string
@@ -103,6 +101,8 @@ export interface FollowUp {
   notes: string
   created_at: string
   done_at: string
+  /** who is chasing — follow-ups are personal */
+  owner: string
 }
 
 export interface Risk {
@@ -121,6 +121,8 @@ export interface Risk {
 export interface Member {
   id: string
   name: string
+  /** name shown in the English interface */
+  name_en: string
   role: string
   email: string
   team: string
@@ -132,6 +134,27 @@ export interface Member {
   /** '1' = every task assigned to this person is private (e.g. the CEO) */
   tasks_private: string
   phone: string
+  /** what they can see: super = program manager (everything + back office), exec = CEO,
+   *  head = heads of product/tech (portfolio views), member = sees only their own projects */
+  access: Access
+  /** 'false' disables sign-in */
+  active: string
+}
+
+export type Access = 'super' | 'exec' | 'head' | 'member'
+
+export interface Contract {
+  id: string
+  project_id: string
+  title: string
+  counterparty: string
+  number: string
+  kind: 'client' | 'vendor' | 'partner' | 'nda' | 'other'
+  status: 'draft' | 'negotiation' | 'signed' | 'active' | 'expired' | 'terminated'
+  start_date: string
+  end_date: string
+  value: string
+  notes: string
 }
 
 export interface Allocation {
@@ -200,7 +223,7 @@ export interface Meeting {
 
 export interface FileRef {
   id: string
-  entity: 'Meetings' | 'Projects' | 'Tasks' | 'Team' | 'Deliverables'
+  entity: 'Meetings' | 'Projects' | 'Tasks' | 'Team' | 'Deliverables' | 'Contracts'
   entity_id: string
   name: string
   mime: string
@@ -251,6 +274,7 @@ export interface DB {
   TimeOff: TimeOff[]
   Files: FileRef[]
   Config: ConfigRow[]
+  Contracts: Contract[]
 }
 
 export type SheetName = keyof DB

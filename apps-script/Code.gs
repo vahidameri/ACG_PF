@@ -1,5 +1,5 @@
 /**
- * ACG Helm (سکان) — Google Sheets backend (Apps Script Web App)
+ * ACG Atlas (اطلس) — Google Sheets backend (Apps Script Web App)
  *
  * Setup:
  *   1. Create an empty Google Sheet → Extensions → Apps Script → paste this file.
@@ -10,23 +10,27 @@
  *   5. Paste the /exec URL and your key into the dashboard's Settings page.
  *   6. Optional: run `installDailyDigest` for a 7:30 morning email digest.
  *
- * Security: every request must carry a key from the "Users" tab. Roles:
+ * Security: people sign in with Google; the email is matched to the Team tab, whose `access`
+ * column decides what they receive: super (program manager, everything + back office),
+ * exec (CEO), head (heads of product/tech), member (only their own projects). Legacy roles:
  *   admin  — read + write + manage
  *   editor — read + write
  *   viewer — read only (leadership)
  */
 
 var SCHEMA = {
-  Projects: ['id', 'code', 'name', 'description', 'category', 'owner', 'sponsor', 'status', 'priority', 'phase', 'start_date', 'end_date', 'budget', 'spent', 'progress', 'health_override', 'objective', 'paused_at', 'pause_reason'],
+  Projects: ['id', 'code', 'name', 'description', 'category', 'owner', 'sponsor', 'status', 'priority', 'phase', 'start_date', 'end_date', 'progress', 'health_override', 'objective', 'paused_at', 'pause_reason'],
   Scope: ['id', 'project_id', 'item', 'type', 'status', 'change_note', 'date'],
   Milestones: ['id', 'project_id', 'title', 'planned_date', 'actual_date', 'status', 'owner', 'weight'],
   Sprints: ['id', 'project_id', 'name', 'start_date', 'end_date', 'goal', 'committed_points', 'completed_points', 'status'],
   Tasks: ['id', 'project_id', 'sprint_id', 'title', 'description', 'assignee', 'reporter', 'status', 'priority', 'due_date', 'points', 'tags', 'created_at', 'completed_at', 'track', 'depends_on', 'meeting_id', 'private'],
-  FollowUps: ['id', 'project_id', 'subject', 'person', 'channel', 'due_date', 'status', 'priority', 'notes', 'created_at', 'done_at'],
+  // owner = who is chasing; follow-ups are personal
+  FollowUps: ['id', 'project_id', 'subject', 'person', 'channel', 'due_date', 'status', 'priority', 'notes', 'created_at', 'done_at', 'owner'],
   Risks: ['id', 'project_id', 'title', 'type', 'probability', 'impact', 'owner', 'mitigation', 'status', 'due_date'],
   // capacity = % of one full-time person (100 = full-time, 600 = a team of six)
   // email = the Google account used to sign in; tasks_private = '1' hides this person's tasks (e.g. the CEO)
-  Team: ['id', 'name', 'role', 'email', 'team', 'track', 'capacity', 'photo', 'tasks_private', 'phone'],
+  // access: super | exec | head | member. key = optional personal key (sign-in without Google).
+  Team: ['id', 'name', 'name_en', 'role', 'email', 'team', 'track', 'capacity', 'photo', 'tasks_private', 'phone', 'access', 'active', 'key'],
   // start_date / end_date are optional; blank = open-ended
   Allocations: ['id', 'member_id', 'project_id', 'percent', 'start_date', 'end_date'],
   Updates: ['id', 'project_id', 'week_date', 'author', 'health', 'summary', 'done', 'next', 'blockers'],
@@ -42,6 +46,8 @@ var SCHEMA = {
   Files: ['id', 'entity', 'entity_id', 'name', 'mime', 'size', 'url', 'uploaded_by', 'created_at'],
   // Shared settings (automation switches: auto.<id> = on/off). id = key.
   Config: ['id', 'value'],
+  // Contracts — only ever sent to super (program manager) and exec (CEO)
+  Contracts: ['id', 'project_id', 'title', 'counterparty', 'number', 'kind', 'status', 'start_date', 'end_date', 'value', 'notes'],
 };
 
 var USERS_SHEET = 'Users';
@@ -57,7 +63,7 @@ function doGet(e) {
   try {
     var user = auth_(e.parameter);
     var action = e.parameter.action || 'all';
-    var me = { name: user.name, role: user.role, email: user.email };
+    var me = { name: user.name, role: user.role, email: user.email, access: user.access };
     if (action === 'all') return json_({ ok: true, user: me, data: readAll_(user) });
     if (action === 'ping') return json_({ ok: true, user: me });
     throw new Error('Unknown action: ' + action);
@@ -78,8 +84,8 @@ function doPost(e) {
     else if (body.action === 'mailMinutes') result = mailMinutes_(body.meeting_id, user);
     else {
       if (!SCHEMA[body.sheet]) throw new Error('Unknown sheet: ' + body.sheet);
-      if (body.sheet === 'Config' && user.role !== 'admin') throw new Error('فقط ادمین می‌تواند تنظیمات را تغییر دهد');
-      guardPrivate_(body.sheet, body.action === 'delete' ? { id: body.id } : body.row, user);
+            guardPrivate_(body.sheet, body.action === 'delete' ? { id: body.id } : body.row, user);
+      guardWrite_(body.sheet, body.action === 'delete' ? existingRow_(body.sheet, body.id) : body.row, user);
       if (body.action === 'upsert') result = upsert_(body.sheet, body.row, user);
       else if (body.action === 'delete') result = delete_(body.sheet, body.id, user);
       else throw new Error('Unknown action: ' + body.action);
@@ -122,8 +128,11 @@ function canSeeTask_(t, user, owners) {
   return !priv || t.assignee === user.name || t.reporter === user.name;
 }
 
+var LEADERS = { super: 1, exec: 1, head: 1 };
+
 function applyPrivacy_(data, user) {
   var owners = privateOwners_(data.Team || []);
+  data.Team = (data.Team || []).map(function (m) { var c = {}; for (var k in m) if (k !== 'key') c[k] = m[k]; return c; });
   var hidden = {};
   data.Tasks = (data.Tasks || []).filter(function (t) {
     var ok = canSeeTask_(t, user, owners);
@@ -132,7 +141,75 @@ function applyPrivacy_(data, user) {
   });
   data.Comments = (data.Comments || []).filter(function (c) { return !(c.entity === 'Tasks' && hidden[c.entity_id]); });
   data.Files = (data.Files || []).filter(function (f) { return !(f.entity === 'Tasks' && hidden[f.entity_id]); });
+  return applyScope_(data, user, owners);
+}
+
+/** Access scoping (mirrors src/lib/access.ts). */
+function applyScope_(data, user, owners) {
+  var a = user.access || 'member';
+  var me = user.name;
+  // follow-ups are personal; super/exec see everyone's except another private person's
+  data.FollowUps = (data.FollowUps || []).filter(function (f) {
+    if (a === 'super' || a === 'exec') return !f.owner || f.owner === me || !owners[f.owner];
+    return f.owner === me || f.person === me;
+  });
+  if (a !== 'super' && a !== 'exec') {
+    data.Contracts = [];
+    data.Files = data.Files.filter(function (f) { return f.entity !== 'Contracts'; });
+  }
+  if (LEADERS[a]) return data;
+  var ok = allowedProjects_(data, me);
+  var inP = function (pid) { return !!pid && !!ok[pid]; };
+  var listed = function (s) { return String(s || '').split(',').map(function (x) { return x.trim(); }).indexOf(me) !== -1; };
+  ['Milestones', 'Sprints', 'Scope', 'Risks', 'Updates', 'Deliverables'].forEach(function (k) { data[k] = (data[k] || []).filter(function (r) { return inP(r.project_id); }); });
+  var myId = ((data.Team || []).filter(function (m) { return m.name === me; })[0] || {}).id;
+  data.Allocations = (data.Allocations || []).filter(function (r) { return inP(r.project_id) || r.member_id === myId; });
+  data.Projects = (data.Projects || []).filter(function (p) { return ok[p.id]; });
+  data.Tasks = data.Tasks.filter(function (t) { return inP(t.project_id) || t.assignee === me || t.reporter === me; });
+  data.Meetings = (data.Meetings || []).filter(function (m) { return listed(m.attendees) || m.facilitator === me || inP(m.project_id); });
+  var vis = { Tasks: {}, Projects: ok, Meetings: {}, FollowUps: {}, Deliverables: {}, Risks: {}, Team: {} };
+  data.Tasks.forEach(function (t) { vis.Tasks[t.id] = 1; });
+  data.Meetings.forEach(function (m) { vis.Meetings[m.id] = 1; });
+  data.FollowUps.forEach(function (f) { vis.FollowUps[f.id] = 1; });
+  data.Deliverables.forEach(function (d) { vis.Deliverables[d.id] = 1; });
+  data.Risks.forEach(function (r) { vis.Risks[r.id] = 1; });
+  data.Team.forEach(function (m) { vis.Team[m.id] = 1; });
+  data.Comments = data.Comments.filter(function (c) { return vis[c.entity] && vis[c.entity][c.entity_id]; });
+  data.Files = data.Files.filter(function (f) { return vis[f.entity] && vis[f.entity][f.entity_id]; });
+  data.Contracts = [];
   return data;
+}
+
+function allowedProjects_(data, me) {
+  var ok = {};
+  var myId = ((data.Team || []).filter(function (m) { return m.name === me; })[0] || {}).id;
+  (data.Projects || []).forEach(function (p) { if (p.owner === me || p.sponsor === me) ok[p.id] = 1; });
+  (data.Allocations || []).forEach(function (a) { if (a.member_id === myId) ok[a.project_id] = 1; });
+  (data.Tasks || []).forEach(function (t) { if (t.project_id && t.assignee === me) ok[t.project_id] = 1; });
+  (data.Deliverables || []).forEach(function (d) { if (d.owner === me) ok[d.project_id] = 1; });
+  return ok;
+}
+
+/** What each access level may write. */
+function guardWrite_(sheet, row, user) {
+  var a = user.access || 'member';
+  if (sheet === 'Config' && a !== 'super') throw new Error('فقط مدیر برنامه می‌تواند تنظیمات را تغییر دهد');
+  if (sheet === 'Contracts' && a !== 'super' && a !== 'exec') throw new Error('دسترسی به قراردادها ندارید');
+  if (sheet === 'Team' && a !== 'super') {
+    // anyone may update their own photo / phone; only the program manager manages people
+    var cur = readSheet_(SpreadsheetApp.getActive().getSheetByName('Team')).filter(function (m) { return String(m.id) === String(row.id); })[0];
+    if (!cur || cur.name !== user.name) throw new Error('فقط مدیر برنامه می‌تواند افراد را تعریف یا ویرایش کند');
+    ['access', 'active', 'key', 'tasks_private', 'email', 'name'].forEach(function (k) { row[k] = cur[k]; });
+  }
+  if (LEADERS[a] || !row) return;
+  if (sheet === 'Projects' || sheet === 'Allocations') throw new Error('فقط لیدرشیپ می‌تواند پروژه و تخصیص را تغییر دهد');
+  if (sheet === 'FollowUps' && row.owner && row.owner !== user.name) throw new Error('فالوآپ دیگران را نمی‌توانید تغییر دهید');
+  if (sheet === 'FollowUps') row.owner = user.name;
+  if (row.project_id) {
+    var ok = allowedProjects_(readAll_(), user.name);
+    var own = sheet === 'Tasks' && (row.assignee === user.name || row.reporter === user.name);
+    if (!ok[row.project_id] && !own) throw new Error('این پروژه در دسترس شما نیست');
+  }
 }
 
 /** Stops edits to a private task (or its comments/files) by someone who can't see it. */
@@ -146,6 +223,12 @@ function guardPrivate_(sheet, row, user) {
   for (var i = 0; i < tasks.length; i++) {
     if (String(tasks[i].id) === String(taskId) && !canSeeTask_(tasks[i], user, owners)) throw new Error('این تسک خصوصی است');
   }
+}
+
+function existingRow_(sheet, id) {
+  var sh = SpreadsheetApp.getActive().getSheetByName(sheet);
+  if (!sh) return null;
+  return readSheet_(sh).filter(function (r) { return String(r.id) === String(id); })[0] || null;
 }
 
 function setting_(key, fallback) {
@@ -235,18 +318,31 @@ function findRow_(sh, id) {
  * Google, then matched by email to the Users tab. Fallback: a personal key from the Users tab.
  */
 function auth_(params) {
-  var sh = SpreadsheetApp.getActive().getSheetByName(USERS_SHEET);
-  if (!sh) throw new Error('تب Users وجود ندارد؛ تابع setup را اجرا کنید');
-  var rows = readSheet_(sh);
+  var ss = SpreadsheetApp.getActive();
+  var team = ss.getSheetByName('Team') ? readSheet_(ss.getSheetByName('Team')) : [];
+  var legacy = ss.getSheetByName(USERS_SHEET) ? readSheet_(ss.getSheetByName(USERS_SHEET)) : [];
   var active = function (u) { return String(u.active).toLowerCase() !== 'false'; };
-  var pick = function (u) { return { name: u.name, email: String(u.email || '').toLowerCase(), role: (u.role || 'viewer').toLowerCase() }; };
+  var fromTeam = function (m) { return { name: m.name, email: String(m.email || '').toLowerCase(), access: m.access || 'member', role: 'editor' }; };
+  // legacy Users rows: admin → super, viewer stays read-only
+  var fromUsers = function (u) {
+    var r = (u.role || 'viewer').toLowerCase();
+    var m = team.filter(function (t) { return t.name === u.name; })[0];
+    return { name: u.name, email: String(u.email || '').toLowerCase(), access: m && m.access ? m.access : r === 'admin' ? 'super' : 'member', role: r === 'viewer' ? 'viewer' : 'editor' };
+  };
+  var find = function (list, pred) { for (var i = 0; i < list.length; i++) if (active(list[i]) && pred(list[i])) return list[i]; return null; };
   if (params.access_token) {
     var email = googleEmail_(params.access_token);
-    for (var i = 0; i < rows.length; i++) if (String(rows[i].email).toLowerCase() === email && active(rows[i])) return pick(rows[i]);
-    throw new Error('حساب ' + email + ' در تب Users تعریف نشده است. از مدیر برنامه بخواهید دسترسی بدهد.');
+    var m = find(team, function (x) { return String(x.email).toLowerCase() === email; });
+    if (m) return fromTeam(m);
+    var u = find(legacy, function (x) { return String(x.email).toLowerCase() === email; });
+    if (u) return fromUsers(u);
+    throw new Error('حساب ' + email + ' تعریف نشده است. از مدیر برنامه بخواهید شما را در بک‌آفیس اضافه کند.');
   }
   if (!params.token) throw new Error('وارد نشده‌اید');
-  for (var j = 0; j < rows.length; j++) if (rows[j].key && String(rows[j].key) === String(params.token) && active(rows[j])) return pick(rows[j]);
+  var k = find(team, function (x) { return x.key && String(x.key) === String(params.token); });
+  if (k) return fromTeam(k);
+  var lu = find(legacy, function (x) { return x.key && String(x.key) === String(params.token); });
+  if (lu) return fromUsers(lu);
   throw new Error('کلید دسترسی نامعتبر است');
 }
 
@@ -280,7 +376,7 @@ function notifyMentions_(c, user) {
       if (m.email && m.name && String(c.body).indexOf('@' + m.name) !== -1) {
         MailApp.sendEmail({
           to: m.email,
-          subject: 'ACG Helm · ' + user.name + ' mentioned you',
+          subject: 'ACG Atlas · ' + user.name + ' mentioned you',
           htmlBody: '<div dir="auto" style="font-family:Tahoma,sans-serif;line-height:1.8"><b>' + user.name + '</b>:<br>' + String(c.body).replace(/</g, '&lt;') + '</div>',
         });
       }
@@ -326,28 +422,28 @@ function setup() {
       }
     });
   });
-  var users = ensureSheet_(USERS_SHEET, USERS_HEADERS);
   ensureSheet_(LOG_SHEET, ['time', 'user', 'action', 'sheet', 'id']);
   var ss = SpreadsheetApp.getActive();
   var blank = ss.getSheetByName('Sheet1') || ss.getSheetByName('برگه۱');
   if (blank && ss.getSheets().length > 1 && blank.getLastRow() === 0) ss.deleteSheet(blank);
 
-  if (users.getLastRow() < 2) {
+  // The person running setup becomes the super admin (program manager).
+  var team = ss.getSheetByName('Team');
+  if (team.getLastRow() < 2) {
     var key = newKey_();
     var me = Session.getEffectiveUser().getEmail();
-    users.appendRow([key, 'وحید عامری', me, 'admin', true]);
-    SpreadsheetApp.getUi && safeAlert_('راه‌اندازی انجام شد.\n\nکلید ادمین شما:\n' + key + '\n\nاین کلید در تب Users هم ذخیره شده است.');
+    upsert_('Team', { id: 'm1', name: 'وحید عامری', name_en: 'Vahid Ameri', role: 'مدیر برنامه', email: me, team: 'PMO', capacity: 100, access: 'super', active: 'true', key: key }, { name: 'setup' });
+    safeAlert_('راه‌اندازی انجام شد. شما (' + me + ') سوپر ادمین هستید.\n\nکلید پشتیبان (برای ورود بدون گوگل):\n' + key);
     Logger.log('Admin key: ' + key);
   }
 }
 
-/** Creates a new access key row. Usage from editor: addUser('دکتر کامرانی', 'ceo@acg.com', 'viewer') */
-function addUser(name, email, role) {
-  var sh = ensureSheet_(USERS_SHEET, USERS_HEADERS);
-  var key = newKey_();
-  sh.appendRow([key, name || 'کاربر', email || '', role || 'viewer', true]);
-  Logger.log(name + ' → ' + key);
-  return key;
+/** Adds a person from the editor: addUser('آتنا دهقان', 'athena@acg.com', 'member'). Easier: use the back office in the app. */
+function addUser(name, email, access) {
+  var id = 'M-' + Utilities.getUuid().slice(0, 6);
+  upsert_('Team', { id: id, name: name, email: email || '', access: access || 'member', active: 'true', capacity: 100 }, { name: 'editor' });
+  Logger.log(name + ' → ' + id);
+  return id;
 }
 
 function newKey_() {
@@ -361,7 +457,7 @@ function safeAlert_(msg) {
 /** Adds a custom menu in the Sheet for non-technical users. */
 function onOpen() {
   SpreadsheetApp.getUi()
-    .createMenu('ACG Helm')
+    .createMenu('ACG Atlas')
     .addItem('راه‌اندازی تب‌ها', 'setup')
     .addItem('افزودن کاربر جدید…', 'promptAddUser')
     .addItem('ارسال خلاصه‌ی روزانه (همین حالا)', 'sendDailyDigest')
@@ -377,9 +473,9 @@ function promptAddUser() {
   var n = ui.prompt('نام کاربر').getResponseText();
   if (!n) return;
   var em = ui.prompt('ایمیل').getResponseText();
-  var r = ui.prompt('نقش: admin / editor / viewer').getResponseText() || 'viewer';
-  var key = addUser(n, em, r);
-  ui.alert('کلید دسترسی ' + n + ':\n' + key);
+  var r = ui.prompt('دسترسی: super / exec / head / member').getResponseText() || 'member';
+  addUser(n, em, r);
+  ui.alert(n + ' اضافه شد و می‌تواند با ' + em + ' وارد شود.');
 }
 
 // --------------------------------------------------------------------------
@@ -416,7 +512,7 @@ function sendDailyDigest() {
   };
 
   var html = '<div dir="rtl" style="font-family:Tahoma,Vazirmatn,sans-serif;font-size:14px;line-height:1.8;color:#111">' +
-    '<h2 style="margin:0 0 8px">خلاصه‌ی امروز — سکان ACG</h2>' +
+    '<h2 style="margin:0 0 8px">خلاصه‌ی امروز — اطلس ACG</h2>' +
     sec('فالوآپ‌های امروز و معوق', '#e13748', fus.map(function (f) { return li('<b>' + f.subject + '</b> — ' + f.person + (f.project_id ? ' · ' + (pname[f.project_id] || '') : '') + ' · ' + f.due_date); })) +
     sec('تسک‌های امروز', '#4f46e5', todayTasks.map(function (t) { return li(t.title + ' — ' + t.assignee + (t.project_id ? ' · ' + (pname[t.project_id] || '') : '')); })) +
     sec('تسک‌های معوق', '#d98d06', overdueTasks.map(function (t) { return li(t.title + ' — ' + t.assignee + ' · سررسید ' + t.due_date); })) +
@@ -425,7 +521,7 @@ function sendDailyDigest() {
     '<p style="color:#666;margin-top:24px;font-size:12px">این ایمیل به‌صورت خودکار از Google Sheet پورتفولیو ارسال شده است.</p></div>';
 
   var to = PropertiesService.getScriptProperties().getProperty('DIGEST_TO') || Session.getEffectiveUser().getEmail();
-  MailApp.sendEmail({ to: to, subject: 'ACG Helm · خلاصه‌ی ' + today, htmlBody: html });
+  MailApp.sendEmail({ to: to, subject: 'ACG Atlas · خلاصه‌ی ' + today, htmlBody: html });
 }
 
 // --------------------------------------------------------------------------
@@ -475,12 +571,12 @@ function remindWeeklyUpdates() {
   });
   if (missing.length) {
     var to = PropertiesService.getScriptProperties().getProperty('DIGEST_TO') || Session.getEffectiveUser().getEmail();
-    MailApp.sendEmail({ to: to, subject: 'ACG Helm · ' + missing.length + ' گزارش هفتگی ارسال نشده', htmlBody: '<div dir="rtl" style="font-family:Tahoma,sans-serif">' + missing.map(function (p) { return p.name + ' — ' + p.owner; }).join('<br>') + '</div>' });
+    MailApp.sendEmail({ to: to, subject: 'ACG Atlas · ' + missing.length + ' گزارش هفتگی ارسال نشده', htmlBody: '<div dir="rtl" style="font-family:Tahoma,sans-serif">' + missing.map(function (p) { return p.name + ' — ' + p.owner; }).join('<br>') + '</div>' });
   }
 }
 
 // --------------------------------------------------------------------------
-// Files — uploads go to one shared Drive folder ("ACG Helm files"), indexed in the Files tab.
+// Files — uploads go to one shared Drive folder ("ACG Atlas files"), indexed in the Files tab.
 // Script property FILE_SHARING: 'link' (default, anyone with the link) or 'domain'.
 // --------------------------------------------------------------------------
 
@@ -488,7 +584,7 @@ function filesFolder_() {
   var props = PropertiesService.getScriptProperties();
   var id = props.getProperty('FOLDER_ID');
   if (id) { try { return DriveApp.getFolderById(id); } catch (e) {} }
-  var f = DriveApp.createFolder('ACG Helm files');
+  var f = DriveApp.createFolder('ACG Atlas files');
   props.setProperty('FOLDER_ID', f.getId());
   return f;
 }
@@ -540,7 +636,7 @@ function mailMinutes_(meetingId, user) {
     (actions.length ? '<h3>اکشن پلن</h3><table cellpadding="6" style="border-collapse:collapse">' + actions.map(function (t) {
       return '<tr><td style="border-bottom:1px solid #eee">' + esc(t.title) + '</td><td style="border-bottom:1px solid #eee"><b>' + esc(t.assignee) + '</b></td><td style="border-bottom:1px solid #eee;color:#666">' + (t.due_date || '') + '</td></tr>';
     }).join('') + '</table>' : '') +
-    '<p style="color:#888;font-size:12px;margin-top:20px">ارسال خودکار از سکان ACG — ' + esc(user.name) + '</p></div>';
+    '<p style="color:#888;font-size:12px;margin-top:20px">ارسال خودکار از اطلس ACG — ' + esc(user.name) + '</p></div>';
   MailApp.sendEmail({ to: to.join(','), subject: 'صورت‌جلسه · ' + m.title + ' · ' + m.date, htmlBody: html });
   return { sent: to.length };
 }
@@ -563,7 +659,7 @@ function remindOverdueActions() {
     if (!email[who]) return;
     MailApp.sendEmail({
       to: email[who],
-      subject: 'سکان ACG · ' + by[who].length + ' اقدام عقب‌افتاده',
+      subject: 'اطلس ACG · ' + by[who].length + ' اقدام عقب‌افتاده',
       htmlBody: '<div dir="rtl" style="font-family:Tahoma,sans-serif;line-height:1.9">' + who + ' عزیز، این اقدام‌های جلسات از سررسیدشان گذشته‌اند:<ul>' +
         by[who].map(function (t) { return '<li>' + String(t.title).replace(/</g, '&lt;') + ' — ' + t.due_date + '</li>'; }).join('') + '</ul></div>',
     });
@@ -592,6 +688,8 @@ function seedDemo() {
   var put = function (name, rows) {
     var sh = ensureSheet_(name, SCHEMA[name]);
     var h = SCHEMA[name];
+    var have = readSheet_(sh).map(function (r) { return String(r.id); });
+    rows = rows.filter(function (r) { return have.indexOf(String(r.id)) === -1; });
     var vals = rows.map(function (r) { return h.map(function (k) { return r[k] === undefined ? '' : r[k]; }); });
     if (vals.length) sh.getRange(sh.getLastRow() + 1, 1, vals.length, h.length).setValues(vals);
   };
@@ -607,8 +705,12 @@ function seedDemo() {
     { id: 'm9', name: 'بابک معروفی', role: 'پروداکت منیجر', team: 'پروداکت', track: 'product' },
     { id: 'm10', name: 'امین ظفری', role: 'پروداکت منیجر', team: 'پروداکت', track: 'product' },
     { id: 'm11', name: 'هانیه منصورکیایی', role: 'پروداکت دیزاینر', team: 'پروداکت', track: 'product' },
-    { id: 'm12', name: 'تیم تک', role: 'مهندسی (تیمی)', team: 'تک', track: 'tech', capacity: 600 },
-  ].map(function (m) { if (!m.capacity) m.capacity = 100; return m; }));
+  ].map(function (m) {
+    m.capacity = m.capacity || 100;
+    m.active = 'true';
+    m.access = m.id === 'm1' ? 'super' : m.id === 'm2' ? 'exec' : m.id === 'm3' || m.id === 'm4' ? 'head' : 'member';
+    return m;
+  }));
   // Weekly cadence: one row per meeting; the app's "schedule next week" clones it.
   var ws = weekStartISO_(tz);
   var on = function (day) { var x = new Date(ws + 'T00:00:00'); x.setDate(x.getDate() + day); return Utilities.formatDate(x, tz, 'yyyy-MM-dd'); };

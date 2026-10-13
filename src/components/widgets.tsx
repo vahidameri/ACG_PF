@@ -358,7 +358,7 @@ export function HealthTrend({ projectId, n = 5 }: { projectId: string; n?: numbe
   )
 }
 
-/** Six-dimension RAG strip (schedule, budget, scope, risk, resourcing, delivery). */
+/** Five-dimension RAG strip (schedule, scope, risk, resourcing, delivery). */
 export function RagStrip({ a, compact }: { a: Assessment; compact?: boolean }) {
   const tone: Record<string, string> = { red: 'bg-bad text-white', amber: 'bg-warn text-white', green: 'bg-good/12 text-good' }
   if (compact)

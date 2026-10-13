@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
-import { ArrowDownRight, ArrowUpRight, Minus, Gavel, Wallet, Siren, Flag } from 'lucide-react'
+import { ArrowDownRight, ArrowUpRight, Minus, Gavel, Siren, Flag } from 'lucide-react'
 import { useStore } from '../lib/store'
 import { HubNav } from '../components/HubNav'
 import { useEditor } from '../components/Editor'
@@ -10,7 +10,6 @@ import { addDays, daysFromToday, fa, fmtDayMonth, relDays, todayISO } from '../l
 import { HEALTH } from '../lib/labels'
 import { L, lbl, tr } from '../lib/i18n'
 import { assess, DIM, DIMS, type Assessment, type Dim } from '../lib/rag'
-import { money } from '../components/shared'
 import type { Health, Project } from '../lib/types'
 
 const rank: Record<Health, number> = { red: 0, amber: 1, green: 2 }
@@ -52,7 +51,7 @@ export default function Pulse() {
             : L('همه‌ی پروژه‌ها در همه‌ی ابعاد سبز هستند.', 'Every project is green on every dimension.')
         }
       >
-        <div className="grid grid-cols-2 gap-px overflow-hidden rounded-2xl border border-white/10 bg-white/10 @md:grid-cols-3 @xl:grid-cols-6">
+        <div className="grid grid-cols-2 gap-px overflow-hidden rounded-2xl border border-white/10 bg-white/10 @md:grid-cols-3 @xl:grid-cols-5">
           {byDim.map(({ d, red, amber, n }) => (
             <div key={d} className="bg-[#1f2024]/85 p-4 dark:bg-black/40">
               <div className="flex items-baseline justify-between gap-2">
@@ -213,10 +212,9 @@ function LeadershipAsks({ rows }: { rows: { p: Project; m: ProjectMetrics; a: As
   const { open } = useEditor()
   const today = todayISO()
   const decisions = db.Risks.filter((r) => r.type === 'decision' && r.status !== 'closed')
-  const overBudget = rows.filter((r) => r.a.dims.budget.h === 'red')
-  const escalate = rows.filter((r) => r.a.overall === 'red' && r.a.dims.budget.h !== 'red')
+  const escalate = rows.filter((r) => r.a.overall === 'red')
   const pname = (id: string) => db.Projects.find((p) => p.id === id)?.name || ''
-  const total = decisions.length + overBudget.length + escalate.length
+  const total = decisions.length + escalate.length
   const item = 'flex w-full items-start gap-3 rounded-2xl border border-white/10 bg-white/[0.04] p-3 text-start transition hover:bg-white/[0.08]'
   return (
     <section className="relative overflow-hidden rounded-2xl bg-band p-5 text-on-band shadow-card">
@@ -235,15 +233,6 @@ function LeadershipAsks({ rows }: { rows: { p: Project; m: ProjectMetrics; a: As
                 </span>
               </span>
             </button>
-          ))}
-          {overBudget.map(({ p, m }) => (
-            <Link key={p.id} to={`/projects/${p.id}`} className={item}>
-              <Wallet size={15} className="mt-0.5 shrink-0 text-[#f5c565]" />
-              <span className="min-w-0 flex-1">
-                <span className="block text-[0.8125rem] font-medium leading-5">{L(`تأیید بودجه‌ی تکمیلی — ${p.name}`, `Approve extra budget — ${p.name}`)}</span>
-                <span className="block text-[0.6875rem] text-band-sub">{L(`مصرف ${fa(m.budgetUse)}٪ · ${money(Number(p.spent) - Number(p.budget))} بیش از بودجه`, `${m.budgetUse}% used · ${money(Number(p.spent) - Number(p.budget))} over`)}</span>
-              </span>
-            </Link>
           ))}
           {escalate.map(({ p, a }) => (
             <Link key={p.id} to={`/projects/${p.id}`} className={item}>

@@ -1,4 +1,6 @@
-import { HashRouter, Route, Routes } from 'react-router-dom'
+import { HashRouter, Navigate, Route, Routes } from 'react-router-dom'
+import { can } from './lib/access'
+import Admin from './pages/Admin'
 import { StoreProvider, useStore } from './lib/store'
 import { GoogleProvider } from './lib/google'
 import { AutomationProvider } from './lib/automations'
@@ -17,7 +19,6 @@ import Risks from './pages/Risks'
 import Team from './pages/Team'
 import Updates from './pages/Updates'
 import Report from './pages/Report'
-import Settings from './pages/Settings'
 import CalendarPage from './pages/Calendar'
 import Teams from './pages/Teams'
 import Pulse from './pages/Pulse'
@@ -27,6 +28,16 @@ import Profile from './pages/Profile'
 import { ComposerProvider } from './components/UpdateComposer'
 import { Skeleton } from './components/ui'
 import { SignIn } from './components/SignIn'
+
+/** Portfolio-wide pages are for leadership; members land on their own desk. */
+function Only({ rule, children }: { rule: 'portfolio' | 'backoffice'; children: React.ReactNode }) {
+  const { access } = useStore()
+  return can[rule](access) ? <>{children}</> : <Navigate to="/my" replace />
+}
+function Home() {
+  const { access } = useStore()
+  return <Navigate to={can.portfolio(access) ? '/' : '/my'} replace />
+}
 
 function Gate({ children }: { children: React.ReactNode }) {
   const { loading, lastSync, mode, authed } = useStore()
@@ -58,14 +69,14 @@ export default function App() {
           <Layout>
             <Gate>
               <Routes>
-                <Route path="/" element={<Dashboard />} />
+                <Route path="/" element={<Only rule="portfolio"><Dashboard /></Only>} />
                 <Route path="/my" element={<MyDesk />} />
                 <Route path="/projects" element={<Projects />} />
                 <Route path="/projects/:id" element={<ProjectDetail />} />
-                <Route path="/roadmap" element={<Roadmap />} />
+                <Route path="/roadmap" element={<Only rule="portfolio"><Roadmap /></Only>} />
                 <Route path="/calendar" element={<CalendarPage />} />
-                <Route path="/teams" element={<Teams />} />
-                <Route path="/pulse" element={<Pulse />} />
+                <Route path="/teams" element={<Only rule="portfolio"><Teams /></Only>} />
+                <Route path="/pulse" element={<Only rule="portfolio"><Pulse /></Only>} />
                 <Route path="/plan" element={<Plan />} />
                 <Route path="/weekly" element={<Weekly />} />
                 <Route path="/meetings" element={<Weekly />} />
@@ -74,12 +85,13 @@ export default function App() {
                 <Route path="/sprints" element={<Sprints />} />
                 <Route path="/tasks" element={<Tasks />} />
                 <Route path="/followups" element={<FollowUps />} />
-                <Route path="/risks" element={<Risks />} />
-                <Route path="/team" element={<Team />} />
+                <Route path="/risks" element={<Only rule="portfolio"><Risks /></Only>} />
+                <Route path="/team" element={<Only rule="portfolio"><Team /></Only>} />
                 <Route path="/updates" element={<Updates />} />
-                <Route path="/report" element={<Report />} />
-                <Route path="/settings" element={<Settings />} />
-                <Route path="*" element={<Dashboard />} />
+                <Route path="/report" element={<Only rule="portfolio"><Report /></Only>} />
+                <Route path="/admin" element={<Only rule="backoffice"><Admin /></Only>} />
+                <Route path="/settings" element={<Only rule="backoffice"><Admin initial="settings" /></Only>} />
+                <Route path="*" element={<Home />} />
               </Routes>
             </Gate>
           </Layout>

@@ -8,8 +8,10 @@ import { projectMetrics, riskScore } from '../lib/metrics'
 import { fa, fmtDate, relDays, timeAgo } from '../lib/jalali'
 import { PROJECT_STATUS, RISK_STATUS, RISK_TYPE, SCOPE_STATUS, SPRINT_STATUS, PRIORITY } from '../lib/labels'
 import { L, lbl } from '../lib/i18n'
-import { money, TaskRow, FollowUpRow, PinButton } from '../components/shared'
+import { TaskRow, FollowUpRow, PinButton } from '../components/shared'
 import { PauseButton } from '../components/PauseButton'
+import { ContractsList } from '../components/Contracts'
+import { can } from '../lib/access'
 import { Attachments } from '../components/Files'
 import { BurndownChart, Kanban, MilestoneList, RiskMatrix, SprintHeader, UpdateCard, VelocityChart, riskTone, ActivityFeed, HealthTrend, RagStrip } from '../components/widgets'
 import { buildActivity } from '../lib/activity'
@@ -22,11 +24,11 @@ import { DeliverableRow, DeliveryEmpty } from '../components/delivery'
 import { deliverySummary, isClosed } from '../lib/delivery'
 import { memberWeek } from '../lib/capacity'
 
-type Tab = 'overview' | 'scope' | 'milestones' | 'sprints' | 'tasks' | 'risks' | 'updates' | 'team' | 'delivery'
+type Tab = 'overview' | 'scope' | 'milestones' | 'sprints' | 'tasks' | 'risks' | 'updates' | 'team' | 'delivery' | 'contracts'
 
 export default function ProjectDetail() {
   const { id } = useParams()
-  const { db, canEdit, upsert, me } = useStore()
+  const { db, canEdit, upsert, me, access } = useStore()
   const { open } = useEditor()
   const [tab, setTab] = useState<Tab>('overview')
   const { openComposer } = useComposer()
@@ -129,7 +131,7 @@ export default function ProjectDetail() {
             { label: L('پیشرفت', 'Progress'), value: `${fa(m.progress)}%`, tone: m.health },
             { label: L('زمان سپری‌شده', 'Time elapsed'), value: `${fa(m.elapsed)}%` },
             { label: m.daysLeft >= 0 ? L('تا ددلاین', 'To deadline') : L('از ددلاین گذشته', 'Past deadline'), value: fa(Math.abs(m.daysLeft)), tone: m.daysLeft < 0 ? 'red' : undefined, sub: L('روز', 'days') },
-            { label: L('مصرف بودجه', 'Budget used'), value: `${fa(m.budgetUse)}%`, tone: m.budgetUse > 100 ? 'red' : undefined, sub: `${money(p.spent)} / ${money(p.budget)}` },
+            { label: L('تحویل‌های باز', 'Open deliveries'), value: fa(deliverySummary(db, p.id).open.length), tone: deliverySummary(db, p.id).overdue.length ? 'red' : undefined, sub: L(`${fa(deliverySummary(db, p.id).overdue.length)} عقب‌افتاده`, `${deliverySummary(db, p.id).overdue.length} overdue`) },
             { label: L('تسک باز', 'Open tasks'), value: fa(m.openTasks), sub: L(`${fa(m.overdueTasks)} معوق · ${fa(m.blockedTasks)} مسدود`, `${m.overdueTasks} overdue · ${m.blockedTasks} blocked`) },
             { label: L('ریسک باز', 'Open risks'), value: fa(m.openRisks), tone: m.highRisks ? 'red' : undefined, sub: L(`${fa(m.highRisks)} بحرانی`, `${m.highRisks} critical`) },
           ]}
@@ -152,6 +154,7 @@ export default function ProjectDetail() {
                 { value: 'risks', label: L('ریسک‌ها', 'Risks'), count: m.openRisks },
                 { value: 'updates', label: L('گزارش‌ها', 'Updates'), count: updates.length },
                 { value: 'team', label: L('تیم', 'Team'), count: allocs.length },
+                ...(can.contracts(access) ? [{ value: 'contracts' as Tab, label: L('قرارداد', 'Contracts'), count: db.Contracts.filter((c) => c.project_id === p.id).length }] : []),
               ]}
             />
           </div>
@@ -257,17 +260,6 @@ export default function ProjectDetail() {
                     </div>
                   ))}
                 </dl>
-                <div className="mt-5">
-                  <div className="mb-1.5 flex justify-between text-[0.6875rem] text-sub">
-                    <span>{L('هزینه‌شده', 'Spent')} {money(p.spent)}</span>
-                    <span>{L('بودجه', 'Budget')} {money(p.budget)}</span>
-                  </div>
-                  <div className="relative h-2.5 overflow-hidden rounded-full bg-muted">
-                    <div className={cx('h-full rounded-full', m.budgetUse > 100 ? 'bg-bad' : 'bg-ink')} style={{ width: `${Math.min(100, m.budgetUse)}%` }} />
-                    <div className="absolute inset-y-0 w-[2px] bg-good" style={{ insetInlineStart: `${m.progress}%` }} title={L('پیشرفت', 'Progress')} />
-                  </div>
-                  <div className="mt-1.5 text-[0.6875rem] text-sub">{L('خط سبز = پیشرفت کار؛ اگر نوار از آن جلوتر باشد، هزینه از کار جلو افتاده.', 'Green line = progress; if the bar runs past it, spend is ahead of delivery.')}</div>
-                </div>
                 <div className="mt-5 flex items-center justify-between rounded-2xl bg-muted/60 px-4 py-3">
                   <span className="text-xs text-sub">{L('روند سلامت (گزارش‌ها)', 'Health trend (updates)')}</span>
                   <HealthTrend projectId={p.id} n={6} />
@@ -415,6 +407,11 @@ export default function ProjectDetail() {
           )}
 
           {tab === 'delivery' && <ProjectDelivery projectId={p.id} />}
+          {tab === 'contracts' && can.contracts(access) && (
+            <Card pad={false} eyebrow={L('محرمانه', 'Confidential')} title={L('قراردادهای این پروژه', 'Contracts for this project')}>
+              <ContractsList projectId={p.id} />
+            </Card>
+          )}
 
           {tab === 'updates' && (
             <div className="space-y-4">

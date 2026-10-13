@@ -17,15 +17,17 @@ import { overloaded } from '../lib/capacity'
 import { useGoogle } from '../lib/google'
 import { APP_NAME } from '../lib/brand'
 import { hubOf, type Hub } from './HubNav'
+import { can } from '../lib/access'
+import { ACCESS } from '../lib/labels'
 import { CommandPalette } from './CommandPalette'
 import { AcgMark } from './Brand'
-import { ROLE } from '../lib/labels'
 import { lbl } from '../lib/i18n'
 
 export function Layout({ children }: { children: ReactNode }) {
-  const { db, me, setMe, mode, loading, error, refresh, lastSync, toasts, canEdit, role, dismissToast, config, setConfig } = useStore()
+  const { db, me, setMe, mode, loading, error, refresh, lastSync, toasts, canEdit, dismissToast, config, setConfig, access } = useStore()
   const { signOut } = useGoogle()
   const myMember = db.Team.find((m) => m.name === me)
+  const leader = can.portfolio(access)
   const { lang, setLang } = useI18n()
   const { open } = useEditor()
   const { pins } = usePins()
@@ -94,13 +96,16 @@ export function Layout({ children }: { children: ReactNode }) {
     {
       label: L('پورتفولیو', 'Portfolio'),
       links: [
-        { to: '/', label: L('نمای کلی', 'Overview'), icon: LayoutGrid, hub: 'overview' },
-        { to: '/projects', label: L('پروژه‌ها', 'Projects'), icon: Briefcase, count: db.Projects.filter((p) => p.status === 'active').length },
-        { to: '/plan', label: L('برنامه و تحویل', 'Plan & delivery'), icon: PackageCheck, hub: 'plan' },
+        ...(leader ? [{ to: '/', label: L('نمای کلی', 'Overview'), icon: LayoutGrid, hub: 'overview' as Hub }] : []),
+        { to: '/projects', label: leader ? L('پروژه‌ها', 'Projects') : L('پروژه‌های من', 'My projects'), icon: Briefcase, count: db.Projects.filter((p) => p.status === 'active').length },
+        { to: '/plan', label: L('برنامه و تحویل', 'Plan & delivery'), icon: PackageCheck, hub: leader ? ('plan' as Hub) : undefined },
         { to: '/updates', label: L('گزارش هفتگی', 'Weekly updates'), icon: FileText, badge: updatesMissing },
-        { to: '/team', label: L('ظرفیت و منابع', 'Capacity & resourcing'), icon: Gauge, badge: overCap },
+        ...(leader ? [{ to: '/team', label: L('ظرفیت و منابع', 'Capacity & resourcing'), icon: Gauge, badge: overCap }] : []),
       ],
     },
+    ...(can.backoffice(access)
+      ? [{ label: L('مدیریت', 'Admin'), links: [{ to: '/admin', label: L('بک‌آفیس', 'Back office'), icon: Settings }] }]
+      : []),
   ]
 
   const pinned = db.Projects.filter((p) => pins.includes(p.id))
@@ -196,7 +201,7 @@ export function Layout({ children }: { children: ReactNode }) {
               {wide && (
                 <div className="min-w-0 flex-1">
                   <div className="truncate text-sm font-medium">{me || L('مهمان', 'Guest')}</div>
-                  <div className="truncate text-[0.6875rem] text-band-sub">{mode === 'demo' ? L('حالت نمایشی', 'Demo mode') : lbl(ROLE, role)}</div>
+                  <div className="truncate text-[0.6875rem] text-band-sub">{lbl(ACCESS, access)}</div>
                 </div>
               )}
             </button>
@@ -238,9 +243,11 @@ export function Layout({ children }: { children: ReactNode }) {
               <MenuItem icon={<Keyboard size={15} />} hint="?" onClick={() => { close(); setKeys(true) }}>
                 {L('میانبرهای صفحه‌کلید', 'Keyboard shortcuts')}
               </MenuItem>
-              <MenuItem icon={<Settings size={15} />} onClick={() => { close(); navigate('/settings') }}>
-                {L('تنظیمات، اتصال و اتوماسیون', 'Settings, connection & automations')}
-              </MenuItem>
+              {can.backoffice(access) && (
+                <MenuItem icon={<Settings size={15} />} onClick={() => { close(); navigate('/admin') }}>
+                  {L('بک‌آفیس و تنظیمات', 'Back office & settings')}
+                </MenuItem>
+              )}
               {mode === 'live' && (
                 <MenuItem icon={<LogOut size={15} />} danger onClick={() => { close(); signOut(); setConfig({ ...config, token: '' }) }}>
                   {L('خروج', 'Sign out')}

@@ -1,7 +1,7 @@
 // Sample data for the demo mode: the real ACG team and project list, with illustrative
-// (generic product-lifecycle) milestones, tasks, budgets and risks. Replace with real data
+// (generic product-lifecycle) milestones, tasks, contracts and risks. Replace with real data
 // in the Google Sheet. Dates are relative to today so the demo always looks "live".
-import type { DB, Task, Milestone, Sprint, FollowUp, Risk, ScopeItem, Update, Allocation, Comment, Project, Health, Member, Deliverable, Meeting, TimeOff, Track, FileRef, ConfigRow } from '../lib/types'
+import type { DB, Task, Milestone, Sprint, FollowUp, Risk, ScopeItem, Update, Allocation, Comment, Project, Health, Member, Deliverable, Meeting, TimeOff, Track, FileRef, ConfigRow, Contract } from '../lib/types'
 import { addDays, daysBetween, todayISO } from '../lib/jalali'
 import { locale } from '../lib/i18n'
 import { weekStart } from '../lib/weeks'
@@ -23,7 +23,6 @@ const P = {
   babak: () => x('بابک معروفی', 'Babak Maroufi'),
   amin: () => x('امین ظفری', 'Amin Zafari'),
   hanie: () => x('هانیه منصورکیایی', 'Hanie Mansurkiae'),
-  tech: () => x('تیم تک', 'Tech team'),
 }
 
 interface Spec {
@@ -37,24 +36,22 @@ interface Spec {
   start: number
   end: number
   progress: number
-  budget: number
-  spent: number
   mood: Health // scenario used to shape risks, blockers and update history
   category: [string, string]
 }
 
 const SPECS: Spec[] = [
-  { id: 'p1', code: 'CXO', name: 'CX Orbit', pm: P.atena, sponsor: P.jalil, status: 'active', priority: 'critical', start: -120, end: 70, progress: 56, budget: 9_500_000_000, spent: 5_400_000_000, mood: 'amber', category: ['تجربه‌ی مشتری', 'Customer experience'] },
-  { id: 'p2', code: 'IXP', name: 'Insight X Padida', pm: P.sormeili, sponsor: P.jalil, status: 'active', priority: 'high', start: -110, end: 30, progress: 61, budget: 7_000_000_000, spent: 7_350_000_000, mood: 'red', category: ['داده و تحلیل', 'Data & analytics'] },
-  { id: 'p3', code: 'RBR', name: 'Roo B Roo', pm: P.salemeh, sponsor: P.mehrzad, status: 'active', priority: 'medium', start: -60, end: 90, progress: 44, budget: 3_800_000_000, spent: 1_500_000_000, mood: 'green', category: ['محصول', 'Product'] },
-  { id: 'p4', code: 'KDN', name: 'Kadiner', pm: P.mehrsa, sponsor: P.jalil, status: 'active', priority: 'high', start: -90, end: 45, progress: 58, budget: 5_200_000_000, spent: 3_700_000_000, mood: 'amber', category: ['محصول', 'Product'] },
-  { id: 'p5', code: 'HMF', name: 'HamAfza', pm: P.babak, sponsor: P.mehrzad, status: 'planning', priority: 'medium', start: 12, end: 180, progress: 0, budget: 4_500_000_000, spent: 0, mood: 'green', category: ['پلتفرم', 'Platform'] },
-  { id: 'p6', code: 'MYC', name: 'Myca', pm: P.amin, sponsor: P.jalil, status: 'active', priority: 'high', start: -35, end: 130, progress: 24, budget: 6_000_000_000, spent: 1_200_000_000, mood: 'green', category: ['محصول', 'Product'] },
-  { id: 'p7', code: 'MLK', name: 'malek', pm: P.atena, sponsor: P.mehrzad, status: 'on_hold', priority: 'low', start: -70, end: 100, progress: 18, budget: 2_000_000_000, spent: 450_000_000, mood: 'amber', category: ['داخلی', 'Internal'] },
-  { id: 'p8', code: 'SMP', name: 'SimiPass', pm: P.sormeili, sponsor: P.jalil, status: 'active', priority: 'critical', start: -150, end: -6, progress: 84, budget: 8_000_000_000, spent: 8_600_000_000, mood: 'red', category: ['هویت و دسترسی', 'Identity & access'] },
-  { id: 'p9', code: 'INO', name: 'Ino School', pm: P.mehrsa, sponsor: P.mehrzad, status: 'active', priority: 'medium', start: -50, end: 75, progress: 45, budget: 3_000_000_000, spent: 1_250_000_000, mood: 'green', category: ['آموزش', 'Education'] },
-  { id: 'p10', code: 'AISN', name: 'AISN', pm: P.amin, sponsor: P.jalil, status: 'active', priority: 'high', start: -80, end: 60, progress: 49, budget: 6_500_000_000, spent: 4_100_000_000, mood: 'amber', category: ['هوش مصنوعی', 'AI'] },
-  { id: 'p11', code: 'CLP', name: 'Clarity Pass', pm: P.babak, sponsor: P.jalil, status: 'completed', priority: 'high', start: -210, end: -25, progress: 100, budget: 4_200_000_000, spent: 4_050_000_000, mood: 'green', category: ['هویت و دسترسی', 'Identity & access'] },
+  { id: 'p1', code: 'CXO', name: 'CX Orbit', pm: P.atena, sponsor: P.jalil, status: 'active', priority: 'critical', start: -120, end: 70, progress: 56, mood: 'amber', category: ['تجربه‌ی مشتری', 'Customer experience'] },
+  { id: 'p2', code: 'IXP', name: 'Insight X Padida', pm: P.sormeili, sponsor: P.jalil, status: 'active', priority: 'high', start: -110, end: 30, progress: 61, mood: 'red', category: ['داده و تحلیل', 'Data & analytics'] },
+  { id: 'p3', code: 'RBR', name: 'Roo B Roo', pm: P.salemeh, sponsor: P.mehrzad, status: 'active', priority: 'medium', start: -60, end: 90, progress: 44, mood: 'green', category: ['محصول', 'Product'] },
+  { id: 'p4', code: 'KDN', name: 'Kadiner', pm: P.mehrsa, sponsor: P.jalil, status: 'active', priority: 'high', start: -90, end: 45, progress: 58, mood: 'amber', category: ['محصول', 'Product'] },
+  { id: 'p5', code: 'HMF', name: 'HamAfza', pm: P.babak, sponsor: P.mehrzad, status: 'planning', priority: 'medium', start: 12, end: 180, progress: 0, mood: 'green', category: ['پلتفرم', 'Platform'] },
+  { id: 'p6', code: 'MYC', name: 'Myca', pm: P.amin, sponsor: P.jalil, status: 'active', priority: 'high', start: -35, end: 130, progress: 24, mood: 'green', category: ['محصول', 'Product'] },
+  { id: 'p7', code: 'MLK', name: 'malek', pm: P.atena, sponsor: P.mehrzad, status: 'on_hold', priority: 'low', start: -70, end: 100, progress: 18, mood: 'amber', category: ['داخلی', 'Internal'] },
+  { id: 'p8', code: 'SMP', name: 'SimiPass', pm: P.sormeili, sponsor: P.jalil, status: 'active', priority: 'critical', start: -150, end: -6, progress: 84, mood: 'red', category: ['هویت و دسترسی', 'Identity & access'] },
+  { id: 'p9', code: 'INO', name: 'Ino School', pm: P.mehrsa, sponsor: P.mehrzad, status: 'active', priority: 'medium', start: -50, end: 75, progress: 45, mood: 'green', category: ['آموزش', 'Education'] },
+  { id: 'p10', code: 'AISN', name: 'AISN', pm: P.amin, sponsor: P.jalil, status: 'active', priority: 'high', start: -80, end: 60, progress: 49, mood: 'amber', category: ['هوش مصنوعی', 'AI'] },
+  { id: 'p11', code: 'CLP', name: 'Clarity Pass', pm: P.babak, sponsor: P.jalil, status: 'completed', priority: 'high', start: -210, end: -25, progress: 100, mood: 'green', category: ['هویت و دسترسی', 'Identity & access'] },
 ]
 
 const MS_TEMPLATE: [number, string, string, number][] = [
@@ -72,18 +69,17 @@ export function buildDemo(): DB {
   const me = P.vahid()
 
   const Team: Member[] = [
-    { id: 'm1', name: P.vahid(), role: x('مدیر پروگرم', 'Program Manager'), email: 'vahid.ameri@acg.example', team: 'PMO', track: '', capacity: 100, photo: '', tasks_private: '', phone: '' },
-    { id: 'm2', name: P.jalil(), role: x('مدیرعامل', 'CEO'), email: 'jalil@acg.example', team: x('مدیریت', 'Leadership'), track: '', capacity: 100, photo: '', tasks_private: '1', phone: '' },
-    { id: 'm3', name: P.keyvan(), role: x('هد تک', 'Head of Tech'), email: 'keyvanian@acg.example', team: x('تک', 'Tech'), track: 'tech', capacity: 100, photo: '', tasks_private: '', phone: '' },
-    { id: 'm4', name: P.mehrzad(), role: x('هد پروداکت', 'Head of Product'), email: 'mehrzad@acg.example', team: x('پروداکت', 'Product'), track: 'product', capacity: 100, photo: '', tasks_private: '', phone: '' },
-    { id: 'm5', name: P.atena(), role: x('پروداکت منیجر', 'Product Manager'), email: 'athena@acg.example', team: x('پروداکت', 'Product'), track: 'product', capacity: 100, photo: '', tasks_private: '', phone: '' },
-    { id: 'm6', name: P.sormeili(), role: x('پروداکت منیجر', 'Product Manager'), email: 'sormeili@acg.example', team: x('پروداکت', 'Product'), track: 'product', capacity: 100, photo: '', tasks_private: '', phone: '' },
-    { id: 'm7', name: P.salemeh(), role: x('پروداکت منیجر', 'Product Manager'), email: 'salemeh@acg.example', team: x('پروداکت', 'Product'), track: 'product', capacity: 100, photo: '', tasks_private: '', phone: '' },
-    { id: 'm8', name: P.mehrsa(), role: x('پروداکت منیجر', 'Product Manager'), email: 'mehrsa@acg.example', team: x('پروداکت', 'Product'), track: 'product', capacity: 100, photo: '', tasks_private: '', phone: '' },
-    { id: 'm9', name: P.babak(), role: x('پروداکت منیجر', 'Product Manager'), email: 'babak@acg.example', team: x('پروداکت', 'Product'), track: 'product', capacity: 100, photo: '', tasks_private: '', phone: '' },
-    { id: 'm10', name: P.amin(), role: x('پروداکت منیجر', 'Product Manager'), email: 'amin@acg.example', team: x('پروداکت', 'Product'), track: 'product', capacity: 100, photo: '', tasks_private: '', phone: '' },
-    { id: 'm11', name: P.hanie(), role: x('پروداکت دیزاینر', 'Product Designer'), email: 'hanie@acg.example', team: x('پروداکت', 'Product'), track: 'product', capacity: 100, photo: '', tasks_private: '', phone: '' },
-    { id: 'm12', name: P.tech(), role: x('مهندسی (تیمی)', 'Engineering (team)'), email: '', team: x('تک', 'Tech'), track: 'tech', capacity: 600, photo: '', tasks_private: '', phone: '' },
+    { id: 'm1', name: P.vahid(), name_en: '', role: x('مدیر پروگرم', 'Program Manager'), email: 'vahid.ameri@acg.example', team: 'PMO', track: '', capacity: 100, photo: '', tasks_private: '', phone: '' , access: 'super', active: 'true' },
+    { id: 'm2', name: P.jalil(), name_en: '', role: x('مدیرعامل', 'CEO'), email: 'jalil@acg.example', team: x('مدیریت', 'Leadership'), track: '', capacity: 100, photo: '', tasks_private: '1', phone: '' , access: 'exec', active: 'true' },
+    { id: 'm3', name: P.keyvan(), name_en: '', role: x('هد تک', 'Head of Tech'), email: 'keyvanian@acg.example', team: x('تک', 'Tech'), track: 'tech', capacity: 100, photo: '', tasks_private: '', phone: '' , access: 'head', active: 'true' },
+    { id: 'm4', name: P.mehrzad(), name_en: '', role: x('هد پروداکت', 'Head of Product'), email: 'mehrzad@acg.example', team: x('پروداکت', 'Product'), track: 'product', capacity: 100, photo: '', tasks_private: '', phone: '' , access: 'head', active: 'true' },
+    { id: 'm5', name: P.atena(), name_en: '', role: x('پروداکت منیجر', 'Product Manager'), email: 'athena@acg.example', team: x('پروداکت', 'Product'), track: 'product', capacity: 100, photo: '', tasks_private: '', phone: '' , access: 'member', active: 'true' },
+    { id: 'm6', name: P.sormeili(), name_en: '', role: x('پروداکت منیجر', 'Product Manager'), email: 'sormeili@acg.example', team: x('پروداکت', 'Product'), track: 'product', capacity: 100, photo: '', tasks_private: '', phone: '' , access: 'member', active: 'true' },
+    { id: 'm7', name: P.salemeh(), name_en: '', role: x('پروداکت منیجر', 'Product Manager'), email: 'salemeh@acg.example', team: x('پروداکت', 'Product'), track: 'product', capacity: 100, photo: '', tasks_private: '', phone: '' , access: 'member', active: 'true' },
+    { id: 'm8', name: P.mehrsa(), name_en: '', role: x('پروداکت منیجر', 'Product Manager'), email: 'mehrsa@acg.example', team: x('پروداکت', 'Product'), track: 'product', capacity: 100, photo: '', tasks_private: '', phone: '' , access: 'member', active: 'true' },
+    { id: 'm9', name: P.babak(), name_en: '', role: x('پروداکت منیجر', 'Product Manager'), email: 'babak@acg.example', team: x('پروداکت', 'Product'), track: 'product', capacity: 100, photo: '', tasks_private: '', phone: '' , access: 'member', active: 'true' },
+    { id: 'm10', name: P.amin(), name_en: '', role: x('پروداکت منیجر', 'Product Manager'), email: 'amin@acg.example', team: x('پروداکت', 'Product'), track: 'product', capacity: 100, photo: '', tasks_private: '', phone: '' , access: 'member', active: 'true' },
+    { id: 'm11', name: P.hanie(), name_en: '', role: x('پروداکت دیزاینر', 'Product Designer'), email: 'hanie@acg.example', team: x('پروداکت', 'Product'), track: 'product', capacity: 100, photo: '', tasks_private: '', phone: '' , access: 'member', active: 'true' },
   ]
 
   const Projects: Project[] = SPECS.map((s) => ({
@@ -99,8 +95,6 @@ export function buildDemo(): DB {
     phase: s.status === 'planning' ? x('برنامه‌ریزی', 'Planning') : s.status === 'completed' ? x('تحویل‌شده', 'Delivered') : s.progress < 30 ? x('طراحی', 'Design') : s.progress < 75 ? x('توسعه', 'Build') : x('بتا و آماده‌سازی لانچ', 'Beta & launch prep'),
     start_date: d(s.start),
     end_date: d(s.end),
-    budget: s.budget,
-    spent: s.spent,
     progress: s.progress,
     health_override: '',
     objective: '',
@@ -165,12 +159,12 @@ export function buildDemo(): DB {
     T({ project_id: s.id, title: x('اولویت‌بندی بک‌لاگ با هد پروداکت', 'Backlog prioritisation with Head of Product'), assignee: s.pm(), status: 'todo', due: 3 + (k % 4), tags: 'planning' })
     const arch = T({ project_id: s.id, title: x('طراحی معماری و قرارداد API', 'Architecture & API contract'), assignee: P.keyvan(), status: late || k % 3 !== 0 ? 'done' : 'in_progress', due: late ? -14 : 1, priority: 'high', points: 5, track: 'tech', tags: 'backend', sprint_id: sp })
     const build = T({
-      project_id: s.id, title: x('پیاده‌سازی جریان اصلی', 'Build the core flow'), assignee: P.tech(), status: red ? 'blocked' : late ? 'done' : 'in_progress', due: red ? -3 : 5, priority: 'critical', points: 8, track: 'tech', tags: 'frontend,backend', sprint_id: sp,
+      project_id: s.id, title: x('پیاده‌سازی جریان اصلی', 'Build the core flow'), assignee: P.keyvan(), status: red ? 'blocked' : late ? 'done' : 'in_progress', due: red ? -3 : 5, priority: 'critical', points: 8, track: 'tech', tags: 'frontend,backend', sprint_id: sp,
       description: red ? x('منتظر تصمیم درباره‌ی دامنه‌ی نسخه و دسترسی به سرویس‌های بیرونی', 'Waiting on a scope decision and access to external services') : '',
     })
-    const qa = T({ project_id: s.id, title: x('تست یکپارچه و QA', 'Integration testing & QA'), assignee: P.tech(), status: late ? 'in_progress' : 'todo', due: late ? -2 : 6, priority: 'high', points: 5, track: 'tech', tags: 'qa', sprint_id: sp })
-    T({ project_id: s.id, title: x('استقرار و مانیتورینگ', 'Deployment & monitoring'), assignee: P.tech(), status: 'todo', due: late ? 1 : 12, points: 3, track: 'tech', tags: 'devops', sprint_id: late ? sp : '' })
-    if (red || amber) T({ project_id: s.id, title: x('رفع باگ‌های گزارش‌شده', 'Fix reported bugs'), assignee: P.tech(), status: red ? 'in_progress' : 'todo', due: red ? -4 : 3, priority: 'high', points: 5, track: 'tech', tags: 'bug', sprint_id: sp })
+    const qa = T({ project_id: s.id, title: x('تست یکپارچه و QA', 'Integration testing & QA'), assignee: P.keyvan(), status: late ? 'in_progress' : 'todo', due: late ? -2 : 6, priority: 'high', points: 5, track: 'tech', tags: 'qa', sprint_id: sp })
+    T({ project_id: s.id, title: x('استقرار و مانیتورینگ', 'Deployment & monitoring'), assignee: P.keyvan(), status: 'todo', due: late ? 1 : 12, points: 3, track: 'tech', tags: 'devops', sprint_id: late ? sp : '' })
+    if (red || amber) T({ project_id: s.id, title: x('رفع باگ‌های گزارش‌شده', 'Fix reported bugs'), assignee: P.keyvan(), status: red ? 'in_progress' : 'todo', due: red ? -4 : 3, priority: 'high', points: 5, track: 'tech', tags: 'bug', sprint_id: sp })
     arch.depends_on = prd.id
     build.depends_on = [arch.id, ux.id].join(',')
     qa.depends_on = build.id
@@ -178,7 +172,7 @@ export function buildDemo(): DB {
   // Program manager's own work
   T({ project_id: '', title: x('آماده‌سازی گزارش کمیته‌ی راهبری', 'Prepare the steering committee report'), assignee: me, status: 'in_progress', due: 0, priority: 'high' })
   T({ project_id: 'p8', title: x('برنامه‌ی بازیابی SimiPass با هد تک', 'SimiPass recovery plan with Head of Tech'), assignee: me, status: 'todo', due: -1, priority: 'critical' })
-  T({ project_id: 'p2', title: x('درخواست بودجه‌ی تکمیلی Insight X Padida', 'Supplementary budget request — Insight X Padida'), assignee: me, status: 'todo', due: -2, priority: 'critical' })
+  T({ project_id: 'p2', title: x('بازتعریف دامنه‌ی فاز ۲ با کارفرمای Insight X Padida', 'Re-scope phase 2 with the Insight X Padida client'), assignee: me, status: 'todo', due: -2, priority: 'critical' })
   T({ project_id: '', title: x('به‌روزرسانی رودمپ فصل', 'Update the quarterly roadmap'), assignee: me, status: 'todo', due: 3 })
   T({ project_id: 'p5', title: x('کیک‌آف HamAfza و تعیین تیم', 'HamAfza kickoff & team setup'), assignee: me, status: 'todo', due: 6, priority: 'high' })
   T({ project_id: '', title: x('جلسه‌ی ۱:۱ با هد پروداکت و هد تک', '1:1 with Head of Product & Head of Tech'), assignee: me, status: 'done', due: -1 })
@@ -192,16 +186,16 @@ export function buildDemo(): DB {
   CT(x('جلسه با سرمایه‌گذار درباره‌ی راند بعدی', 'Investor meeting on the next round'), 2, 'todo', 'critical')
   CT(x('بازبینی ساختار سازمانی سال آینده', 'Review next year’s org structure'), 9)
   CT(x('مذاکره‌ی قرارداد با شریک پدیدا', 'Negotiate the Padida partner contract'), 4, 'in_progress')
-  CT(x('تأیید بودجه‌ی تکمیلی Insight X Padida', 'Approve Insight X Padida extra budget'), 1, 'todo', 'critical', me)
+  CT(x('تأیید الحاقیه‌ی قرارداد Insight X Padida', 'Approve the Insight X Padida contract amendment'), 1, 'todo', 'critical', me)
 
   // ---------------------------------------------------------- follow-ups
   let fid = 0
-  const F = (project_id: string, subject: string, person: string, channel: FollowUp['channel'], due: number, status: FollowUp['status'], priority: FollowUp['priority'], notes = ''): FollowUp => ({
-    id: `f${++fid}`, project_id, subject, person, channel, due_date: d(due), status, priority, notes, created_at: d(-8), done_at: status === 'done' ? d(-1) : '',
+  const F = (project_id: string, subject: string, person: string, channel: FollowUp['channel'], due: number, status: FollowUp['status'], priority: FollowUp['priority'], notes = '', owner = me): FollowUp => ({
+    id: `f${++fid}`, project_id, subject, person, channel, due_date: d(due), status, priority, notes, created_at: d(-8), done_at: status === 'done' ? d(-1) : '', owner,
   })
   const FollowUps: FollowUp[] = [
     F('p8', x('تأیید تاریخ جدید لانچ SimiPass', 'Approve the new SimiPass launch date'), P.jalil(), 'meeting', -2, 'open', 'critical', x('در جلسه‌ی هفته‌ی قبل به این هفته موکول شد', 'Deferred to this week in the last meeting')),
-    F('p2', x('بودجه‌ی تکمیلی Insight X Padida', 'Supplementary budget — Insight X Padida'), P.jalil(), 'email', 1, 'waiting', 'critical', x('پیش‌نویس ارسال شد', 'Draft sent')),
+    F('p2', x('تأیید دامنه‌ی فاز ۲ Insight X Padida', 'Phase 2 scope sign-off — Insight X Padida'), P.jalil(), 'email', 1, 'waiting', 'critical', x('پیش‌نویس ارسال شد', 'Draft sent')),
     F('p2', x('ظرفیت تیم تک برای اسپرینت بعد', 'Tech capacity for next sprint'), P.keyvan(), 'chat', 0, 'open', 'high'),
     F('p1', x('بازخورد دمو از واحد فروش', 'Sales feedback on the demo'), P.atena(), 'meeting', 3, 'open', 'medium'),
     F('p4', x('مایلستون عقب‌افتاده‌ی Kadiner', 'Kadiner late milestone'), P.mehrsa(), 'call', -1, 'open', 'high'),
@@ -210,6 +204,12 @@ export function buildDemo(): DB {
     F('p7', x('تصمیم درباره‌ی ادامه‌ی malek', 'Decide whether to resume malek'), P.jalil(), 'meeting', 9, 'open', 'low'),
     F('', x('هماهنگی منابع دیزاین بین پروژه‌ها', 'Design capacity across projects'), P.hanie(), 'chat', 2, 'waiting', 'medium'),
     F('p11', x('جمع‌بندی درس‌آموخته‌های Clarity Pass', 'Clarity Pass retrospective'), P.babak(), 'meeting', -6, 'done', 'low'),
+    // the CEO's own follow-ups — private to him, like his tasks
+    F('', x('پیگیری پیشنهاد همکاری با شریک خارجی', 'Chase the partnership proposal'), x('شریک خارجی', 'Foreign partner'), 'email', 2, 'waiting', 'high', '', ceo),
+    F('p2', x('هماهنگی جلسه با مدیرعامل پدیدا', 'Set up a meeting with Padida’s CEO'), me, 'chat', 1, 'open', 'high', '', ceo),
+    // everyone chases their own items
+    F('p1', x('دریافت فیدبک طراحی از هانیه', 'Design feedback from Hanie'), P.hanie(), 'chat', 1, 'open', 'medium', '', P.atena()),
+    F('p8', x('تاریخ تست پذیرش با کارفرما', 'UAT date with the client'), x('کارفرمای SimiPass', 'SimiPass client'), 'call', 0, 'open', 'high', '', P.sormeili()),
   ]
 
   // ---------------------------------------------------------- risks & decisions
@@ -217,7 +217,7 @@ export function buildDemo(): DB {
   const R = (project_id: string, title: string, type: Risk['type'], probability: number, impact: number, owner: string, mitigation: string, status: Risk['status'], due: number): Risk => ({ id: `r${++rid}`, project_id, title, type, probability, impact, owner, mitigation, status, due_date: d(due) })
   const Risks: Risk[] = [
     R('p8', x('تأخیر لانچ از ددلاین تعهدشده', 'Launch slipping past the committed deadline'), 'issue', 5, 4, P.sormeili(), x('برنامه‌ی بازیابی و کاهش دامنه‌ی نسخه‌ی اول', 'Recovery plan and a reduced first-release scope'), 'open', 2),
-    R('p8', x('فراتر رفتن هزینه از بودجه', 'Spend above budget'), 'issue', 5, 3, me, x('درخواست بودجه‌ی تکمیلی و توقف کارهای غیرضروری', 'Supplementary budget request; pause non-essential work'), 'open', 1),
+    R('p8', x('اختلاف برداشت از دامنه با کارفرما', 'Scope disagreement with the client'), 'issue', 5, 3, me, x('جلسه‌ی مشترک و ثبت دامنه در الحاقیه', 'Joint session and scope in an amendment'), 'open', 1),
     R('p2', x('وابستگی به داده‌های بیرونی پدیدا', 'Dependency on Padida external data'), 'dependency', 4, 4, P.keyvan(), x('قرارداد دسترسی و داده‌ی آزمایشی', 'Access agreement and test data'), 'open', -1),
     R('p2', x('کمبود ظرفیت تیم تک', 'Tech team capacity shortfall'), 'risk', 4, 4, P.keyvan(), x('اولویت‌بندی مجدد بین پروژه‌ها', 'Re-prioritise across projects'), 'mitigating', 6),
     R('p1', x('یکپارچگی با سیستم‌های موجود مشتری', 'Integration with existing customer systems'), 'risk', 3, 5, P.keyvan(), x('Mock API و تست زودهنگام', 'Mock APIs and early testing'), 'open', 8),
@@ -257,16 +257,14 @@ export function buildDemo(): DB {
       else A(pm, s.id, s.status === 'on_hold' ? 10 : pm === 'm6' ? 60 : 50)
     }
     if (s.status === 'active') {
-      A('m3', s.id, 10)
+      // Vahid Keyvanian is the whole tech team for now: red projects take more of him
+      A('m3', s.id, s.mood === 'red' ? 18 : 10, '', s.id === 'p8' ? d(28) : '')
       A('m4', s.id, 10)
-      // the engineering team, in "% of one engineer": ~0.8 FTE per live project
-      A('m12', s.id, s.mood === 'red' ? 90 : 65, '', s.id === 'p8' ? d(28) : '')
     }
   })
   // HamAfza pulls Tech in from kickoff — this is what tips the team over capacity
-  A('m3', 'p5', 10, hamStart)
+  A('m3', 'p5', 15, hamStart)
   A('m4', 'p5', 10, hamStart)
-  A('m12', 'p5', 120, hamStart)
   ;['p1', 'p2', 'p4', 'p10'].forEach((pid) => A('m11', pid, 20))
   A('m11', 'p6', 20, '', d(28))
   A('m11', 'p5', 20, d(28))
@@ -291,7 +289,7 @@ export function buildDemo(): DB {
   const lines: Record<Health, string[]> = {
     green: [x('طبق برنامه پیش می‌رویم.', 'On plan.'), x('اسپرینت با تحویل کامل بسته شد.', 'Sprint closed with full delivery.')],
     amber: [x('یک مایلستون عقب افتاده؛ برنامه‌ی جبران در جریان است.', 'One milestone slipped; recovery plan in progress.'), x('ظرفیت تیم محدود است و اولویت‌ها بازبینی شد.', 'Capacity is tight; priorities reviewed.')],
-    red: [x('ددلاین در خطر است و به تصمیم مدیریت نیاز داریم.', 'Deadline at risk; leadership decision needed.'), x('هزینه از بودجه جلو زده و کار مسدود داریم.', 'Spend is ahead of budget and work is blocked.')],
+    red: [x('ددلاین در خطر است و به تصمیم مدیریت نیاز داریم.', 'Deadline at risk; leadership decision needed.'), x('کار مسدود داریم و به تصمیم کارفرما نیاز است.', 'Work is blocked and needs a client decision.')],
   }
   // Reports are due Sunday of each week; three projects have not reported yet this week.
   const missingThisWeek = ['RBR', 'KDN', 'AISN']
@@ -306,7 +304,7 @@ export function buildDemo(): DB {
       Updates.push({
         id: `u${++uid}`, project_id: s.id, week_date: date > t ? t : date, author: s.pm(), health: h, summary: lines[h][i % 2],
         done: x('بستن اسپرینت\nبازبینی طراحی', 'Sprint closed\nDesign review'), next: x('تست یکپارچه\nآماده‌سازی دمو', 'Integration testing\nDemo prep'),
-        blockers: h === 'green' ? '' : h === 'amber' ? x('ظرفیت تیم تک', 'Tech capacity') : x('تصمیم اسکوپ\nبودجه', 'Scope decision\nBudget'),
+        blockers: h === 'green' ? '' : h === 'amber' ? x('ظرفیت تیم تک', 'Tech capacity') : x('تصمیم اسکوپ\nتأیید کارفرما', 'Scope decision\nClient sign-off'),
       })
     })
   })
@@ -376,15 +374,15 @@ export function buildDemo(): DB {
   ]
   const pastNotes: Record<string, [string, string]> = {
     portfolio: [
-      'وضعیت SimiPass و Insight X Padida بررسی شد. هر دو پروژه از بودجه فراتر رفته‌اند و تاریخ لانچ SimiPass قابل نگه‌داشتن نیست.',
-      'SimiPass and Insight X Padida reviewed. Both are over budget and the SimiPass launch date cannot hold.',
+      'وضعیت SimiPass و Insight X Padida بررسی شد. دامنه‌ی هر دو پروژه بزرگ‌تر از تعهد شده و تاریخ لانچ SimiPass قابل نگه‌داشتن نیست.',
+      'SimiPass and Insight X Padida reviewed. Both have grown past the committed scope and the SimiPass launch date cannot hold.',
     ],
     product: ['اولویت‌های بک‌لاگ هر پروژه مرور شد و ظرفیت دیزاین بین پروژه‌ها تقسیم شد.', 'Backlog priorities reviewed and design capacity split across projects.'],
     tech: ['ظرفیت تیم تک برای سه هفته‌ی آینده و شروع HamAfza بررسی شد.', 'Tech capacity for the next three weeks and the HamAfza start reviewed.'],
     project: ['برنامه‌ی بازیابی SimiPass و گزینه‌های کاهش دامنه بررسی شد.', 'SimiPass recovery plan and scope-reduction options reviewed.'],
   }
   const pastDecisions: Record<string, [string, string]> = {
-    portfolio: ['برنامه‌ی بازیابی SimiPass تا هفته‌ی بعد ارائه شود\nبودجه‌ی تکمیلی Insight X Padida با یک صفحه خلاصه درخواست شود', 'SimiPass recovery plan due next week\nRequest Insight X Padida extra budget with a one-pager'],
+    portfolio: ['برنامه‌ی بازیابی SimiPass تا هفته‌ی بعد ارائه شود\nدامنه‌ی فاز ۲ Insight X Padida با کارفرما بازتعریف شود', 'SimiPass recovery plan due next week\nRe-scope Insight X Padida phase 2 with the client'],
     product: ['هانیه روی چهار پروژه می‌ماند؛ Myca از هفته‌ی ۴ آزاد می‌شود', 'Hanie stays on four projects; Myca frees up from week 4'],
     tech: ['شروع فنی HamAfza منوط به آزاد شدن ظرفیت SimiPass است', 'HamAfza tech start depends on SimiPass freeing capacity'],
     project: ['اپ موبایل به فاز ۲ منتقل شد', 'Mobile app moved to phase 2'],
@@ -406,7 +404,7 @@ export function buildDemo(): DB {
   const lastTech = Meetings.find((m) => m.series === 'tech' && m.date === W(-1, 3))!
   // Action items agreed in meetings are ordinary tasks with a meeting_id
   T({ project_id: 'p8', title: x('ارائه‌ی برنامه‌ی بازیابی SimiPass', 'Present the SimiPass recovery plan'), assignee: P.sormeili(), status: 'in_progress', due: daysBetweenToday(W(0, 2)), priority: 'critical', meeting_id: lastPortfolio.id })
-  T({ project_id: 'p2', title: x('یک صفحه خلاصه برای بودجه‌ی تکمیلی', 'One-pager for the extra budget'), assignee: me, status: 'done', due: daysBetweenToday(W(0, 0)), priority: 'high', meeting_id: lastPortfolio.id })
+  T({ project_id: 'p2', title: x('یک صفحه خلاصه‌ی تغییر دامنه برای کارفرما', 'One-pager on the scope change for the client'), assignee: me, status: 'done', due: daysBetweenToday(W(0, 0)), priority: 'high', meeting_id: lastPortfolio.id })
   T({ project_id: '', title: x('برآورد ظرفیت تک برای شروع HamAfza', 'Estimate Tech capacity for the HamAfza start'), assignee: P.keyvan(), status: 'todo', due: daysBetweenToday(W(0, 0)), priority: 'high', meeting_id: lastPortfolio.id })
   T({ project_id: 'p4', title: x('علت عقب‌افتادن مایلستون Kadiner', 'Root cause for the Kadiner slip'), assignee: P.mehrsa(), status: 'todo', due: daysBetweenToday(W(0, 4)), meeting_id: lastPortfolio.id })
   T({ project_id: 'p10', title: x('مالک داده‌های آموزشی AISN مشخص شود', 'Name an owner for AISN training data'), assignee: P.amin(), status: 'done', due: daysBetweenToday(W(-1, 4)), meeting_id: prevPortfolio.id })
@@ -423,14 +421,29 @@ export function buildDemo(): DB {
         ]
       : []),
     { id: 'c3', entity: 'Projects', entity_id: 'p8', author: P.jalil(), body: x('قبل از تعویق، گزینه‌ی کاهش دامنه را ببینیم.', 'Before slipping the date, let’s look at reducing scope.'), created_at: at(-1, '17:40') },
-    { id: 'c4', entity: 'Projects', entity_id: 'p2', author: P.mehrzad(), body: x(`@${me} برای بودجه‌ی تکمیلی یک صفحه‌ی خلاصه آماده کنیم.`, `@${me} let’s prepare a one-pager for the extra budget.`), created_at: at(-2, '12:10') },
+    { id: 'c4', entity: 'Projects', entity_id: 'p2', author: P.mehrzad(), body: x(`@${me} برای تغییر دامنه یک صفحه‌ی خلاصه برای کارفرما آماده کنیم.`, `@${me} let’s prepare a one-pager on the scope change for the client.`), created_at: at(-2, '12:10') },
     { id: 'c5', entity: 'FollowUps', entity_id: 'f2', author: me, body: x('پیش‌نویس درخواست ارسال شد.', 'Request draft sent.'), created_at: at(-1, '11:00') },
   ]
 
   const Files: FileRef[] = [
     { id: 'fl1', entity: 'Meetings', entity_id: lastPortfolio.id, name: x('ارائه-وضعیت-پورتفولیو.pdf', 'portfolio-status.pdf'), mime: 'application/pdf', size: 1_420_000, url: '', uploaded_by: me, created_at: W(-1, 2) },
+    { id: 'fl3', entity: 'Contracts', entity_id: 'k4', name: x('قرارداد-SimiPass-امضاشده.pdf', 'SimiPass-signed.pdf'), mime: 'application/pdf', size: 2_100_000, url: '', uploaded_by: me, created_at: d(-150) },
     { id: 'fl2', entity: 'Projects', entity_id: 'p8', name: x('برنامه-بازیابی-SimiPass.xlsx', 'SimiPass-recovery-plan.xlsx'), mime: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', size: 86_000, url: '', uploaded_by: P.sormeili(), created_at: d(-2) },
   ]
   const Config: ConfigRow[] = []
-  return { Projects, Scope, Milestones, Sprints, Tasks, FollowUps, Risks, Team, Allocations, Updates, Comments, Deliverables, Meetings, TimeOff, Files, Config }
+  // Contracts — visible only to the CEO and the program manager
+  const K = (id: string, project_id: string, title: [string, string], kind: Contract['kind'], status: Contract['status'], start: number, end: number, value: [string, string], notes: [string, string] = ['', '']): Contract => ({
+    id, project_id, title: x(...title), counterparty: x('کارفرمای ' + (SPECS.find((p) => p.id === project_id)?.name || ''), (SPECS.find((p) => p.id === project_id)?.name || '') + ' client'),
+    number: `ACG-${project_id.toUpperCase()}-${id.slice(1)}`, kind, status, start_date: d(start), end_date: d(end), value: x(...value), notes: x(...notes),
+  })
+  const Contracts: Contract[] = [
+    K('k1', 'p1', ['قرارداد مشاوره و پیاده‌سازی CX Orbit', 'CX Orbit consulting & delivery'], 'client', 'active', -125, 75, ['ماهانه + پاداش تحویل', 'Monthly + delivery bonus']),
+    K('k2', 'p2', ['قرارداد Insight X Padida — فاز ۱', 'Insight X Padida — phase 1'], 'client', 'active', -115, 30, ['ثابت', 'Fixed fee'], ['الحاقیه‌ی فاز ۲ در حال مذاکره', 'Phase 2 amendment under negotiation']),
+    K('k3', 'p2', ['الحاقیه‌ی فاز ۲ Insight X Padida', 'Insight X Padida phase 2 amendment'], 'client', 'negotiation', 30, 150, ['در حال مذاکره', 'Under negotiation']),
+    K('k4', 'p8', ['قرارداد SimiPass', 'SimiPass agreement'], 'client', 'active', -155, -6, ['ثابت + جریمه‌ی تأخیر', 'Fixed + delay penalty'], ['بند جریمه‌ی تأخیر از ددلاین فعال است', 'Delay-penalty clause active since the deadline']),
+    K('k5', 'p4', ['قرارداد Kadiner', 'Kadiner agreement'], 'client', 'signed', -95, 50, ['ماهانه', 'Monthly']),
+    K('k6', 'p10', ['توافق‌نامه‌ی محرمانگی داده‌ی AISN', 'AISN data NDA'], 'nda', 'signed', -80, 285, ['—', '—']),
+    K('k7', 'p5', ['قرارداد HamAfza', 'HamAfza agreement'], 'client', 'draft', 12, 185, ['پیش‌نویس', 'Draft']),
+  ]
+  return { Projects, Scope, Milestones, Sprints, Tasks, FollowUps, Risks, Team, Allocations, Updates, Comments, Deliverables, Meetings, TimeOff, Files, Config, Contracts }
 }

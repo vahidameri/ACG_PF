@@ -6,7 +6,7 @@ import { portfolioSummary, riskScore } from '../lib/metrics'
 import { fa, fmtDate, todayISO, relDays } from '../lib/jalali'
 import { HEALTH, RISK_TYPE } from '../lib/labels'
 import { L, lbl } from '../lib/i18n'
-import { money, useProjectName } from '../components/shared'
+import { useProjectName } from '../components/shared'
 import { AcgLogo } from '../components/Brand'
 import { RagStrip } from '../components/widgets'
 import { assess, DIM, DIMS } from '../lib/rag'
@@ -21,7 +21,6 @@ export default function Report() {
   const lastUpdate = (pid: string) => db.Updates.filter((u) => u.project_id === pid).sort((a, b) => (a.week_date < b.week_date ? 1 : -1))[0]
   const topRisks = db.Risks.filter((r) => r.status !== 'closed' && r.type !== 'decision').sort((a, b) => riskScore(b) - riskScore(a)).slice(0, 6)
   const decisions = db.Risks.filter((r) => r.type === 'decision' && r.status !== 'closed')
-  const budgetPct = s.budget ? Math.round((s.spent / s.budget) * 100) : 0
 
   const copyText = () => {
     const lines = [
@@ -30,7 +29,7 @@ export default function Report() {
         `پروژه‌های جاری: ${fa(s.live.length)} | سالم: ${fa(s.counts.green)} | نیازمند توجه: ${fa(s.counts.amber)} | در خطر: ${fa(s.counts.red)}`,
         `Live: ${s.live.length} | On track: ${s.counts.green} | At risk: ${s.counts.amber} | Off track: ${s.counts.red}`,
       ),
-      L(`میانگین پیشرفت: ${fa(s.avgProgress)}٪ | مصرف بودجه: ${fa(budgetPct)}٪`, `Avg. progress: ${s.avgProgress}% | Budget used: ${budgetPct}%`),
+      L(`میانگین پیشرفت: ${fa(s.avgProgress)}٪`, `Avg. progress: ${s.avgProgress}%`),
       '',
       ...rows.map((p) => {
         const m = s.metrics.get(p.id)!
@@ -86,10 +85,6 @@ export default function Report() {
           </header>
 
           <div className="space-y-10 px-10 py-9">
-            <p className="text-sm text-sub">
-              {L('بودجه‌ی کل پروژه‌های جاری', 'Total budget of live projects')}: <b className="text-ink">{money(s.budget)}</b> · {L('هزینه‌شده', 'Spent')}: <b className="text-ink">{money(s.spent)}</b> ({fa(budgetPct)}%)
-            </p>
-
             <section>
               <div className="eyebrow mb-3">01 — {L('وضعیت پروژه‌ها', 'Projects')}</div>
               <table className="w-full text-sm">

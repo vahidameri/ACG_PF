@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { Plus } from 'lucide-react'
 import { useStore } from '../lib/store'
+import { can } from '../lib/access'
 import { useEditor } from '../components/Editor'
 import { Band, Overlap, Toolbar, FilterSelect, Empty, SearchInput, Segmented } from '../components/ui'
 import { ProjectCard } from '../components/shared'
@@ -11,7 +12,8 @@ import { L, useI18n } from '../lib/i18n'
 import { usePins } from '../lib/prefs'
 
 export default function Projects() {
-  const { db, canEdit } = useStore()
+  const { db, canEdit: editor, access } = useStore()
+  const canEdit = editor && can.manage(access)
   const { lang } = useI18n()
   const { open } = useEditor()
   const { pins } = usePins()
@@ -40,7 +42,7 @@ export default function Projects() {
     <>
       <Band
         eyebrow={<span>{L('پورتفولیو / پروژه‌ها', 'Portfolio / Projects')}</span>}
-        title={L('پروژه‌ها', 'Projects')}
+        title={can.portfolio(access) ? L('پروژه‌ها', 'Projects') : L('پروژه‌های من', 'My projects')}
         sub={L(`${fa(list.length)} از ${fa(db.Projects.length)} پروژه`, `${list.length} of ${db.Projects.length} projects`)}
         actions={
           canEdit && (

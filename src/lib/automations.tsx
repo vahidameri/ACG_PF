@@ -54,7 +54,7 @@ export const useAuto = () => useContext(C)!
 
 export function AutomationProvider({ children }: { children: ReactNode }) {
   const store = useStore()
-  const { db, mode, me, canEdit, role, upsert, toast, setting, setSetting, action } = store
+  const { db, mode, me, canEdit, upsert, toast, setting, setSetting, action } = store
   const { session } = useGoogle()
   const [log, setLog] = useState<{ at: Date; text: string }[]>([])
   const [live, setLive] = useState<GEvent[]>([])
@@ -124,7 +124,7 @@ export function AutomationProvider({ children }: { children: ReactNode }) {
 
   // blocked_followup: only the admin's session runs it, so it isn't duplicated
   useEffect(() => {
-    if (!on('blocked_followup') || !(mode === 'demo' || role === 'admin') || ran.current.has('blocked')) return
+    if (!on('blocked_followup') || !(store.access === 'super') || ran.current.has('blocked')) return
     ran.current.add('blocked')
     const t = todayISO()
     const stuck = db.Tasks.filter((k: Task) => k.status === 'blocked' && ((k.due_date && daysBetween(k.due_date, t) >= 3) || (k.created_at && daysBetween(k.created_at, t) >= 3)))
@@ -135,11 +135,11 @@ export function AutomationProvider({ children }: { children: ReactNode }) {
       for (const k of fresh)
         await upsert('FollowUps', {
           id: uid('F'), project_id: k.project_id, subject: subject(k), person: k.assignee, channel: 'chat', due_date: t, status: 'open', priority: 'high',
-          notes: L('خودکار: این تسک بیش از ۳ روز مسدود مانده است.', 'Automatic: this task has been blocked for over 3 days.'), created_at: t, done_at: '',
+          notes: L('خودکار: این تسک بیش از ۳ روز مسدود مانده است.', 'Automatic: this task has been blocked for over 3 days.'), created_at: t, done_at: '', owner: me,
         })
       fire(L(`${fa(fresh.length)} فالوآپ برای تسک‌های مسدود ساخته شد`, `${fresh.length} follow-up(s) created for blocked tasks`))
     })()
-  }, [db, mode, role, on, upsert, fire])
+  }, [db, store.access, on, upsert, fire])
 
   // google_photo
   useEffect(() => {
@@ -162,7 +162,7 @@ export function AutomationProvider({ children }: { children: ReactNode }) {
       }
       if (!session) return
       try {
-        const ev = await createEvent(session.token, m, emails, L('ساخته‌شده از سکان ACG', 'Created from ACG Helm'))
+        const ev = await createEvent(session.token, m, emails, L('ساخته‌شده از اطلس ACG', 'Created from ACG Atlas'))
         await upsert('Meetings', { ...m, gcal_id: ev.id, meet_url: ev.meetUrl || m.meet_url })
         fire(L(`رویداد تقویم با لینک Meet ساخته شد و ${fa(emails.length)} نفر دعوت شدند`, `Calendar event + Meet link created, ${emails.length} invited`))
         setCalTick((n) => n + 1)

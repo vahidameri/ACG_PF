@@ -1,5 +1,5 @@
 // Multi-dimension RAG assessment — the view a portfolio director actually reads:
-// per project, which dimension is off (schedule, budget, scope, risk, resourcing, delivery),
+// per project, which dimension is off (schedule, scope, risk, resourcing, delivery),
 // why, and whether it is getting better or worse.
 import type { DB, Health, Project } from './types'
 import { projectMetrics, riskScore, sprintDonePoints, isTaskOverdue } from './metrics'
@@ -8,11 +8,10 @@ import { L, type T2 } from './i18n'
 import { allocActive, memberWeek } from './capacity'
 import { weekStart } from './weeks'
 
-export type Dim = 'schedule' | 'budget' | 'scope' | 'risk' | 'resourcing' | 'delivery'
-export const DIMS: Dim[] = ['schedule', 'budget', 'scope', 'risk', 'resourcing', 'delivery']
+export type Dim = 'schedule' | 'scope' | 'risk' | 'resourcing' | 'delivery'
+export const DIMS: Dim[] = ['schedule', 'scope', 'risk', 'resourcing', 'delivery']
 export const DIM: Record<Dim, T2> = {
   schedule: ['زمان‌بندی', 'Schedule'],
-  budget: ['بودجه', 'Budget'],
   scope: ['اسکوپ', 'Scope'],
   risk: ['ریسک', 'Risk'],
   resourcing: ['منابع', 'Resourcing'],
@@ -45,15 +44,6 @@ export function assess(p: Project, db: DB): Assessment {
   else if (m.scheduleGap <= -10 || m.overdueMilestones === 1) schedule = { h: 'amber', why: m.overdueMilestones ? L('یک مایلستون معوق', 'One milestone late') : L(`${fa(-m.scheduleGap)}٪ عقب از زمان`, `${-m.scheduleGap}% behind time`) }
   else if (m.daysLeft <= 14 && m.progress < 85) schedule = { h: 'amber', why: L('ددلاین نزدیک، کار زیاد مانده', 'Deadline close, work remaining') }
   else schedule = { h: 'green', why: m.scheduleGap >= 0 ? L(`${fa(m.scheduleGap)}٪ جلوتر از زمان`, `${m.scheduleGap}% ahead`) : L('در محدوده‌ی برنامه', 'Within plan') }
-
-  // Budget
-  const over = m.budgetUse - m.progress
-  const budget: DimRating =
-    m.budgetUse > 100
-      ? { h: 'red', why: L(`${fa(m.budgetUse - 100)}٪ بیش از بودجه`, `${m.budgetUse - 100}% over budget`) }
-      : over > 20
-        ? { h: 'amber', why: L(`هزینه ${fa(over)}٪ جلوتر از پیشرفت`, `Spend ${over}% ahead of progress`) }
-        : { h: 'green', why: L(`${fa(m.budgetUse)}٪ مصرف‌شده`, `${m.budgetUse}% used`) }
 
   // Scope: recent or pending change requests
   const since = addDays(today, -45)
@@ -107,7 +97,7 @@ export function assess(p: Project, db: DB): Assessment {
         ? { h: 'amber', why: sprintBehind ? L('اسپرینت عقب است', 'Sprint behind') : L(`${fa(blocked)} مسدود · ${fa(late)} معوق`, `${blocked} blocked · ${late} late`) }
         : { h: 'green', why: L('جریان کار روان', 'Flowing') }
 
-  const dims = { schedule, budget, scope, risk, resourcing, delivery }
+  const dims = { schedule, scope, risk, resourcing, delivery }
   const history = db.Updates.filter((u) => u.project_id === p.id)
     .sort((a, b) => (a.week_date < b.week_date ? -1 : 1))
     .slice(-6)

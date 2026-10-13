@@ -6,12 +6,14 @@ import { uid } from '../lib/api'
 import { todayISO } from '../lib/jalali'
 import { L, tr, type T2 } from '../lib/i18n'
 import {
-  CHANNEL, CONFIDENCE, DELIVERABLE_STATUS, MEETING_SERIES, MEETING_STATUS, TIMEOFF_KIND, FOLLOWUP_STATUS, HEALTH, MILESTONE_STATUS, PRIORITY, PROJECT_STATUS, RISK_STATUS, RISK_TYPE, SCOPE_STATUS, SPRINT_STATUS, TASK_STATUS,
+  CHANNEL, CONFIDENCE, CONTRACT_KIND, CONTRACT_STATUS, DELIVERABLE_STATUS, MEETING_SERIES, MEETING_STATUS, TIMEOFF_KIND, FOLLOWUP_STATUS, HEALTH, MILESTONE_STATUS, PRIORITY, PROJECT_STATUS, RISK_STATUS, RISK_TYPE, SCOPE_STATUS, SPRINT_STATUS, TASK_STATUS,
+  ACCESS,
 } from '../lib/labels'
 import { Sheet, cx } from './ui'
 import { DatePicker } from './DatePicker'
 import { ItemSheet } from './ItemSheet'
 import { useAuto } from '../lib/automations'
+import { can } from '../lib/access'
 
 type FieldType = 'text' | 'textarea' | 'select' | 'date' | 'number' | 'project' | 'person' | 'sprint' | 'member' | 'scale'
 export interface Field {
@@ -59,7 +61,7 @@ export const SCHEMAS: Record<EditableSheet, { title: T2; prefix: string; fields:
       { key: 'priority', label: ['اولویت', 'Priority'], type: 'select', options: PRIORITY, half: true },
       { key: 'notes', label: ['یادداشت / سابقه', 'Notes / history'], type: 'textarea' },
     ],
-    defaults: () => ({ status: 'open', priority: 'medium', channel: 'meeting', created_at: todayISO(), due_date: todayISO() }),
+    defaults: () => ({ status: 'open', priority: 'medium', channel: 'meeting', created_at: todayISO(), due_date: todayISO(), owner: '' }),
   },
   Projects: {
     title: ['پروژه', 'Project'],
@@ -78,11 +80,9 @@ export const SCHEMAS: Record<EditableSheet, { title: T2; prefix: string; fields:
       { key: 'progress', label: ['پیشرفت دستی (٪) — خالی = خودکار', 'Manual progress (%) — blank = automatic'], type: 'number', half: true },
       { key: 'start_date', label: ['شروع', 'Start'], type: 'date', half: true },
       { key: 'end_date', label: ['ددلاین', 'Deadline'], type: 'date', half: true },
-      { key: 'budget', label: ['بودجه (ریال)', 'Budget'], type: 'number', half: true },
-      { key: 'spent', label: ['هزینه‌شده (ریال)', 'Spent'], type: 'number', half: true },
       { key: 'health_override', label: ['سلامت دستی (خالی = محاسبه‌ی خودکار)', 'Health override (blank = automatic)'], type: 'select', options: { '': ['خودکار', 'Automatic'], ...HEALTH } },
     ],
-    defaults: () => ({ status: 'planning', priority: 'medium', start_date: todayISO(), budget: 0, spent: 0, progress: '', health_override: '', paused_at: '', pause_reason: '' }),
+    defaults: () => ({ status: 'planning', priority: 'medium', start_date: todayISO(), progress: '', health_override: '', paused_at: '', pause_reason: '' }),
   },
   Milestones: {
     title: ['مایلستون', 'Milestone'],
@@ -161,16 +161,19 @@ export const SCHEMAS: Record<EditableSheet, { title: T2; prefix: string; fields:
     title: ['عضو تیم', 'Team member'],
     prefix: 'M',
     fields: [
-      { key: 'name', label: ['نام', 'Name'], type: 'text', required: true },
+      { key: 'name', label: ['نام (فارسی)', 'Name (Persian)'], type: 'text', required: true, half: true },
+      { key: 'name_en', label: ['نام انگلیسی', 'Name in English'], type: 'text', half: true, placeholder: ['برای نمایش در حالت انگلیسی', 'Shown in the English interface'] },
       { key: 'role', label: ['نقش', 'Role'], type: 'text', half: true },
       { key: 'team', label: ['تیم', 'Team'], type: 'text', half: true },
       { key: 'track', label: ['ترک', 'Track'], type: 'select', options: { '': ['—', '—'], product: ['پروداکت', 'Product'], tech: ['تک', 'Tech'] }, half: true },
       { key: 'capacity', label: ['ظرفیت (٪ یک نفر تمام‌وقت)', 'Capacity (% of one full-time person)'], type: 'number', half: true, placeholder: ['۱۰۰ = تمام‌وقت', '100 = full-time'] },
       { key: 'email', label: ['ایمیل گوگل (برای ورود)', 'Google email (for sign-in)'], type: 'text', half: true },
       { key: 'phone', label: ['تلفن', 'Phone'], type: 'text', half: true },
+      { key: 'access', label: ['سطح دسترسی', 'Access level'], type: 'select', options: ACCESS, half: true },
+      { key: 'active', label: ['ورود', 'Sign-in'], type: 'select', options: { true: ['فعال', 'Active'], false: ['غیرفعال', 'Disabled'] }, half: true },
       { key: 'tasks_private', label: ['تسک‌های این فرد', 'This person’s tasks'], type: 'select', options: { '': ['برای تیم قابل مشاهده', 'Visible to the team'], '1': ['خصوصی (فقط خودش و ثبت‌کننده)', 'Private (only them & the reporter)'] } },
     ],
-    defaults: () => ({ capacity: 100, photo: '', tasks_private: '', phone: '' }),
+    defaults: () => ({ name_en: '', capacity: 100, photo: '', tasks_private: '', phone: '', access: 'member', active: 'true' }),
   },
   Allocations: {
     title: ['تخصیص منابع', 'Allocation'],
@@ -219,6 +222,23 @@ export const SCHEMAS: Record<EditableSheet, { title: T2; prefix: string; fields:
       { key: 'decisions', label: ['تصمیم‌ها (هر خط یک مورد)', 'Decisions (one per line)'], type: 'textarea' },
     ],
     defaults: () => ({ series: 'portfolio', status: 'scheduled', date: todayISO(), time: '10:00', duration: 45, notes: '', decisions: '', project_id: '', gcal_id: '', meet_url: '' }),
+  },
+  Contracts: {
+    title: ['قرارداد', 'Contract'],
+    prefix: 'K',
+    fields: [
+      { key: 'title', label: ['عنوان قرارداد', 'Contract title'], type: 'text', required: true },
+      { key: 'project_id', label: ['پروژه', 'Project'], type: 'project', half: true, required: true },
+      { key: 'counterparty', label: ['طرف قرارداد', 'Counterparty'], type: 'text', half: true },
+      { key: 'kind', label: ['نوع', 'Type'], type: 'select', options: CONTRACT_KIND, half: true },
+      { key: 'status', label: ['وضعیت', 'Status'], type: 'select', options: CONTRACT_STATUS, half: true },
+      { key: 'number', label: ['شماره', 'Number'], type: 'text', half: true },
+      { key: 'value', label: ['شرایط مالی', 'Commercial terms'], type: 'text', half: true },
+      { key: 'start_date', label: ['شروع', 'Start'], type: 'date', half: true },
+      { key: 'end_date', label: ['پایان', 'End'], type: 'date', half: true },
+      { key: 'notes', label: ['یادداشت', 'Notes'], type: 'textarea' },
+    ],
+    defaults: () => ({ kind: 'client', status: 'draft', start_date: todayISO(), notes: '', value: '', number: '' }),
   },
   TimeOff: {
     title: ['مرخصی / عدم حضور', 'Time off'],
@@ -357,7 +377,9 @@ export function FieldInput({ f, value, set, form, disabled, autoFocus, onSubmit 
 }
 
 function EditorModal({ sheet, row, isNew, onClose }: { sheet: EditableSheet; row: Record<string, unknown>; isNew: boolean; onClose: () => void }) {
-  const { upsert, remove, toast, canEdit } = useStore()
+  const { upsert, remove, toast, canEdit: editor, access, me } = useStore()
+  // projects, people, allocations and contracts are managed by leadership only
+  const canEdit = editor && (!['Projects', 'Team', 'Allocations', 'Contracts'].includes(sheet) || can.manage(access)) && (sheet !== 'Contracts' || can.contracts(access))
   const auto = useAuto()
   const schema = SCHEMAS[sheet]
   const [form, setForm] = useState<Record<string, unknown>>(row)
@@ -374,6 +396,7 @@ function EditorModal({ sheet, row, isNew, onClose }: { sheet: EditableSheet; row
     if (isNew) out.id = uid(schema.prefix)
     // Auto-stamp completion dates so burndown & history stay accurate.
     if (sheet === 'Tasks') out.completed_at = out.status === 'done' ? out.completed_at || todayISO() : ''
+    if (sheet === 'FollowUps' && !out.owner) out.owner = me
     if (sheet === 'FollowUps') out.done_at = out.status === 'done' ? out.done_at || todayISO() : ''
     // The first committed date becomes the baseline; later moves show up as slippage.
     if (sheet === 'Deliverables') {

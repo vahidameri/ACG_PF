@@ -24,8 +24,8 @@ function Switch({ on, onChange, disabled }: { on: boolean; onChange: (v: boolean
   )
 }
 
-export default function Settings() {
-  const { config, setConfig, mode, resetDemo, role, db } = useStore()
+export default function Settings({ embedded }: { embedded?: boolean }) {
+  const { config, setConfig, mode, resetDemo, role, db, access } = useStore()
   const { session } = useGoogle()
   const auto = useAuto()
   const { lang, setLang, cal, setCal } = useI18n()
@@ -33,7 +33,7 @@ export default function Settings() {
   const [client, setClient] = useState(config.googleClientId || '')
   const [token, setToken] = useState(config.token)
   const [test, setTest] = useState<{ state: 'idle' | 'loading' | 'ok' | 'err'; msg?: string }>({ state: 'idle' })
-  const admin = role === 'admin'
+  const admin = access === 'super'
 
   const runTest = async () => {
     setTest({ state: 'loading' })
@@ -53,8 +53,8 @@ export default function Settings() {
 
   return (
     <>
-      <Band title={L('تنظیمات', 'Settings')} sub={L(`اتصال ${APP_NAME()} به گوگل، اتوماسیون‌ها و نمایش.`, `${APP_NAME()}’s Google connection, automations and display.`)} />
-      <Overlap className="grid items-start gap-4 @xl:grid-cols-[3fr_2fr]">
+      {!embedded && <Band title={L('تنظیمات', 'Settings')} sub={L(`اتصال ${APP_NAME()} به گوگل، اتوماسیون‌ها و نمایش.`, `${APP_NAME()}’s Google connection, automations and display.`)} />}
+      <Wrap embedded={embedded}>
         <Card
           eyebrow={<span className="flex items-center gap-1.5"><Zap size={12} /> {L('اتوماسیون', 'Automations')}</span>}
           title={L('کارهایی که خودکار انجام می‌شوند', 'Work that happens on its own')}
@@ -174,7 +174,12 @@ export default function Settings() {
             )}
           </div>
         </Card>
-      </Overlap>
+      </Wrap>
     </>
   )
+}
+
+function Wrap({ embedded, children }: { embedded?: boolean; children: React.ReactNode }) {
+  const cls = 'grid items-start gap-4 @xl:grid-cols-[3fr_2fr]'
+  return embedded ? <div className={cls}>{children}</div> : <Overlap className={cls}>{children}</Overlap>
 }
