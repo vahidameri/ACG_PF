@@ -21,7 +21,7 @@ import { uid } from '../lib/api'
 import { addDays, fa, fmtDayMonth, fmtWeekday, relDays, todayISO } from '../lib/jalali'
 import { L, lbl } from '../lib/i18n'
 import { MEETING_SERIES, MEETING_STATUS } from '../lib/labels'
-import { inWeek, updateDue, weekLabel, weekRel, weekStart, weeksFrom } from '../lib/weeks'
+import { inWeek, updateDue, weekCfg, weekLabel, weekRel, weekStart, weeklyDate, weeksFrom } from '../lib/weeks'
 import { assess } from '../lib/rag'
 import { isClosed, isOverdue, deliveryTrack, slipDays } from '../lib/delivery'
 import { overloaded, trackWeek } from '../lib/capacity'
@@ -79,7 +79,7 @@ export default function Weekly() {
             />
             {view === 'week' && <WeekNav ws={ws} onChange={setWs} />}
             {canEdit && (
-              <button className="btn h-10 bg-white text-band" onClick={() => open('Meetings', { date: ws === weekStart() ? today : addDays(ws, 2), facilitator: me, attendees: me })}>
+              <button className="btn h-10 bg-white text-band" onClick={() => open('Meetings', { date: weeklyDate(ws) < today ? today : weeklyDate(ws), time: weekCfg().weeklyTime, facilitator: me, attendees: me })}>
                 <Plus size={16} /> {L('جلسه‌ی جدید', 'New meeting')}
               </button>
             )}

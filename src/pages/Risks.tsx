@@ -19,9 +19,11 @@ export default function Risks() {
   const [project, setProject] = useState('')
   const [type, setType] = useState('')
   const [status, setStatus] = useState('active')
+  const [cell, setCell] = useState('')
   const today = todayISO()
 
   const list = db.Risks.filter((r) => (!project || r.project_id === project) && (!type || r.type === type) && (status === 'active' ? r.status !== 'closed' : !status || r.status === status)).sort((a, b) => riskScore(b) - riskScore(a))
+  const rows = cell ? list.filter((r) => `${r.probability}-${r.impact}` === cell) : list
   const openAll = db.Risks.filter((r) => r.status !== 'closed')
   const count = (t: string) => openAll.filter((r) => r.type === t).length
 
@@ -59,10 +61,10 @@ export default function Risks() {
         </div>
         <div className="grid gap-4 @xl:grid-cols-3">
           <Card eyebrow={L('ماتریس', 'Matrix')} title={L('احتمال × اثر', 'Probability × impact')}>
-            <RiskMatrix risks={list} onPick={(r) => open('Risks', r as never)} />
+            <RiskMatrix risks={list} cell={cell} onCell={setCell} onPick={(r) => open('Risks', r as never)} />
           </Card>
           <Card className="@xl:col-span-2" pad={false}>
-            {list.length === 0 ? (
+            {rows.length === 0 ? (
               <Empty />
             ) : (
               <div className="overflow-x-auto">
@@ -79,7 +81,7 @@ export default function Risks() {
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-line">
-                    {list.map((r, i) => (
+                    {rows.map((r, i) => (
                       <tr key={r.id} onClick={() => open('Risks', r as never)} className="cursor-pointer transition hover:bg-muted/40">
                         <td className="td text-sub num">{fa(i + 1)}</td>
                         <td className="td">

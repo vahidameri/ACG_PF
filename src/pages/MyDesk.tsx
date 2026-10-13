@@ -7,14 +7,14 @@ import { useEditor } from '../components/Editor'
 import { Band, Card, Empty, Overlap, Avatar, cx, Segmented, StatStrip, Chip, Ring, PriorityIcon, Due } from '../components/ui'
 import { FollowUpRow, TaskRow, useProjectName } from '../components/shared'
 import { PersonPicker, ProjectPicker } from '../components/pickers'
-import { addDays, daysFromToday, fa, fmtDate, todayISO, daysBetween, firstName, greeting, fmtWeekday, dayNum, parseISO } from '../lib/jalali'
+import { addDays, daysFromToday, fa, fmtDate, todayISO, daysBetween, firstName, greeting, fmtWeekday, dayNum } from '../lib/jalali'
 import { isTaskOverdue, projectMetrics, riskScore } from '../lib/metrics'
 import { uid } from '../lib/api'
 import { PRIORITY_ORDER } from '../lib/labels'
 import { L } from '../lib/i18n'
 import type { Task } from '../lib/types'
 import { useComposer } from '../components/UpdateComposer'
-import { inWeek, updateDue, weekStart } from '../lib/weeks'
+import { inWeek, isWorkday, updateDue, weekStart } from '../lib/weeks'
 import { deliverySummary } from '../lib/delivery'
 import { overloaded } from '../lib/capacity'
 import { CalendarRange, PackageCheck, FileText, Gauge } from 'lucide-react'
@@ -286,7 +286,7 @@ export default function MyDesk() {
                 const tasksN = myOpen.filter((t) => t.due_date === d).length + (d === today ? myToday.filter((t) => t.due_date < today).length : 0)
                 const fuN = fuOpen.filter((f) => f.due_date === d || (d === today && f.due_date < today && f.status === 'open')).length
                 const msN = db.Milestones.filter((m) => m.status !== 'done' && m.planned_date === d).length
-                const weekend = parseISO(d)!.getDay() === 5
+                const weekend = !isWorkday(d)
                 const sel = day === d
                 return (
                   <button

@@ -11,7 +11,7 @@ import { Avatar, Due, cx, HealthBadge, Chip, StatusIcon, PriorityIcon } from './
 import { TASK_STATUS, TASK_STATUS_ORDER, MILESTONE_STATUS, HEALTH } from '../lib/labels'
 import type { Activity } from '../lib/activity'
 import { DIM, DIMS, type Assessment } from '../lib/rag'
-import { burndown, riskScore, sprintCommitted, sprintDonePoints } from '../lib/metrics'
+import { burndown, riskLevel, riskScore, sprintCommitted, sprintDonePoints } from '../lib/metrics'
 import { fa, fmtDayMonth, fmtDate, todayISO, daysFromToday, timeAgo, relDays } from '../lib/jalali'
 import { L, lbl, locale, tr } from '../lib/i18n'
 import { useProjectName } from './shared'
@@ -150,38 +150,93 @@ export function VelocityChart({ sprints, db }: { sprints: Sprint[]; db: DB }) {
 }
 
 // ---------------- Risk matrix ----------------
-export function RiskMatrix({ risks, onPick }: { risks: Risk[]; onPick?: (r: Risk) => void }) {
-  const cell = (p: number, i: number) => risks.filter((r) => Number(r.probability) === p && Number(r.impact) === i)
-  const tone = (s: number) => (s >= 15 ? 'bg-bad/[0.14]' : s >= 8 ? 'bg-warn/[0.14]' : 'bg-good/[0.10]')
+const SCALE: [string, string][] = [['خیلی کم', 'Very low'], ['کم', 'Low'], ['متوسط', 'Medium'], ['زیاد', 'High'], ['خیلی زیاد', 'Very high']]
+const BAND = {
+  green: { cell: 'bg-good/[0.07]', hot: 'bg-good text-white', dot: 'bg-good', label: ['کم', 'Low'] },
+  amber: { cell: 'bg-warn/[0.08]', hot: 'bg-warn text-white', dot: 'bg-warn', label: ['متوسط', 'Medium'] },
+  red: { cell: 'bg-bad/[0.08]', hot: 'bg-bad text-white', dot: 'bg-bad', label: ['بحرانی', 'Critical'] },
+} as const
+
+/** 5×5 heat map. Each cell shows how many risks sit there; click a cell to list (and filter) them. */
+export function RiskMatrix({ risks, onPick, cell: active, onCell }: { risks: Risk[]; onPick?: (r: Risk) => void; cell?: string; onCell?: (key: string) => void }) {
+  const [own, setOwn] = useState('')
+  const sel = active ?? own
+  const pick = (k: string) => (onCell ? onCell(k === sel ? '' : k) : setOwn(k === sel ? '' : k))
+  const at = (p: number, i: number) => risks.filter((r) => Number(r.probability) === p && Number(r.impact) === i)
+  const chosen = sel ? at(Number(sel[0]), Number(sel[2])) : []
+  const counts = { green: 0, amber: 0, red: 0 }
+  risks.forEach((r) => riskScore(r) > 0 && counts[riskLevel(riskScore(r))]++)
+  const axis = 'text-[0.625rem] leading-tight text-sub'
   return (
-    <div className="flex gap-2">
-      <div className="flex flex-col justify-center">
-        <span className="eyebrow rotate-180 [writing-mode:vertical-rl]">{L('احتمال', 'Probability')} →</span>
-      </div>
-      <div className="flex-1">
-        <div className="grid grid-cols-5 gap-1.5">
+    <div className="mx-auto max-w-sm">
+      <div className="grid grid-cols-[auto_1fr] gap-x-2">
+        <div className="grid grid-rows-5 gap-1">
+          {[5, 4, 3, 2, 1].map((p) => (
+            <div key={p} className={cx(axis, 'flex items-center justify-end text-end')}>
+              {L(SCALE[p - 1][0], SCALE[p - 1][1])}
+            </div>
+          ))}
+        </div>
+        <div className="grid grid-cols-5 gap-1">
           {[5, 4, 3, 2, 1].map((p) =>
             [1, 2, 3, 4, 5].map((i) => {
-              const items = cell(p, i)
+              const items = at(p, i)
+              const b = BAND[riskLevel(p * i)]
+              const key = `${p}-${i}`
               return (
-                <div key={`${p}-${i}`} className={cx('relative flex aspect-[1.3] flex-wrap content-start gap-1 rounded-xl p-1.5 transition', tone(p * i))} title={`${L('احتمال', 'P')} ${p} × ${L('اثر', 'I')} ${i}`}>
-                  {items.map((r) => (
-                    <button
-                      key={r.id}
-                      onClick={() => onPick?.(r)}
-                      title={r.title}
-                      className={cx('h-5 min-w-5 rounded-full px-1 text-[0.625rem] font-bold text-white shadow-sm transition hover:scale-110', p * i >= 15 ? 'bg-bad' : p * i >= 8 ? 'bg-warn' : 'bg-good')}
-                    >
-                      {fa(risks.indexOf(r) + 1)}
-                    </button>
-                  ))}
-                </div>
+                <button
+                  key={key}
+                  disabled={!items.length}
+                  onClick={() => pick(key)}
+                  title={items.length ? items.map((r) => r.title).join('\n') : `${p} × ${i} = ${p * i}`}
+                  className={cx(
+                    'grid aspect-square place-items-center rounded-lg text-sm font-semibold num transition',
+                    items.length ? cx(b.hot, 'hover:scale-[1.04]') : b.cell,
+                    sel === key && 'ring-2 ring-ink ring-offset-2 ring-offset-surface',
+                    sel && sel !== key && 'opacity-50',
+                  )}
+                >
+                  {items.length ? fa(items.length) : ''}
+                </button>
               )
             }),
           )}
         </div>
-        <div className="eyebrow mt-2 text-center">{L('اثر', 'Impact')} →</div>
+        <span />
+        <div className="mt-1 grid grid-cols-5 gap-1">
+          {[1, 2, 3, 4, 5].map((i) => (
+            <div key={i} className={cx(axis, 'text-center')}>
+              {L(SCALE[i - 1][0], SCALE[i - 1][1])}
+            </div>
+          ))}
+        </div>
       </div>
+      <div className="mt-2 flex items-center justify-between text-[0.6875rem] text-sub">
+        <span>↑ {L('احتمال', 'Probability')}</span>
+        <span>{L('اثر ←', 'Impact →')}</span>
+      </div>
+      <div className="mt-3 flex flex-wrap gap-x-4 gap-y-1 border-t border-line pt-3 text-xs">
+        {(['red', 'amber', 'green'] as const).map((k) => (
+          <span key={k} className="flex items-center gap-1.5">
+            <span className={cx('h-2 w-2 rounded-full', BAND[k].dot)} />
+            {L(BAND[k].label[0], BAND[k].label[1])}
+            <b className="num">{fa(counts[k])}</b>
+          </span>
+        ))}
+      </div>
+      {!onCell && chosen.length > 0 && (
+        <ul className="mt-3 space-y-1">
+          {chosen.map((r) => (
+            <li key={r.id}>
+              <button onClick={() => onPick?.(r)} className="flex w-full items-center gap-2 rounded-lg px-2 py-1.5 text-start text-xs transition hover:bg-muted">
+                <span className={cx('h-1.5 w-1.5 shrink-0 rounded-full', BAND[riskLevel(riskScore(r))].dot)} />
+                <span className="flex-1 truncate">{r.title}</span>
+                <span className="shrink-0 text-sub">{r.owner}</span>
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
     </div>
   )
 }

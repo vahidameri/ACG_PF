@@ -1,6 +1,7 @@
 import { createContext, useCallback, useContext, useState, type ReactNode } from 'react'
 import { Trash2 } from 'lucide-react'
 import type { SheetName } from '../lib/types'
+import { weekCfg } from '../lib/weeks'
 import { useStore } from '../lib/store'
 import { uid } from '../lib/api'
 import { todayISO } from '../lib/jalali'
@@ -223,7 +224,7 @@ export const SCHEMAS: Record<EditableSheet, { title: T2; prefix: string; fields:
       { key: 'notes', label: ['صورت‌جلسه', 'Minutes'], type: 'textarea' },
       { key: 'decisions', label: ['تصمیم‌ها', 'Decisions'], type: 'textarea' },
     ],
-    defaults: () => ({ series: 'portfolio', status: 'scheduled', date: todayISO(), time: '10:00', duration: 45, notes: '', decisions: '', project_id: '', gcal_id: '', meet_url: '' }),
+    defaults: () => ({ series: 'portfolio', status: 'scheduled', date: todayISO(), time: weekCfg().weeklyTime, duration: 45, notes: '', decisions: '', project_id: '', gcal_id: '', meet_url: '' }),
   },
   Contracts: {
     title: ['قرارداد', 'Contract'],

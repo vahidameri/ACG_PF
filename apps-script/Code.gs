@@ -310,6 +310,8 @@ function upsert_(name, row, user) {
     if (v === undefined || v === null) return '';
     // keep "10:00" as text so Sheets doesn't turn it into a 1899 date-time
     if (h === 'time' && v !== '') return "'" + v;
+    // settings are always text ("0,1,2,3,4" must not become a number)
+    if (name === 'Config' && h === 'value' && v !== '') return "'" + v;
     return v;
   });
   var idx = findRow_(sh, row.id);
@@ -499,7 +501,7 @@ function onOpen() {
     .addItem('فعال‌سازی ایمیل روزانه', 'installDailyDigest')
     .addItem('نصب همه‌ی اتوماسیون‌ها', 'installAutomations')
     .addItem('فعال‌سازی یادآوری گزارش هفتگی', 'installWeeklyReminder')
-    .addItem('ارسال یادآوری گزارش هفتگی (همین حالا)', 'remindWeeklyUpdates')
+    .addItem('ارسال یادآوری گزارش هفتگی (همین حالا)', 'remindWeeklyUpdatesNow')
     .addToUi();
 }
 
@@ -562,29 +564,51 @@ function sendDailyDigest() {
 }
 
 // --------------------------------------------------------------------------
-// Weekly update cycle — reports are due by end of Sunday; the portfolio weekly is Monday.
-// remindWeeklyUpdates emails each project lead whose active project has no update this week
-// (week starts Saturday) and sends the PMO a list of who is missing.
+// Weekly update cycle — set in the app (back office → settings → weekly cycle), stored in Config:
+// week.start, week.due_day, week.weekly_day (Saturday = 0 … Friday = 6). Defaults: Saturday, Wednesday, Thursday.
+// remindWeeklyUpdates runs daily; it emails leads with no update this week at 14:00 on the deadline day
+// and at 08:00 on the weekly's day, and sends the PMO a list of who is missing.
 // --------------------------------------------------------------------------
 
 function installWeeklyReminder() {
   ScriptApp.getProjectTriggers().forEach(function (t) {
     if (t.getHandlerFunction() === 'remindWeeklyUpdates') ScriptApp.deleteTrigger(t);
   });
-  // Sunday 14:00 (a nudge before the deadline) and Monday 08:00 (last call before the weekly)
-  ScriptApp.newTrigger('remindWeeklyUpdates').timeBased().onWeekDay(ScriptApp.WeekDay.SUNDAY).atHour(14).create();
-  ScriptApp.newTrigger('remindWeeklyUpdates').timeBased().onWeekDay(ScriptApp.WeekDay.MONDAY).atHour(8).create();
-  safeAlert_('یادآوری گزارش هفتگی یکشنبه ساعت ۱۴ و دوشنبه ساعت ۸ برای مدیران پروژه‌ای که گزارش نداده‌اند ارسال می‌شود.');
+  weeklyTriggers_();
+  safeAlert_('یادآوری گزارش هفتگی روز مهلت ساعت ۱۴ و صبح روز ویکلی ساعت ۸ ارسال می‌شود (روزها از تنظیمات اپ).');
+}
+
+// The deadline-day nudge (14:00) and the weekly-morning last call (08:00) both run daily and check the day.
+function weeklyTriggers_() {
+  ScriptApp.newTrigger('remindWeeklyUpdates').timeBased().everyDays(1).atHour(14).create();
+  ScriptApp.newTrigger('remindWeeklyUpdates').timeBased().everyDays(1).atHour(8).create();
+}
+
+function weekDay_(key, fallback) {
+  var n = Number(setting_(key, ''));
+  return setting_(key, '') !== '' && n >= 0 && n <= 6 ? n : fallback;
+}
+
+/** Today as Saturday = 0 … Friday = 6, in the script's time zone. */
+function todayIndex_(tz) {
+  return (Number(Utilities.formatDate(new Date(), tz, 'u')) + 1) % 7; // u: Monday = 1 … Sunday = 7
 }
 
 function weekStartISO_(tz) {
-  var x = new Date();
-  var dow = (x.getDay() + 1) % 7; // Saturday = 0
-  x.setDate(x.getDate() - dow);
-  return Utilities.formatDate(x, tz, 'yyyy-MM-dd');
+  var back = (todayIndex_(tz) - weekDay_('week.start', 0) + 7) % 7;
+  return Utilities.formatDate(new Date(Date.now() - back * 86400000), tz, 'yyyy-MM-dd');
 }
 
+/** Scheduled: only acts on the deadline day (afternoon run) or the weekly's day (morning run). */
 function remindWeeklyUpdates() {
+  var tz = Session.getScriptTimeZone();
+  var morning = Number(Utilities.formatDate(new Date(), tz, 'H')) < 12;
+  var target = morning ? weekDay_('week.weekly_day', 5) : weekDay_('week.due_day', 4);
+  if (todayIndex_(tz) !== target) return;
+  remindWeeklyUpdatesNow();
+}
+
+function remindWeeklyUpdatesNow() {
   if (!automationOn_('update_reminder')) return;
   var data = readAll_();
   var tz = Session.getScriptTimeZone();
@@ -722,9 +746,8 @@ function installAutomations() {
   ScriptApp.getProjectTriggers().forEach(function (t) { if (keep[t.getHandlerFunction()]) ScriptApp.deleteTrigger(t); });
   ScriptApp.newTrigger('sendDailyDigest').timeBased().everyDays(1).atHour(7).nearMinute(30).create();
   ScriptApp.newTrigger('remindOverdueActions').timeBased().everyDays(1).atHour(8).nearMinute(15).create();
-  ScriptApp.newTrigger('remindWeeklyUpdates').timeBased().onWeekDay(ScriptApp.WeekDay.SUNDAY).atHour(14).create();
-  ScriptApp.newTrigger('remindWeeklyUpdates').timeBased().onWeekDay(ScriptApp.WeekDay.MONDAY).atHour(8).create();
-  safeAlert_('اتوماسیون‌ها نصب شدند: خلاصه‌ی صبح ۷:۳۰، یادآوری اقدام‌های معوق ۸:۱۵، یادآوری گزارش هفتگی یکشنبه ۱۴ و دوشنبه ۸. روشن/خاموش کردن هر کدام از صفحه‌ی تنظیمات اپ.');
+  weeklyTriggers_();
+  safeAlert_('اتوماسیون‌ها نصب شدند: خلاصه‌ی صبح ۷:۳۰، یادآوری اقدام‌های معوق ۸:۱۵، یادآوری گزارش هفتگی (روز مهلت ۱۴ و صبح روز ویکلی ۸). روزها و روشن/خاموش از تنظیمات اپ.');
 }
 
 // --------------------------------------------------------------------------

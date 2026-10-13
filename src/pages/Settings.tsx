@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { CheckCircle2, Link2, Loader2, RotateCcw, Unplug, XCircle, Zap } from 'lucide-react'
+import { CalendarClock, CheckCircle2, Link2, Loader2, RotateCcw, Unplug, XCircle, Zap } from 'lucide-react'
 import { useStore } from '../lib/store'
 import { useGoogle } from '../lib/google'
 import { useAuto, AUTOMATIONS } from '../lib/automations'
@@ -9,6 +9,7 @@ import { fa, timeAgo } from '../lib/jalali'
 import { L, lbl, tr, useI18n } from '../lib/i18n'
 import { ROLE } from '../lib/labels'
 import { APP_NAME } from '../lib/brand'
+import { WEEK_KEYS, weekCfg } from '../lib/weeks'
 
 function Switch({ on, onChange, disabled }: { on: boolean; onChange: (v: boolean) => void; disabled?: boolean }) {
   return (
@@ -83,6 +84,8 @@ export default function Settings({ embedded }: { embedded?: boolean }) {
             </div>
           )}
         </Card>
+
+        <WeekCard admin={admin} />
 
         <Card eyebrow="Google" title={L('ورود با گوگل و تقویم', 'Google sign-in & calendar')}>
           <div className="space-y-4">
@@ -163,6 +166,53 @@ export default function Settings({ embedded }: { embedded?: boolean }) {
         </Card>
       </Wrap>
     </>
+  )
+}
+
+const DAYS: [string, string][] = [['شنبه', 'Saturday'], ['یکشنبه', 'Sunday'], ['دوشنبه', 'Monday'], ['سه‌شنبه', 'Tuesday'], ['چهارشنبه', 'Wednesday'], ['پنجشنبه', 'Thursday'], ['جمعه', 'Friday']]
+
+/** Weekly cycle: shared for everyone, edited by the program manager. */
+function WeekCard({ admin }: { admin: boolean }) {
+  const { setSetting } = useStore()
+  const c = weekCfg()
+  const day = (label: string, key: string, value: number) => (
+    <div className="flex items-center justify-between gap-4">
+      <div className="text-sm font-medium">{label}</div>
+      <select className="input h-9 w-36 text-xs" disabled={!admin} value={value} onChange={(e) => setSetting(key, e.target.value)}>
+        {DAYS.map((d, i) => (
+          <option key={i} value={i}>
+            {L(d[0], d[1])}
+          </option>
+        ))}
+      </select>
+    </div>
+  )
+  const toggle = (i: number) => {
+    const next = c.workdays.includes(i) ? c.workdays.filter((x) => x !== i) : [...c.workdays, i].sort()
+    setSetting(WEEK_KEYS.workdays, next.join(','))
+  }
+  return (
+    <Card eyebrow={<span className="flex items-center gap-1.5"><CalendarClock size={12} /> {L('هفته', 'Week')}</span>} title={L('چرخه‌ی هفتگی', 'Weekly cycle')}>
+      <div className="space-y-4">
+        {day(L('جلسه‌ی هفتگی', 'Weekly meeting'), WEEK_KEYS.weeklyDay, c.weeklyDay)}
+        <div className="flex items-center justify-between gap-4">
+          <div className="text-sm font-medium">{L('ساعت جلسه', 'Meeting time')}</div>
+          <input type="time" dir="ltr" className="input h-9 w-36 text-xs" disabled={!admin} value={c.weeklyTime} onChange={(e) => e.target.value && setSetting(WEEK_KEYS.weeklyTime, e.target.value)} />
+        </div>
+        {day(L('مهلت گزارش هفتگی', 'Weekly report due'), WEEK_KEYS.dueDay, c.dueDay)}
+        {day(L('شروع هفته', 'Week starts'), WEEK_KEYS.start, c.start)}
+        <div>
+          <div className="mb-2 text-sm font-medium">{L('روزهای کاری', 'Workdays')}</div>
+          <div className="flex flex-wrap gap-1.5">
+            {DAYS.map((d, i) => (
+              <button key={i} disabled={!admin} onClick={() => toggle(i)} className={cx('h-8 rounded-full border px-3 text-xs transition disabled:opacity-60', c.workdays.includes(i) ? 'border-ink bg-ink text-surface' : 'border-line text-sub hover:text-ink')}>
+                {L(d[0], d[1].slice(0, 3))}
+              </button>
+            ))}
+          </div>
+        </div>
+      </div>
+    </Card>
   )
 }
 

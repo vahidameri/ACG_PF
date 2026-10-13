@@ -53,7 +53,12 @@ export function Login({ onEnter }: { onEnter: () => void }) {
           <div className="display text-6xl leading-none text-white">{L('اطلس', 'Atlas')}</div>
           <p className="mt-4 text-lg text-[#c3d0e8]">{L('اطلس پروژه‌های ACG', 'The ACG engagement atlas')}</p>
         </div>
-        <div className="relative z-10 text-[0.6875rem] text-band-sub">Antwerp Consulting Group</div>
+        <div className="relative z-10 flex items-center justify-between text-[0.6875rem] text-band-sub">
+          <span>Antwerp Consulting Group</span>
+          <a href="https://joinacg.com" target="_blank" rel="noreferrer" dir="ltr" className="font-mono uppercase tracking-[0.18em] transition hover:text-white">
+            joinacg.com
+          </a>
+        </div>
       </aside>
 
       {/* sign-in side */}
@@ -106,6 +111,9 @@ export function Login({ onEnter }: { onEnter: () => void }) {
             )}
           </div>
         </div>
+        <a href="https://joinacg.com" target="_blank" rel="noreferrer" dir="ltr" className="pb-6 text-center font-mono text-[0.6875rem] uppercase tracking-[0.18em] text-sub transition hover:text-ink lg:hidden">
+          joinacg.com
+        </a>
       </main>
     </div>
   )
