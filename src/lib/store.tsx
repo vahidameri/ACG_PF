@@ -13,7 +13,7 @@ import type { Access } from './types'
 import { setPhotos } from '../components/ui'
 
 // Demo edits are kept per language so switching language shows sample data in that language.
-const demoKey = () => `acg.demo.v5.${locale.lang}`
+const demoKey = () => `acg.demo.v6.${locale.lang}`
 const ME_KEY = 'acg.me'
 
 const NUMERIC: Partial<Record<SheetName, string[]>> = {
@@ -28,7 +28,7 @@ const NUMERIC: Partial<Record<SheetName, string[]>> = {
 }
 
 function emptyDB(): DB {
-  return { Projects: [], Scope: [], Milestones: [], Sprints: [], Tasks: [], FollowUps: [], Risks: [], Team: [], Allocations: [], Updates: [], Comments: [], Deliverables: [], Meetings: [], TimeOff: [], Files: [], Config: [], Contracts: [] }
+  return { Projects: [], Scope: [], Milestones: [], Sprints: [], Tasks: [], FollowUps: [], Risks: [], Team: [], Allocations: [], Updates: [], Comments: [], Deliverables: [], Meetings: [], Files: [], Config: [], Contracts: [] }
 }
 
 // Sheets return numbers as numbers or strings, dates as ISO strings. Normalize once here.
@@ -104,10 +104,12 @@ function loadDemo(): DB {
 }
 
 export function StoreProvider({ children }: { children: ReactNode }) {
-  const [config, setConfigState] = useState<Config>(loadConfig)
-  const mode: Mode = config.apiUrl ? 'live' : 'demo'
-  const { session } = useGoogle()
-  const authed = mode === 'demo' || !!session || !!config.token
+  const [configRaw, setConfigState] = useState<Config>(loadConfig)
+  const { session, hosted, apiUrl } = useGoogle()
+  // Served by Apps Script: the data API address comes from the script, not from settings.
+  const config = useMemo(() => (hosted && apiUrl ? { ...configRaw, apiUrl } : configRaw), [configRaw, hosted, apiUrl])
+  const mode: Mode = config.apiUrl || hosted ? 'live' : 'demo'
+  const authed = mode === 'demo' || !!session || (!!config.token && !hosted)
   const [remoteEmail, setRemoteEmail] = useState('')
   const [db, setDb] = useState<DB>(() => (mode === 'demo' ? loadDemo() : emptyDB()))
   const [role, setRole] = useState<Role>(mode === 'demo' ? 'admin' : 'viewer')

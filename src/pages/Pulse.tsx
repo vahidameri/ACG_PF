@@ -238,7 +238,7 @@ function LeadershipAsks({ rows }: { rows: { p: Project; m: ProjectMetrics; a: As
             <Link key={p.id} to={`/projects/${p.id}`} className={item}>
               <Siren size={15} className="mt-0.5 shrink-0 text-[#ff8a9a]" />
               <span className="min-w-0 flex-1">
-                <span className="block text-[0.8125rem] font-medium leading-5">{L(`بازبینی با اسپانسر — ${p.name}`, `Sponsor review — ${p.name}`)}</span>
+                <span className="block text-[0.8125rem] font-medium leading-5">{L(`بازبینی با کارفرما — ${p.name}`, `Client review — ${p.name}`)}</span>
                 <span className="block text-[0.6875rem] text-band-sub">
                   {DIMS.filter((d) => a.dims[d].h === 'red')
                     .map((d) => `${tr(DIM[d])}: ${a.dims[d].why}`)

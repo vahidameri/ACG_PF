@@ -3,7 +3,7 @@
 import type { DB, SheetName } from './types'
 
 const FIELDS: Partial<Record<SheetName, string[]>> = {
-  Projects: ['owner', 'sponsor'],
+  Projects: ['owner'],
   Milestones: ['owner'],
   Tasks: ['assignee', 'reporter'],
   FollowUps: ['person', 'owner'],

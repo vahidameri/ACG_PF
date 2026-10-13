@@ -26,7 +26,8 @@ function Switch({ on, onChange, disabled }: { on: boolean; onChange: (v: boolean
 
 export default function Settings({ embedded }: { embedded?: boolean }) {
   const { config, setConfig, mode, resetDemo, role, db, access } = useStore()
-  const { session } = useGoogle()
+  const g = useGoogle()
+  const { session } = g
   const auto = useAuto()
   const { lang, setLang, cal, setCal } = useI18n()
   const [url, setUrl] = useState(config.apiUrl)
@@ -108,6 +109,12 @@ export default function Settings({ embedded }: { embedded?: boolean }) {
               <br />
               {L(`پروژه‌ها ${fa(db.Projects.length)} · تسک‌ها ${fa(db.Tasks.length)} · جلسات ${fa(db.Meetings.length)} · فایل‌ها ${fa(db.Files.length)}`, `Projects ${db.Projects.length} · Tasks ${db.Tasks.length} · Meetings ${db.Meetings.length} · Files ${db.Files.length}`)}
             </div>
+            {g.hosted ? (
+              <p className="rounded-2xl bg-good/10 px-4 py-3 text-xs leading-6 text-good">
+                {L('اطلس مستقیم از Google Apps Script اجرا می‌شود: ورود با حساب گوگل خودکار است و داده‌ها در همین گوگل شیت ذخیره می‌شوند. تنظیم دیگری لازم نیست.', 'Atlas runs straight from Google Apps Script: Google sign-in is automatic and data lives in this Google Sheet. Nothing else to configure.')}
+              </p>
+            ) : (
+              <>
             <div>
               <label className="label">{L('آدرس Web App (از Apps Script → Deploy)', 'Web App URL (Apps Script → Deploy)')}</label>
               <input className="input font-mono text-xs" dir="ltr" value={url} onChange={(e) => setUrl(e.target.value)} placeholder="https://script.google.com/macros/s/…/exec" />
@@ -144,13 +151,18 @@ export default function Settings({ embedded }: { embedded?: boolean }) {
                 <XCircle size={16} /> {test.msg}
               </div>
             )}
-            <ol className="space-y-2 border-t border-line pt-4 text-xs leading-6 text-sub">
-              <li>۱. {L('Google Sheet خالی → Extensions → Apps Script → ', 'Empty Google Sheet → Extensions → Apps Script → paste ')}{code('Code.gs')}</li>
-              <li>۲. {L('اجرای ', 'Run ')}{code('setup')}{L(' و سپس ', ' then ')}{code('installAutomations')}</li>
-              <li>۳. {L('در Project Settings → Script properties مقدار ', 'In Project Settings → Script properties set ')}{code('GOOGLE_CLIENT_ID')}</li>
-              <li>۴. {L('Deploy → Web app (Execute as: Me، Anyone) و آدرس را این‌جا بگذارید', 'Deploy → Web app (Execute as: Me, Anyone) and paste the URL here')}</li>
-              <li>۵. {L('ایمیل هر نفر را در تب Users با نقش admin / editor / viewer بگذارید', 'Add each person’s email to the Users tab with admin / editor / viewer')}</li>
-            </ol>
+              </>
+            )}
+            {!g.hosted && (
+              <ol className="space-y-2 border-t border-line pt-4 text-xs leading-6 text-sub">
+                <li>{L('راه‌اندازی کامل (فقط با گوگل، بدون سرور) در فایل README آمده است:', 'Full setup (Google only, no server) is in the README:')}</li>
+                <li>۱. {L('Google Sheet → Extensions → Apps Script → فایل‌های ', 'Google Sheet → Extensions → Apps Script → add ')}{code('Code.gs')} · {code('Index.html')} · {code('appsscript.json')}</li>
+                <li>۲. {L('اجرای ', 'Run ')}{code('setup')}</li>
+                <li>۳. {L('دو انتشار Web app: داده (Execute as: Me) و اپ (Execute as: User accessing)', 'Two Web app deployments: data (Execute as: Me) and app (Execute as: User accessing)')}</li>
+                <li>۴. {L('اجرای ', 'Run ')}{code("setApiUrl('…')")}{L(' با آدرس انتشار داده', ' with the data deployment URL')}</li>
+                <li>۵. {L('لینک انتشار اپ را برای تیم بفرستید', 'Share the app deployment link with the team')}</li>
+              </ol>
+            )}
           </div>
         </Card>
 

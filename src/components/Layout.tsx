@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, type ReactNode } from 'react'
+import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { NavLink, useLocation, useNavigate, Link } from 'react-router-dom'
 import {
   LayoutGrid, Briefcase, ListChecks, BellRing, ShieldAlert, FileText, Settings, Moon, Sun, Search, Plus, RefreshCw, Menu,
@@ -40,6 +40,12 @@ export function Layout({ children }: { children: ReactNode }) {
   const navigate = useNavigate()
 
   useEffect(() => setNav(false), [loc.pathname])
+  // every page opens at the top
+  const mainRef = useRef<HTMLElement>(null)
+  useEffect(() => {
+    mainRef.current?.scrollTo({ top: 0 })
+    window.scrollTo({ top: 0 })
+  }, [loc.pathname])
 
   useEffect(() => {
     const h = (e: KeyboardEvent) => {
@@ -223,7 +229,7 @@ export function Layout({ children }: { children: ReactNode }) {
                 <div className="px-2.5 pb-1 pt-2">
                   <div className="mb-1 text-[0.6875rem] text-sub">{L('مشاهده به‌عنوان (نمایشی)', 'View as (demo)')}</div>
                   <select className="input h-9 text-xs" value={me} onChange={(e) => { setMe(e.target.value); close() }}>
-                    {db.Team.filter((m) => m.email).map((m) => (
+                    {db.Team.map((m) => (
                       <option key={m.id} value={m.name}>
                         {m.name} — {m.role}
                       </option>
@@ -347,7 +353,7 @@ export function Layout({ children }: { children: ReactNode }) {
 
         {error && mode === 'live' && <div className="bg-bad px-4 py-2 text-center text-xs text-white no-print">{L('اتصال به Google Sheet برقرار نشد', 'Could not reach Google Sheet')}: {error}</div>}
 
-        <main className="flex-1 overflow-y-auto">
+        <main ref={mainRef} className="flex-1 overflow-y-auto">
           <div className="@container px-4 pb-16 sm:px-6 lg:px-8 print-full" key={loc.pathname}>
             {children}
           </div>

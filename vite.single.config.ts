@@ -1,4 +1,5 @@
-// Builds the whole app (demo mode) into ONE self-contained HTML file for review/sharing.
+// Builds the whole app into ONE self-contained HTML file. Opened on its own it runs the demo;
+// copied into Apps Script as Index.html (npm run build:apps-script) it is the real app.
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 import { viteSingleFile } from 'vite-plugin-singlefile'

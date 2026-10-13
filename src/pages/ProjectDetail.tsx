@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
-import { ArrowRight, Pencil, Plus, Target, Send, Crown, User, Pause } from 'lucide-react'
+import { ArrowRight, Pencil, Plus, Target, Send, Building2, Contact, User, Pause } from 'lucide-react'
 import { useStore } from '../lib/store'
 import { useEditor, type EditableSheet } from '../components/Editor'
 import { Band, Card, Empty, HealthBadge, Overlap, Progress, StatStrip, Tabs, cx, healthText, Avatar, Chip, Segmented } from '../components/ui'
@@ -10,10 +10,10 @@ import { PROJECT_STATUS, RISK_STATUS, RISK_TYPE, SCOPE_STATUS, SPRINT_STATUS, PR
 import { L, lbl } from '../lib/i18n'
 import { TaskRow, FollowUpRow, PinButton } from '../components/shared'
 import { PauseButton } from '../components/PauseButton'
-import { ContractsList } from '../components/Contracts'
+import { ContractsList, NewContractButton } from '../components/Contracts'
 import { can } from '../lib/access'
 import { Attachments } from '../components/Files'
-import { BurndownChart, Kanban, MilestoneList, RiskMatrix, SprintHeader, UpdateCard, VelocityChart, riskTone, ActivityFeed, HealthTrend, RagStrip } from '../components/widgets'
+import { BurndownChart, Kanban, MilestoneList, MilestoneTimeline, RiskMatrix, SprintHeader, UpdateCard, VelocityChart, riskTone, ActivityFeed, HealthTrend, RagStrip } from '../components/widgets'
 import { buildActivity } from '../lib/activity'
 import { assess } from '../lib/rag'
 import { renderMentions, stampToDate } from '../components/ItemSheet'
@@ -119,9 +119,21 @@ export default function ProjectDetail() {
           <span className="flex items-center gap-2">
             <User size={14} /> {L('مدیر', 'Lead')}: <span className="text-white">{p.owner}</span>
           </span>
-          <span className="flex items-center gap-2">
-            <Crown size={14} /> {L('اسپانسر', 'Sponsor')}: <span className="text-white">{p.sponsor}</span>
-          </span>
+          {p.client && (
+            <span className="flex items-center gap-2">
+              <Building2 size={14} /> {L('کارفرما', 'Client')}: <span className="text-white">{p.client}</span>
+            </span>
+          )}
+          {p.liaison && (
+            <span className="flex items-center gap-2">
+              <Contact size={14} /> {L('رابط پروژه', 'Liaison')}: <span className="text-white">{p.liaison}</span>
+              {p.liaison_contact && (
+                <a href={p.liaison_contact.includes('@') ? `mailto:${p.liaison_contact}` : `tel:${p.liaison_contact}`} className="text-white/70 underline-offset-2 hover:underline" dir="ltr">
+                  {p.liaison_contact}
+                </a>
+              )}
+            </span>
+          )}
           <span className="num">
             {fmtDate(p.start_date)} → {fmtDate(p.end_date)}
           </span>
@@ -130,7 +142,7 @@ export default function ProjectDetail() {
           items={[
             { label: L('پیشرفت', 'Progress'), value: `${fa(m.progress)}%`, tone: m.health },
             { label: L('زمان سپری‌شده', 'Time elapsed'), value: `${fa(m.elapsed)}%` },
-            { label: m.daysLeft >= 0 ? L('تا ددلاین', 'To deadline') : L('از ددلاین گذشته', 'Past deadline'), value: fa(Math.abs(m.daysLeft)), tone: m.daysLeft < 0 ? 'red' : undefined, sub: L('روز', 'days') },
+            { label: m.daysLeft >= 0 ? L('تا ددلاین', 'To deadline') : L('از ددلاین گذشته', 'Past deadline'), value: p.end_date ? fa(Math.abs(m.daysLeft)) : '—', tone: m.daysLeft < 0 ? 'red' : undefined, sub: L('روز', 'days') },
             { label: L('تحویل‌های باز', 'Open deliveries'), value: fa(deliverySummary(db, p.id).open.length), tone: deliverySummary(db, p.id).overdue.length ? 'red' : undefined, sub: L(`${fa(deliverySummary(db, p.id).overdue.length)} عقب‌افتاده`, `${deliverySummary(db, p.id).overdue.length} overdue`) },
             { label: L('تسک باز', 'Open tasks'), value: fa(m.openTasks), sub: L(`${fa(m.overdueTasks)} معوق · ${fa(m.blockedTasks)} مسدود`, `${m.overdueTasks} overdue · ${m.blockedTasks} blocked`) },
             { label: L('ریسک باز', 'Open risks'), value: fa(m.openRisks), tone: m.highRisks ? 'red' : undefined, sub: L(`${fa(m.highRisks)} بحرانی`, `${m.highRisks} critical`) },
@@ -161,6 +173,7 @@ export default function ProjectDetail() {
         </div>
 
         <div className="mt-4 fade-in" key={tab}>
+          {tab === 'overview' && <SetupPrompt p={p} />}
           {tab === 'overview' && (
             <div className="grid gap-4 @xl:grid-cols-3">
               <Card eyebrow={L('تحلیل خودکار', 'Automatic analysis')} title={L('چرا این وضعیت؟', 'Why this status?')}>
@@ -184,7 +197,7 @@ export default function ProjectDetail() {
                 </div>
               </Card>
               <Card eyebrow={L('رودمپ', 'Roadmap')} title={L('مایلستون‌ها', 'Milestones')} action={<AddBtn sheet="Milestones" label={L('مایلستون', 'Milestone')} />}>
-                {ms.length ? <MilestoneList milestones={ms} /> : <Empty />}
+                {ms.length ? <MilestoneTimeline milestones={ms} start={p.start_date} end={p.end_date} /> : <Empty text={L('مایلستونی ثبت نشده', 'No milestones yet')} />}
               </Card>
               <div className="min-w-0 space-y-4">
                 {m.activeSprint && (
@@ -289,7 +302,16 @@ export default function ProjectDetail() {
 
           {tab === 'milestones' && (
             <Card eyebrow={L('رودمپ پروژه', 'Project roadmap')} title={L('مایلستون‌ها', 'Milestones')} action={<AddBtn sheet="Milestones" label={L('مایلستون', 'Milestone')} />}>
-              {ms.length ? <MilestoneList milestones={ms} /> : <Empty />}
+              {ms.length ? (
+                <>
+                  <MilestoneTimeline milestones={ms} start={p.start_date} end={p.end_date} />
+                  <div className="mt-4 border-t border-line pt-5">
+                    <MilestoneList milestones={ms} />
+                  </div>
+                </>
+              ) : (
+                <Empty text={L('مایلستونی ثبت نشده', 'No milestones yet')} />
+              )}
             </Card>
           )}
 
@@ -408,7 +430,7 @@ export default function ProjectDetail() {
 
           {tab === 'delivery' && <ProjectDelivery projectId={p.id} />}
           {tab === 'contracts' && can.contracts(access) && (
-            <Card pad={false} eyebrow={L('محرمانه', 'Confidential')} title={L('قراردادهای این پروژه', 'Contracts for this project')}>
+            <Card pad={false} eyebrow={L('محرمانه', 'Confidential')} title={L('قراردادهای این پروژه', 'Contracts for this project')} action={<NewContractButton projectId={p.id} />}>
               <ContractsList projectId={p.id} />
             </Card>
           )}
@@ -519,6 +541,55 @@ function ProjectDelivery({ projectId }: { projectId: string }) {
             ))}
           </div>
         </Card>
+      )}
+    </div>
+  )
+}
+
+/** A new project starts empty: say what's missing instead of pretending it's healthy. */
+function SetupPrompt({ p }: { p: import('../lib/types').Project }) {
+  const { db, canEdit } = useStore()
+  const { open } = useEditor()
+  const steps = [
+    { done: !!p.owner, label: L('مدیر پروژه', 'Project lead') },
+    { done: !!p.client, label: L('کارفرما و رابط', 'Client & liaison') },
+    { done: !!(p.start_date && p.end_date), label: L('تاریخ شروع و ددلاین', 'Start date & deadline') },
+    { done: db.Milestones.some((x) => x.project_id === p.id), label: L('مایلستون‌ها', 'Milestones'), sheet: 'Milestones' as const },
+    { done: db.Allocations.some((x) => x.project_id === p.id), label: L('تخصیص نفرات', 'People allocated'), sheet: 'Allocations' as const },
+  ]
+  const left = steps.filter((x) => !x.done)
+  if (!left.length) return null
+  return (
+    <div className="card mb-4 flex flex-wrap items-center gap-4 border-warn/30 bg-warn/[0.05] p-5">
+      <div className="min-w-0 flex-1">
+        <div className="text-sm font-semibold">{L('اطلاعات پروژه کامل نیست', 'This project isn’t set up yet')}</div>
+        <p className="mt-1 text-xs leading-6 text-sub">{L('تا این موارد ثبت نشوند، وضعیت سلامت و رودمپ این پروژه معنادار نیست.', 'Until these are in, health and the roadmap can’t say much about this project.')}</p>
+        <div className="mt-3 flex flex-wrap gap-2">
+          {steps.map((x) => (
+            <span key={x.label} className={cx('chip', x.done ? 'bg-good/10 text-good' : 'bg-surface text-ink ring-1 ring-line-strong')}>
+              {x.done ? '✓' : '○'} {x.label}
+            </span>
+          ))}
+        </div>
+      </div>
+      {canEdit && (
+        <div className="flex flex-wrap gap-2">
+          {(!p.owner || !p.client || !p.start_date || !p.end_date) && (
+            <button className="btn-primary btn-sm" onClick={() => open('Projects', p as never)}>
+              {L('تکمیل مشخصات', 'Complete details')}
+            </button>
+          )}
+          {left.some((x) => x.sheet === 'Milestones') && (
+            <button className="btn-outline btn-sm" onClick={() => open('Milestones', { project_id: p.id })}>
+              + {L('مایلستون', 'Milestone')}
+            </button>
+          )}
+          {left.some((x) => x.sheet === 'Allocations') && (
+            <button className="btn-outline btn-sm" onClick={() => open('Allocations', { project_id: p.id })}>
+              + {L('تخصیص', 'Allocate')}
+            </button>
+          )}
+        </div>
       )}
     </div>
   )

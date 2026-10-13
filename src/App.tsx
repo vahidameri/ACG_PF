@@ -2,7 +2,7 @@ import { HashRouter, Navigate, Route, Routes } from 'react-router-dom'
 import { can } from './lib/access'
 import Admin from './pages/Admin'
 import { StoreProvider, useStore } from './lib/store'
-import { GoogleProvider } from './lib/google'
+import { GoogleProvider, useGoogle } from './lib/google'
 import { AutomationProvider } from './lib/automations'
 import { I18nProvider } from './lib/i18n'
 import { EditorProvider } from './components/Editor'
@@ -39,8 +39,39 @@ function Home() {
   return <Navigate to={can.portfolio(access) ? '/' : '/my'} replace />
 }
 
+/** Hosted in Apps Script: sign-in happens by itself; show the brand while it does, or what went wrong. */
+function HostedSplash({ error, retry }: { error: string; retry: () => void }) {
+  const fa = (localStorage.getItem('acg.lang') || 'fa') === 'fa'
+  const msg =
+    error === 'API_URL'
+      ? fa ? 'نصب کامل نشده: مدیر برنامه باید setApiUrl را در Apps Script اجرا کند.' : 'Setup incomplete: the program manager must run setApiUrl in Apps Script.'
+      : error
+  return (
+    <div className="band fixed inset-0 z-[90] grid place-items-center px-6 text-center">
+      <div className="relative z-10 max-w-md rise">
+        <div className="display text-4xl text-white">{fa ? 'اطلس' : 'Atlas'}</div>
+        <div className="mt-2 font-mono text-[0.6875rem] uppercase tracking-[0.2em] text-band-sub">ACG</div>
+        {msg ? (
+          <>
+            <p className="mt-8 text-sm leading-7 text-[#ff8a9a]">{msg}</p>
+            <button className="btn mt-4 h-10 bg-white text-band" onClick={retry}>
+              {fa ? 'تلاش دوباره' : 'Try again'}
+            </button>
+          </>
+        ) : (
+          <div className="mx-auto mt-8 h-1 w-40 overflow-hidden rounded-full bg-white/10">
+            <div className="h-full w-1/3 animate-[slide_1.2s_ease-in-out_infinite] rounded-full bg-white/70" />
+          </div>
+        )}
+      </div>
+    </div>
+  )
+}
+
 function Gate({ children }: { children: React.ReactNode }) {
-  const { loading, lastSync, mode, authed } = useStore()
+  const { loading, lastSync, mode, authed, error } = useStore()
+  const g = useGoogle()
+  if (g.hosted && (!g.session || !g.apiUrl || (error && !lastSync))) return <HostedSplash error={g.error || (g.session && !g.apiUrl ? 'API_URL' : '') || (!lastSync ? error : '')} retry={() => g.signIn('')} />
   if (mode === 'live' && !authed) return <SignIn />
   if (mode === 'live' && loading && !lastSync)
     return (

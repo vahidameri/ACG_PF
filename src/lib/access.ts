@@ -27,7 +27,7 @@ const names = (s: string) => String(s || '').split(',').map((x) => x.trim())
 export function relatedProjects(db: DB, me: string) {
   const id = db.Team.find((m) => m.name === me)?.id
   const set = new Set<string>()
-  db.Projects.forEach((p) => (p.owner === me || p.sponsor === me) && set.add(p.id))
+  db.Projects.forEach((p) => p.owner === me && set.add(p.id))
   db.Allocations.forEach((a) => a.member_id === id && set.add(a.project_id))
   db.Tasks.forEach((t) => t.project_id && t.assignee === me && set.add(t.project_id))
   db.Deliverables.forEach((d) => d.owner === me && set.add(d.project_id))

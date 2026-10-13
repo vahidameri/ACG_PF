@@ -19,9 +19,21 @@ const tone: Record<string, string> = {
   terminated: 'bg-bad/10 text-bad',
 }
 
+/** The "new contract" action, placed in the card header like every other add button. */
+export function NewContractButton({ projectId = '' }: { projectId?: string }) {
+  const { canEdit } = useStore()
+  const { open } = useEditor()
+  if (!canEdit) return null
+  return (
+    <button className="btn-outline btn-sm" onClick={() => open('Contracts', { project_id: projectId })}>
+      <Plus size={14} /> {L('قرارداد', 'Contract')}
+    </button>
+  )
+}
+
 /** Contracts list — only the CEO and the program manager ever receive these rows. */
 export function ContractsList({ projectId }: { projectId?: string }) {
-  const { db, canEdit } = useStore()
+  const { db } = useStore()
   const { open } = useEditor()
   const pname = useProjectName()
   const [openId, setOpenId] = useState('')
@@ -30,15 +42,10 @@ export function ContractsList({ projectId }: { projectId?: string }) {
   const ending = (c: Contract) => (c.status === 'active' || c.status === 'signed') && c.end_date && daysFromToday(c.end_date) <= 30
   return (
     <div>
-      <div className="flex flex-wrap items-center justify-between gap-2 px-5 pb-3 pt-1">
+      <div className="px-5 pb-3 pt-1">
         <span className="inline-flex items-center gap-1.5 text-[0.6875rem] text-sub">
           <Lock size={12} /> {L('فقط مدیرعامل و مدیر برنامه این بخش را می‌بینند', 'Only the CEO and the program manager can see this')}
         </span>
-        {canEdit && (
-          <button className="btn-outline btn-sm" onClick={() => open('Contracts', { project_id: projectId || '' })}>
-            <Plus size={14} /> {L('قرارداد جدید', 'New contract')}
-          </button>
-        )}
       </div>
       {list.length ? (
         <ul className="divide-y divide-line border-t border-line">

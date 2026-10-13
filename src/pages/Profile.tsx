@@ -1,5 +1,5 @@
 import { Link, useParams } from 'react-router-dom'
-import { Mail, Phone, Pencil, Lock, CalendarDays, Palmtree, Plus } from 'lucide-react'
+import { Mail, Phone, Pencil, Lock, CalendarDays, Plus } from 'lucide-react'
 import { useStore } from '../lib/store'
 import { useEditor } from '../components/Editor'
 import { Band, Card, Empty, Overlap, StatStrip, cx } from '../components/ui'
@@ -12,8 +12,7 @@ import { capOf, loadTone, memberWeek } from '../lib/capacity'
 import { isClosed } from '../lib/delivery'
 import { isTaskOverdue } from '../lib/metrics'
 import { TRACK } from '../lib/tracks'
-import { TIMEOFF_KIND } from '../lib/labels'
-import { weekStart, weeksFrom, inWeek } from '../lib/weeks'
+import { weekStart, weeksFrom } from '../lib/weeks'
 
 
 /** A person's page: photo, contact, load, projects, open work, meetings and time off. */
@@ -31,7 +30,6 @@ export default function Profile() {
   const hiddenCount = String(m.tasks_private) === '1' && !isMe ? true : false
   const dels = db.Deliverables.filter((d) => d.owner === m.name && !isClosed(d)).sort((a, b) => (a.target_date < b.target_date ? -1 : 1))
   const meetings = db.Meetings.filter((x) => x.date >= today && x.status === 'scheduled' && x.attendees.split(',').map((s) => s.trim()).includes(m.name)).sort((a, b) => (a.date + a.time < b.date + b.time ? -1 : 1)).slice(0, 5)
-  const leave = db.TimeOff.filter((t) => t.member_id === m.id && (t.end_date || t.start_date) >= today)
   const led = db.Projects.filter((p) => p.owner === m.name && p.status !== 'completed' && p.status !== 'cancelled')
   const weeks = weeksFrom(weekStart(), 8).map((ws) => memberWeek(db, m, ws))
 
@@ -73,9 +71,6 @@ export default function Profile() {
           canEdit &&
           (isMe || role === 'admin') && (
             <>
-              <button className="btn h-10 border border-white/15 text-white" onClick={() => open('TimeOff', { member_id: m.id })}>
-                <Palmtree size={16} /> {L('ثبت مرخصی', 'Time off')}
-              </button>
               <button className="btn h-10 bg-white text-band" onClick={() => open('Team', m as never)}>
                 <Pencil size={15} /> {L('ویرایش پروفایل', 'Edit profile')}
               </button>
@@ -133,7 +128,7 @@ export default function Profile() {
             </div>
           </Card>
 
-          <Card eyebrow={L('پیش رو', 'Coming up')} title={L('جلسات و مرخصی', 'Meetings & time off')}>
+          <Card eyebrow={L('پیش رو', 'Coming up')} title={L('جلسات پیش رو', 'Upcoming meetings')}>
             {meetings.length ? (
               <ul className="space-y-1">
                 {meetings.map((x) => (
@@ -150,17 +145,6 @@ export default function Profile() {
               </ul>
             ) : (
               <p className="text-xs text-sub">{L('جلسه‌ای در پیش نیست', 'No upcoming meetings')}</p>
-            )}
-            {leave.length > 0 && (
-              <div className="mt-4 border-t border-line pt-3">
-                {leave.map((t) => (
-                  <button key={t.id} onClick={() => open('TimeOff', t as never)} className="flex w-full items-center gap-2 rounded-xl px-2 py-1.5 text-start text-sm text-wine hover:bg-muted dark:text-[#ec7892]">
-                    <Palmtree size={14} /> {lbl(TIMEOFF_KIND, t.kind)} · {fmtDayMonth(t.start_date)}
-                    {t.end_date && t.end_date !== t.start_date && ` – ${fmtDayMonth(t.end_date)}`}
-                    {inWeek(t.start_date, weekStart()) && <span className="ms-auto text-[0.6875rem]">{L('این هفته', 'this week')}</span>}
-                  </button>
-                ))}
-              </div>
             )}
           </Card>
         </div>

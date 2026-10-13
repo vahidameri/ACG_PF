@@ -187,6 +187,48 @@ export function RiskMatrix({ risks, onPick }: { risks: Risk[]; onPick?: (r: Risk
 }
 
 // ---------------- Milestone timeline ----------------
+/** Horizontal timeline: project span, milestones placed by date, today marker. */
+export function MilestoneTimeline({ milestones, start, end }: { milestones: Milestone[]; start: string; end: string }) {
+  const { open } = useEditor()
+  const today = todayISO()
+  const sorted = [...milestones].filter((m) => m.planned_date).sort((a, b) => (a.planned_date < b.planned_date ? -1 : 1))
+  if (!sorted.length) return null
+  const from = start && start < sorted[0].planned_date ? start : sorted[0].planned_date
+  const last = sorted[sorted.length - 1].planned_date
+  const to = end && end > last ? end : last
+  const span = Math.max(1, daysFromToday(to) - daysFromToday(from))
+  const pos = (iso: string) => Math.max(0, Math.min(100, ((daysFromToday(iso) - daysFromToday(from)) / span) * 100))
+  const tp = pos(today)
+  const doneUpTo = sorted.filter((m) => m.status === 'done').reduce((a, m) => Math.max(a, pos(m.planned_date)), 0)
+  return (
+    <div className="relative px-3 pb-2 pt-14">
+      <div className="relative h-1.5 rounded-full bg-muted">
+        <div className="absolute inset-y-0 start-0 rounded-full bg-good/70" style={{ width: `${doneUpTo}%` }} />
+        {today >= from && today <= to && (
+          <div className="absolute -top-2 -bottom-2 w-[2px] bg-bad" style={{ insetInlineStart: `${tp}%` }}>
+            <span className="absolute -bottom-5 -translate-x-1/2 whitespace-nowrap text-[0.625rem] font-semibold text-bad rtl:translate-x-1/2">{L('امروز', 'Today')}</span>
+          </div>
+        )}
+        {sorted.map((m, i) => {
+          const late = m.status !== 'done' && m.planned_date < today
+          const tone = m.status === 'done' ? 'bg-good' : late || m.status === 'missed' ? 'bg-bad' : m.status === 'in_progress' ? 'bg-brand dark:bg-brand-soft' : 'bg-surface ring-2 ring-line-strong'
+          const up = i % 2 === 0
+          return (
+            <button key={m.id} onClick={() => open('Milestones', m as never)} className="group absolute top-1/2 -translate-x-1/2 -translate-y-1/2 rtl:translate-x-1/2" style={{ insetInlineStart: `${pos(m.planned_date)}%` }} title={m.title}>
+              <span className={cx('block h-4 w-4 rotate-45 rounded-[4px] shadow-sm transition group-hover:scale-125', tone)} />
+              <span className={cx('absolute start-1/2 w-28 -translate-x-1/2 text-center leading-4 rtl:translate-x-1/2', up ? 'bottom-6' : 'top-6')}>
+                <span className={cx('block truncate text-[0.6875rem] font-medium', late && 'text-bad')}>{m.title}</span>
+                <span className="block text-[0.625rem] text-sub num">{fmtDayMonth(m.planned_date)}</span>
+              </span>
+            </button>
+          )
+        })}
+      </div>
+      <div className="h-12" />
+    </div>
+  )
+}
+
 export function MilestoneList({ milestones }: { milestones: Milestone[] }) {
   const { open } = useEditor()
   const { upsert, canEdit, toast } = useStore()

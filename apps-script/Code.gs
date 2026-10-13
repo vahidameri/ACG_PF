@@ -19,7 +19,7 @@
  */
 
 var SCHEMA = {
-  Projects: ['id', 'code', 'name', 'description', 'category', 'owner', 'sponsor', 'status', 'priority', 'phase', 'start_date', 'end_date', 'progress', 'health_override', 'objective', 'paused_at', 'pause_reason'],
+  Projects: ['id', 'code', 'name', 'description', 'category', 'owner', 'client', 'liaison', 'liaison_contact', 'status', 'priority', 'phase', 'start_date', 'end_date', 'progress', 'health_override', 'objective', 'paused_at', 'pause_reason'],
   Scope: ['id', 'project_id', 'item', 'type', 'status', 'change_note', 'date'],
   Milestones: ['id', 'project_id', 'title', 'planned_date', 'actual_date', 'status', 'owner', 'weight'],
   Sprints: ['id', 'project_id', 'name', 'start_date', 'end_date', 'goal', 'committed_points', 'completed_points', 'status'],
@@ -40,8 +40,6 @@ var SCHEMA = {
   Deliverables: ['id', 'project_id', 'title', 'track', 'owner', 'target_date', 'baseline_date', 'delivered_date', 'status', 'confidence', 'notes'],
   // Weekly meetings. series: portfolio | product | tech | project | other. attendees comma-separated; decisions one per line.
   Meetings: ['id', 'series', 'title', 'project_id', 'date', 'time', 'facilitator', 'attendees', 'status', 'notes', 'decisions', 'gcal_id', 'meet_url', 'duration'],
-  // Leave / training — reduces capacity in the weeks it covers.
-  TimeOff: ['id', 'member_id', 'start_date', 'end_date', 'kind', 'note'],
   // Uploaded files live in a Drive folder; this tab is the index.
   Files: ['id', 'entity', 'entity_id', 'name', 'mime', 'size', 'url', 'uploaded_by', 'created_at'],
   // Shared settings (automation switches: auto.<id> = on/off). id = key.
@@ -60,6 +58,13 @@ var DATE_COLS = ['start_date', 'end_date', 'planned_date', 'actual_date', 'due_d
 // --------------------------------------------------------------------------
 
 function doGet(e) {
+  // No action → serve the app itself (Index.html). Everything runs on Google: no other hosting.
+  if (!e.parameter.action) {
+    return HtmlService.createHtmlOutputFromFile('Index')
+      .setTitle('ACG Atlas')
+      .addMetaTag('viewport', 'width=device-width, initial-scale=1')
+      .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.DEFAULT);
+  }
   try {
     var user = auth_(e.parameter);
     var action = e.parameter.action || 'all';
@@ -96,6 +101,35 @@ function doPost(e) {
   } finally {
     try { lock.releaseLock(); } catch (e2) {}
   }
+}
+
+/**
+ * Called from the app (google.script.run) in the "Execute as: User accessing the web app"
+ * deployment. Hands the signed-in person their own Google token plus the data API address.
+ * The token is the user's, so it can never act as anyone else; if this deployment were
+ * misconfigured to run as the owner for other visitors, we refuse.
+ */
+function atlasSession() {
+  var active = Session.getActiveUser().getEmail();
+  var effective = Session.getEffectiveUser().getEmail();
+  if (!active || active !== effective) throw new Error('این آدرس باید با «Execute as: User accessing the web app» منتشر شود.');
+  return {
+    token: ScriptApp.getOAuthToken(),
+    email: active,
+    apiUrl: PropertiesService.getScriptProperties().getProperty('API_URL') || '',
+  };
+}
+
+/** Run once from the editor with the "Execute as: Me" deployment URL: setApiUrl('https://script.google.com/macros/s/…/exec') */
+function setApiUrl(url) {
+  var props = PropertiesService.getScriptProperties();
+  props.setProperty('API_URL', url);
+  // Only accept Google tokens issued to this script project (learned from your own token).
+  var info = JSON.parse(UrlFetchApp.fetch('https://oauth2.googleapis.com/tokeninfo?access_token=' + ScriptApp.getOAuthToken()).getContentText());
+  var allowed = (props.getProperty('GOOGLE_CLIENT_ID') || '').split(',').map(function (x) { return x.trim(); }).filter(String);
+  if (info.azp && allowed.indexOf(info.azp) === -1) allowed.push(info.azp);
+  props.setProperty('GOOGLE_CLIENT_ID', allowed.join(','));
+  Logger.log('API_URL = ' + url + '\nGOOGLE_CLIENT_ID = ' + allowed.join(','));
 }
 
 // --------------------------------------------------------------------------
@@ -183,7 +217,7 @@ function applyScope_(data, user, owners) {
 function allowedProjects_(data, me) {
   var ok = {};
   var myId = ((data.Team || []).filter(function (m) { return m.name === me; })[0] || {}).id;
-  (data.Projects || []).forEach(function (p) { if (p.owner === me || p.sponsor === me) ok[p.id] = 1; });
+  (data.Projects || []).forEach(function (p) { if (p.owner === me) ok[p.id] = 1; });
   (data.Allocations || []).forEach(function (a) { if (a.member_id === myId) ok[a.project_id] = 1; });
   (data.Tasks || []).forEach(function (t) { if (t.project_id && t.assignee === me) ok[t.project_id] = 1; });
   (data.Deliverables || []).forEach(function (d) { if (d.owner === me) ok[d.project_id] = 1; });
@@ -355,8 +389,9 @@ function googleEmail_(token) {
   var res = UrlFetchApp.fetch('https://oauth2.googleapis.com/tokeninfo?access_token=' + encodeURIComponent(token), { muteHttpExceptions: true });
   if (res.getResponseCode() !== 200) throw new Error('نشست گوگل منقضی شده؛ دوباره وارد شوید');
   var info = JSON.parse(res.getContentText());
-  var client = PropertiesService.getScriptProperties().getProperty('GOOGLE_CLIENT_ID');
-  if (client && info.aud !== client && info.azp !== client) throw new Error('این توکن برای این برنامه صادر نشده است');
+  var clients = (PropertiesService.getScriptProperties().getProperty('GOOGLE_CLIENT_ID') || '').split(',').map(function (x) { return x.trim(); }).filter(String);
+  if (!clients.length) throw new Error('تنظیم ناقص: setApiUrl را یک بار اجرا کنید');
+  if (clients.indexOf(info.aud) === -1 && clients.indexOf(info.azp) === -1) throw new Error('این توکن برای این برنامه صادر نشده است');
   if (!info.email || String(info.email_verified) !== 'true') throw new Error('ایمیل حساب گوگل تأیید نشده است');
   var email = String(info.email).toLowerCase();
   cache.put(k, email, Math.min(3000, Number(info.expires_in) || 3000));
@@ -580,32 +615,45 @@ function remindWeeklyUpdates() {
 // Script property FILE_SHARING: 'link' (default, anyone with the link) or 'domain'.
 // --------------------------------------------------------------------------
 
+// Drive REST with the owner's token: only needs the narrow drive.file scope.
+function drive_(method, path, payload, contentType) {
+  var res = UrlFetchApp.fetch('https://www.googleapis.com' + path, {
+    method: method, contentType: contentType || 'application/json', payload: payload,
+    headers: { Authorization: 'Bearer ' + ScriptApp.getOAuthToken() }, muteHttpExceptions: true,
+  });
+  if (res.getResponseCode() >= 300) throw new Error('Drive: ' + res.getContentText().slice(0, 200));
+  return JSON.parse(res.getContentText() || '{}');
+}
+
 function filesFolder_() {
   var props = PropertiesService.getScriptProperties();
   var id = props.getProperty('FOLDER_ID');
-  if (id) { try { return DriveApp.getFolderById(id); } catch (e) {} }
-  var f = DriveApp.createFolder('ACG Atlas files');
-  props.setProperty('FOLDER_ID', f.getId());
-  return f;
+  if (id) return id;
+  var f = drive_('post', '/drive/v3/files', JSON.stringify({ name: 'ACG Atlas files', mimeType: 'application/vnd.google-apps.folder' }));
+  props.setProperty('FOLDER_ID', f.id);
+  return f.id;
 }
 
 function upload_(b, user) {
   if (!b.data || !b.name) throw new Error('فایل ارسال نشده است');
   guardPrivate_('Files', { entity: b.entity, entity_id: b.entity_id }, user);
-  var blob = Utilities.newBlob(Utilities.base64Decode(b.data), b.mime || 'application/octet-stream', b.name);
-  if (blob.getBytes().length > 10 * 1024 * 1024) throw new Error('حداکثر حجم فایل ۱۰ مگابایت است');
-  var file = filesFolder_().createFile(blob);
+  var bytes = Utilities.base64Decode(b.data);
+  if (bytes.length > 10 * 1024 * 1024) throw new Error('حداکثر حجم فایل ۱۰ مگابایت است');
+  var boundary = 'atlas' + Date.now();
+  var meta = JSON.stringify({ name: b.name, parents: [filesFolder_()] });
+  var body = Utilities.newBlob(
+    '--' + boundary + '\r\nContent-Type: application/json; charset=UTF-8\r\n\r\n' + meta + '\r\n--' + boundary + '\r\nContent-Type: ' + (b.mime || 'application/octet-stream') + '\r\n\r\n'
+  ).getBytes().concat(bytes).concat(Utilities.newBlob('\r\n--' + boundary + '--').getBytes());
+  var file = drive_('post', '/upload/drive/v3/files?uploadType=multipart&fields=id,webViewLink', body, 'multipart/related; boundary=' + boundary);
+  // anyone with the link can view, so images render inside the app
   var sharing = PropertiesService.getScriptProperties().getProperty('FILE_SHARING') || 'link';
-  try {
-    file.setSharing(sharing === 'domain' ? DriveApp.Access.DOMAIN_WITH_LINK : DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
-  } catch (e) {
-    file.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
-  }
+  var domain = sharing === 'domain' ? String(Session.getEffectiveUser().getEmail()).split('@')[1] : '';
+  drive_('post', '/drive/v3/files/' + file.id + '/permissions', JSON.stringify(domain ? { role: 'reader', type: 'domain', domain: domain } : { role: 'reader', type: 'anyone' }));
   var isImage = String(b.mime || '').indexOf('image/') === 0;
   var row = {
-    id: 'FL-' + Utilities.getUuid().slice(0, 8), entity: b.entity, entity_id: b.entity_id, name: b.name, mime: b.mime, size: blob.getBytes().length,
+    id: 'FL-' + Utilities.getUuid().slice(0, 8), entity: b.entity, entity_id: b.entity_id, name: b.name, mime: b.mime, size: bytes.length,
     // images use the thumbnail endpoint so they render inside <img>
-    url: isImage ? 'https://drive.google.com/thumbnail?id=' + file.getId() + '&sz=w600' : file.getUrl(),
+    url: isImage ? 'https://drive.google.com/thumbnail?id=' + file.id + '&sz=w600' : file.webViewLink,
     uploaded_by: user.name, created_at: Utilities.formatDate(new Date(), Session.getScriptTimeZone(), 'yyyy-MM-dd'),
   };
   upsert_('Files', row, user);
@@ -681,10 +729,9 @@ function installAutomations() {
 // Sample data (optional)
 // --------------------------------------------------------------------------
 
+/** Fills the sheet with the real team and project names (nothing else). Safe to run twice. */
 function seedDemo() {
   setup();
-  var tz = Session.getScriptTimeZone();
-  var d = function (n) { var x = new Date(); x.setDate(x.getDate() + n); return Utilities.formatDate(x, tz, 'yyyy-MM-dd'); };
   var put = function (name, rows) {
     var sh = ensureSheet_(name, SCHEMA[name]);
     var h = SCHEMA[name];
@@ -694,33 +741,21 @@ function seedDemo() {
     if (vals.length) sh.getRange(sh.getLastRow() + 1, 1, vals.length, h.length).setValues(vals);
   };
   put('Team', [
-    { id: 'm1', name: 'وحید عامری', role: 'مدیر پروگرم', team: 'PMO', track: '' },
-    { id: 'm2', name: 'جلیل علیزاده', role: 'مدیرعامل', team: 'مدیریت', track: '', tasks_private: '1' },
-    { id: 'm3', name: 'وحید کیوانیان', role: 'هد تک', team: 'تک', track: 'tech' },
-    { id: 'm4', name: 'مهرزاد گلی', role: 'هد پروداکت', team: 'پروداکت', track: 'product' },
-    { id: 'm5', name: 'آتنا دهقان', role: 'پروداکت منیجر', team: 'پروداکت', track: 'product' },
-    { id: 'm6', name: 'علی سرمیلی', role: 'پروداکت منیجر', team: 'پروداکت', track: 'product' },
-    { id: 'm7', name: 'علی سالمه', role: 'پروداکت منیجر', team: 'پروداکت', track: 'product' },
-    { id: 'm8', name: 'مهرسا دبیر', role: 'پروداکت منیجر', team: 'پروداکت', track: 'product' },
-    { id: 'm9', name: 'بابک معروفی', role: 'پروداکت منیجر', team: 'پروداکت', track: 'product' },
-    { id: 'm10', name: 'امین ظفری', role: 'پروداکت منیجر', team: 'پروداکت', track: 'product' },
-    { id: 'm11', name: 'هانیه منصورکیایی', role: 'پروداکت دیزاینر', team: 'پروداکت', track: 'product' },
-  ].map(function (m) {
-    m.capacity = m.capacity || 100;
-    m.active = 'true';
-    m.access = m.id === 'm1' ? 'super' : m.id === 'm2' ? 'exec' : m.id === 'm3' || m.id === 'm4' ? 'head' : 'member';
-    return m;
+    ['m1', 'وحید عامری', 'Vahid Ameri', 'مدیر برنامه', '', 'super'],
+    ['m2', 'جلیل علیزاده', 'Jalil Alizadeh', 'مدیرعامل', '', 'exec'],
+    ['m3', 'وحید کیوانیان', 'Vahid Keyvanian', 'هد تک', 'tech', 'head'],
+    ['m4', 'مهرزاد گلی', 'Mehrzad Goli', 'هد پروداکت', 'product', 'head'],
+    ['m5', 'آتنا دهقان', 'Athena Dehghan', 'پروداکت منیجر', 'product', 'member'],
+    ['m6', 'علی سرمیلی', 'Ali Sormeili', 'پروداکت منیجر', 'product', 'member'],
+    ['m7', 'علی سالمه', 'Ali Salemeh', 'پروداکت منیجر', 'product', 'member'],
+    ['m8', 'مهرسا دبیر', 'Mehrsa Dabir', 'پروداکت منیجر', 'product', 'member'],
+    ['m9', 'بابک معروفی', 'Babak Maroufi', 'پروداکت منیجر', 'product', 'member'],
+    ['m10', 'امین ظفری', 'Amin Zafari', 'پروداکت منیجر', 'product', 'member'],
+    ['m11', 'هانیه منصورکیایی', 'Hanie Mansurkiae', 'پروداکت دیزاینر', 'product', 'member'],
+  ].map(function (r) {
+    return { id: r[0], name: r[1], name_en: r[2], role: r[3], track: r[4], access: r[5], capacity: 100, active: 'true', tasks_private: r[5] === 'exec' ? '1' : '' };
   }));
-  // Weekly cadence: one row per meeting; the app's "schedule next week" clones it.
-  var ws = weekStartISO_(tz);
-  var on = function (day) { var x = new Date(ws + 'T00:00:00'); x.setDate(x.getDate() + day); return Utilities.formatDate(x, tz, 'yyyy-MM-dd'); };
-  put('Meetings', [
-    { id: 'mt1', series: 'portfolio', title: 'ویکلی پورتفولیو', date: on(2), time: "'10:00", facilitator: 'وحید عامری', attendees: 'وحید عامری, جلیل علیزاده, وحید کیوانیان, مهرزاد گلی', status: 'scheduled' },
-    { id: 'mt2', series: 'product', title: 'ویکلی پروداکت', date: on(1), time: "'14:00", facilitator: 'مهرزاد گلی', attendees: 'مهرزاد گلی, وحید عامری, آتنا دهقان, علی سرمیلی, علی سالمه, مهرسا دبیر, بابک معروفی, امین ظفری, هانیه منصورکیایی', status: 'scheduled' },
-    { id: 'mt3', series: 'tech', title: 'ویکلی تک', date: on(3), time: "'11:00", facilitator: 'وحید کیوانیان', attendees: 'وحید کیوانیان, وحید عامری, مهرزاد گلی', status: 'scheduled' },
-  ]);
-  var pm = { 'CX Orbit': 'آتنا دهقان', 'Insight X Padida': 'علی سرمیلی', 'Roo B Roo': 'علی سالمه', 'Kadiner': 'مهرسا دبیر', 'HamAfza': 'بابک معروفی', 'Myca': 'امین ظفری', 'malek': 'آتنا دهقان', 'SimiPass': 'علی سرمیلی', 'Ino School': 'مهرسا دبیر', 'AISN': 'امین ظفری', 'Clarity Pass': 'بابک معروفی' };
-  put('Projects', Object.keys(pm).map(function (name, i) {
-    return { id: 'p' + (i + 1), code: name.replace(/[^A-Za-z]/g, '').slice(0, 4).toUpperCase(), name: name, owner: pm[name], sponsor: 'جلیل علیزاده', status: 'planning', priority: 'medium', start_date: d(0), end_date: d(90), budget: 0, spent: 0, progress: '' };
+  put('Projects', ['CX Orbit', 'Insight X Padida', 'Roo B Roo', 'Kadiner', 'HamAfza', 'Myca', 'malek', 'SimiPass', 'Ino School', 'AISN', 'Clarity Pass'].map(function (name, i) {
+    return { id: 'p' + (i + 1), code: name.replace(/[^A-Za-z]/g, '').slice(0, 4).toUpperCase(), name: name, status: 'active', priority: 'medium' };
   }));
 }

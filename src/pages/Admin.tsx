@@ -4,7 +4,7 @@ import { Plus, Pencil, Lock } from 'lucide-react'
 import { useStore } from '../lib/store'
 import { useEditor } from '../components/Editor'
 import { Band, Card, Overlap, Segmented, StatStrip, Avatar, cx } from '../components/ui'
-import { ContractsList } from '../components/Contracts'
+import { ContractsList, NewContractButton } from '../components/Contracts'
 import { PauseButton } from '../components/PauseButton'
 import Settings from './Settings'
 import { L, lbl } from '../lib/i18n'
@@ -66,7 +66,7 @@ export default function Admin({ initial = 'people' }: { initial?: Tab }) {
         {tab === 'people' && <People />}
         {tab === 'projects' && <ProjectsAdmin />}
         {tab === 'contracts' && (
-          <Card pad={false} eyebrow={L('محرمانه', 'Confidential')} title={L('قراردادهای همه‌ی پروژه‌ها', 'Contracts across projects')}>
+          <Card pad={false} eyebrow={L('محرمانه', 'Confidential')} title={L('قراردادهای همه‌ی پروژه‌ها', 'Contracts across projects')} action={<NewContractButton />}>
             <ContractsList />
           </Card>
         )}
@@ -173,14 +173,14 @@ function ProjectsAdmin() {
   const { open } = useEditor()
   const people = db.Team.filter((m) => String(m.active) !== 'false')
   return (
-    <Card pad={false} eyebrow={L('پروژه‌ها', 'Projects')} title={L('مدیر پروژه، اسپانسر و وضعیت', 'Lead, sponsor and status')}>
+    <Card pad={false} eyebrow={L('پروژه‌ها', 'Projects')} title={L('مدیر پروژه، کارفرما و وضعیت', 'Lead, client and status')}>
       <div className="overflow-x-auto border-t border-line">
         <table className="w-full min-w-[52rem]">
           <thead className="border-b border-line">
             <tr>
               <th className="th">{L('پروژه', 'Project')}</th>
               <th className="th">{L('مدیر پروژه', 'Lead')}</th>
-              <th className="th">{L('اسپانسر', 'Sponsor')}</th>
+              <th className="th">{L('کارفرما / رابط', 'Client / liaison')}</th>
               <th className="th">{L('وضعیت', 'Status')}</th>
               <th className="th text-center">{L('قرارداد', 'Contracts')}</th>
               <th className="th" />
@@ -197,18 +197,20 @@ function ProjectsAdmin() {
                     {p.code}
                   </div>
                 </td>
-                {(['owner', 'sponsor'] as const).map((k) => (
-                  <td key={k} className="td">
-                    <select className="input h-9 w-44 text-xs" value={p[k]} onChange={(e) => upsert('Projects', { ...p, [k]: e.target.value })}>
-                      <option value="">—</option>
-                      {people.map((m) => (
-                        <option key={m.id} value={m.name}>
-                          {m.name}
-                        </option>
-                      ))}
-                    </select>
-                  </td>
-                ))}
+                <td className="td">
+                  <select className="input h-9 w-44 text-xs" value={p.owner} onChange={(e) => upsert('Projects', { ...p, owner: e.target.value })}>
+                    <option value="">—</option>
+                    {people.map((m) => (
+                      <option key={m.id} value={m.name}>
+                        {m.name}
+                      </option>
+                    ))}
+                  </select>
+                </td>
+                <td className="td text-xs">
+                  <div className="font-medium">{p.client || <span className="text-sub">—</span>}</div>
+                  {p.liaison && <div className="text-[0.6875rem] text-sub">{p.liaison}</div>}
+                </td>
                 <td className="td text-xs">{lbl(PROJECT_STATUS, p.status)}</td>
                 <td className="td text-center text-xs num">{fa(db.Contracts.filter((c) => c.project_id === p.id).length)}</td>
                 <td className="td">

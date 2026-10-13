@@ -109,12 +109,13 @@ export default function MyDesk() {
           action: L('ثبت گزارش', 'Write update'), run: () => openComposer({ projectId: p.id }),
         })
       const m = projectMetrics(p, db)
-      if (m.health === 'red' && !db.FollowUps.some((f) => f.project_id === p.id && f.status !== 'done' && f.person === p.sponsor))
+      const contact = p.liaison || p.client
+      if (m.health === 'red' && contact && !db.FollowUps.some((f) => f.project_id === p.id && f.status !== 'done' && f.person === contact))
         out.push({
           key: `esc-${p.id}`, tone: 'bad',
-          text: L(`«${p.name}» در خطر است و با اسپانسر (${p.sponsor}) هماهنگی ثبت نشده`, `“${p.name}” is off track with no sync logged with the sponsor (${p.sponsor})`),
-          action: L('فالوآپ با اسپانسر', 'Follow up with sponsor'),
-          run: () => open('FollowUps', { project_id: p.id, person: p.sponsor, subject: L(`بررسی وضعیت ${p.name} و تصمیمات لازم`, `Review ${p.name} status and decisions`), priority: 'high' }),
+          text: L(`«${p.name}» در خطر است و با رابط کارفرما (${contact}) پیگیری ثبت نشده`, `“${p.name}” is off track with no follow-up logged with the client liaison (${contact})`),
+          action: L('فالوآپ با رابط', 'Follow up with liaison'),
+          run: () => open('FollowUps', { project_id: p.id, person: contact, subject: L(`بررسی وضعیت ${p.name} با کارفرما`, `Review ${p.name} with the client`), priority: 'high' }),
         })
     })
     db.Milestones.filter((ms) => ms.status !== 'done' && daysFromToday(ms.planned_date) >= 0 && daysFromToday(ms.planned_date) <= 5).forEach((ms) => {

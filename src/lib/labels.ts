@@ -1,4 +1,4 @@
-import type { Deliverable, Meeting, MeetingSeries, TimeOff, Health, Priority, ProjectStatus, TaskStatus, FollowUpStatus, Risk, Milestone, Sprint, ScopeItem, FollowUp } from './types'
+import type { Deliverable, Meeting, MeetingSeries, Health, Priority, ProjectStatus, TaskStatus, FollowUpStatus, Risk, Milestone, Sprint, ScopeItem, FollowUp } from './types'
 import type { T2 } from './i18n'
 
 export const PROJECT_STATUS: Record<ProjectStatus, T2> = {
@@ -115,11 +115,6 @@ export const MEETING_STATUS: Record<Meeting['status'], T2> = {
   scheduled: ['برنامه‌ریزی‌شده', 'Scheduled'],
   held: ['برگزار شد', 'Held'],
   cancelled: ['لغو شد', 'Cancelled'],
-}
-export const TIMEOFF_KIND: Record<TimeOff['kind'], T2> = {
-  leave: ['مرخصی', 'Leave'],
-  training: ['آموزش', 'Training'],
-  other: ['سایر', 'Other'],
 }
 
 export const ACCESS: Record<string, T2> = {

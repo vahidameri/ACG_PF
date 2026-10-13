@@ -61,7 +61,8 @@ export function projectMetrics(p: Project, db: DB): ProjectMetrics {
 
   const elapsed = timelineElapsed(p)
   const scheduleGap = progress - elapsed
-  const daysLeft = daysFromToday(p.end_date)
+  // no deadline yet = nothing to be late against
+  const daysLeft = p.end_date ? daysFromToday(p.end_date) : 9999
 
   const overdueMs = ms.filter((m) => m.status !== 'done' && m.planned_date && daysFromToday(m.planned_date) < 0)
   const upcoming = ms

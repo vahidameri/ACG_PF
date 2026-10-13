@@ -1,8 +1,8 @@
 // Time-phased capacity: allocations (with optional date windows) against each person's
-// availability, net of leave. Units are "% of one full-time person" so a team row can say 600.
+// availability. Units are "% of one full-time person" so a team row can say 600.
 import type { Allocation, DB, Member, Track } from './types'
 import { addDays } from './jalali'
-import { WORKDAYS, weekStart, workdaysInWeek } from './weeks'
+import { weekStart } from './weeks'
 
 export const capOf = (m: Member) => Number(m.capacity) || 100
 
@@ -25,11 +25,8 @@ export interface WeekLoad {
 
 export function memberWeek(db: DB, m: Member, ws: string = weekStart()): WeekLoad {
   const capacity = capOf(m)
-  const leaveDays = Math.min(
-    WORKDAYS,
-    db.TimeOff.filter((t) => t.member_id === m.id).reduce((s, t) => s + workdaysInWeek(ws, t.start_date, t.end_date || t.start_date), 0),
-  )
-  const available = Math.round(capacity * (1 - leaveDays / WORKDAYS))
+  const leaveDays = 0
+  const available = capacity
   // paused, finished or cancelled projects don't consume anyone's capacity
   const idle = new Set(db.Projects.filter((p) => p.status === 'on_hold' || p.status === 'completed' || p.status === 'cancelled').map((p) => p.id))
   const projects = db.Allocations.filter((a) => a.member_id === m.id && !idle.has(a.project_id) && allocActive(a, ws)).map((a) => ({ project_id: a.project_id, percent: Number(a.percent) || 0 }))

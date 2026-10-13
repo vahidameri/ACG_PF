@@ -6,7 +6,7 @@ import { CalendarPlus, CalendarSync, Repeat, Mail, Unlock, Image, PauseCircle, B
 import type { Meeting, Project, Task } from './types'
 import { useStore } from './store'
 import { useGoogle } from './google'
-import { L, locale, type T2 } from './i18n'
+import { L, type T2 } from './i18n'
 import { createEvent, demoEvents, fetchEvents, relate, seriesFor, type GEvent } from './gcal'
 import { addDays, daysBetween, fa, todayISO } from './jalali'
 import { weekStart } from './weeks'
@@ -75,7 +75,7 @@ export function AutomationProvider({ children }: { children: ReactNode }) {
   )
 
   // ---------------------------------------------------------- calendar
-  const demoCal = useMemo(() => (mode === 'demo' ? demoEvents(db, locale.lang) : []), [mode, db])
+  const demoCal = useMemo(() => (mode === 'demo' ? demoEvents(db) : []), [mode, db])
   useEffect(() => {
     if (mode === 'demo') return setCalStatus('demo')
     if (!session) return setCalStatus('off')
@@ -199,7 +199,7 @@ export function AutomationProvider({ children }: { children: ReactNode }) {
       await upsert('Projects', { ...p, status: 'on_hold', paused_at: todayISO(), pause_reason: reason })
       const d = dbRef.current
       const freed = d.Allocations.filter((a) => a.project_id === p.id && (!a.end_date || a.end_date >= todayISO())).reduce((s, a) => s + Number(a.percent || 0), 0)
-      toast(L(`${p.name} متوقف شد؛ ${fa(Math.round(freed / 10) / 10)} FTE ظرفیت آزاد شد`, `${p.name} paused; ${Math.round(freed / 10) / 10} FTE freed`))
+      toast(L(`${p.name} متوقف شد؛ ظرفیت ${fa(Math.round(freed / 10) / 10)} نفر تمام‌وقت آزاد شد`, `${p.name} paused; ${Math.round(freed / 10) / 10} full-time people freed`))
     },
     [upsert, toast],
   )

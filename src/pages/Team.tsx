@@ -1,17 +1,16 @@
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
-import { Plus, Palmtree, GraduationCap } from 'lucide-react'
+import { Plus } from 'lucide-react'
 import { useStore } from '../lib/store'
 import { useEditor } from '../components/Editor'
 import { Band, Card, Overlap, Avatar, cx, StatStrip, Segmented, Tabs } from '../components/ui'
-import { addDays, fa, fmtDayMonth, todayISO } from '../lib/jalali'
+import { addDays, fa, fmtDayMonth } from '../lib/jalali'
 import { isTaskOverdue } from '../lib/metrics'
 import { L, lbl } from '../lib/i18n'
 import { allocActive, capOf, fte, loadTone, memberWeek, trackWeek, type WeekLoad } from '../lib/capacity'
 import { uid } from '../lib/api'
 import { weekLabel, weekRel, weekStart, weeksFrom } from '../lib/weeks'
 import { TRACK } from '../lib/tracks'
-import { TIMEOFF_KIND } from '../lib/labels'
 import { usePref } from '../lib/prefs'
 import type { Member, Track } from '../lib/types'
 
@@ -38,7 +37,6 @@ export default function Team() {
   const available = now.reduce((s, r) => s + r.w.available, 0)
   const allocated = now.reduce((s, r) => s + r.w.allocated, 0)
   const over = now.filter((r) => r.w.load > 100)
-  const onLeave = now.filter((r) => r.w.leaveDays > 0)
 
   // Forecast: the first upcoming week a track goes over capacity
   const forecast = (['tech', 'product'] as Track[])
@@ -63,9 +61,6 @@ export default function Team() {
         actions={
           canEdit && (
             <>
-              <button className="btn h-10 border border-white/15 text-white" onClick={() => open('TimeOff')}>
-                <Palmtree size={16} /> {L('ثبت مرخصی', 'Time off')}
-              </button>
               <button className="btn h-10 border border-white/15 text-white" onClick={() => open('Allocations')}>
                 <Plus size={16} /> {L('تخصیص', 'Allocation')}
               </button>
@@ -78,11 +73,11 @@ export default function Team() {
       >
         <StatStrip
           items={[
-            { label: L('ظرفیت این هفته', 'Capacity this week'), value: fa(fte(available)), sub: L('نفر-هفته (FTE)', 'FTE') },
+            { label: L('ظرفیت این هفته', 'Capacity this week'), value: fa(fte(available)), sub: L('نفر تمام‌وقت', 'full-time people') },
             { label: L('تخصیص‌یافته', 'Allocated'), value: fa(fte(allocated)), sub: L(`${fa(available ? Math.round((allocated / available) * 100) : 0)}٪ از ظرفیت`, `${available ? Math.round((allocated / available) * 100) : 0}% of capacity`) },
             { label: L('ظرفیت آزاد', 'Free capacity'), value: fa(fte(Math.max(0, available - allocated))), tone: available - allocated <= 0 ? 'red' : undefined },
             { label: L('بیش از ظرفیت', 'Over capacity'), value: fa(over.length), tone: over.length ? 'red' : 'green' },
-            { label: L('در مرخصی این هفته', 'On leave this week'), value: fa(onLeave.length) },
+            { label: L('پروژه‌های متوقف', 'Paused projects'), value: fa(db.Projects.filter((p) => p.status === 'on_hold').length), sub: L('ظرفیت مصرف نمی‌کنند', 'use no capacity') },
             { label: L('افراد', 'People'), value: fa(people.length) },
           ]}
         />
@@ -135,7 +130,7 @@ function TrackCard({ track, weeks }: { track: Track; weeks: string[] }) {
   return (
     <Card
       eyebrow={L(`تیم ${lbl(TRACK, track)}`, `${lbl(TRACK, track)} track`)}
-      title={L(`${fa(cur.people)} نفر · ${fa(fte(cur.available))} FTE ظرفیت این هفته`, `${cur.people} people · ${fte(cur.available)} FTE this week`)}
+      title={L(`${fa(cur.people)} نفر · ظرفیت این هفته معادل ${fa(fte(cur.available))} نفر تمام‌وقت`, `${cur.people} people · ${fte(cur.available)} full-time this week`)}
       action={<span className={cx('display text-3xl num', toneText[tone])}>{fa(cur.load)}%</span>}
     >
       <div className="relative flex h-28 items-end gap-1.5">
@@ -159,7 +154,7 @@ function TrackCard({ track, weeks }: { track: Track; weeks: string[] }) {
       </div>
       <div className="mt-3 flex flex-wrap gap-x-4 gap-y-1 border-t border-line pt-3 text-xs text-sub">
         <span>
-          {L('تقاضا', 'Demand')}: <b className="text-ink num">{fa(fte(cur.allocated))}</b> FTE
+          {L('تخصیص‌یافته', 'Allocated')}: <b className="text-ink num">{fa(fte(cur.allocated))}</b> {L('نفر', 'people')}
         </span>
         <span>
           {L('اوج', 'Peak')}: <b className={cx('num', toneText[loadTone(peak.load)])}>{fa(peak.load)}%</b> {weekRel(peak.ws)}
@@ -179,14 +174,12 @@ function PeopleGrid({ people }: { people: Member[] }) {
   const { db, canEdit } = useStore()
   const { open } = useEditor()
   const color = useColors()
-  const today = todayISO()
   const rows = people.map((m) => ({ m, w: memberWeek(db, m) })).sort((a, b) => b.w.load - a.w.load)
   return (
     <div className="grid gap-3 border-t border-line p-4 @lg:grid-cols-2 @2xl:grid-cols-3">
       {rows.map(({ m, w }) => {
         const tone = loadTone(w.load)
         const tasks = db.Tasks.filter((t) => t.assignee === m.name && t.status !== 'done')
-        const leave = db.TimeOff.filter((t) => t.member_id === m.id && (t.end_date || t.start_date) >= today).sort((a, b) => (a.start_date < b.start_date ? -1 : 1))[0]
         const base = Math.max(w.available, w.allocated, 1)
         return (
           <div key={m.id} className="rounded-2xl border border-line p-4 transition hover:border-line-strong">
@@ -242,13 +235,6 @@ function PeopleGrid({ people }: { people: Member[] }) {
                 {L(`${fa(tasks.length)} تسک باز`, `${tasks.length} open tasks`)}
                 {tasks.filter(isTaskOverdue).length > 0 && <span className="text-bad"> · {L(`${fa(tasks.filter(isTaskOverdue).length)} معوق`, `${tasks.filter(isTaskOverdue).length} overdue`)}</span>}
               </Link>
-              {leave && (
-                <button onClick={() => open('TimeOff', leave as never)} className="inline-flex items-center gap-1 text-wine hover:underline dark:text-[#ec7892]">
-                  {leave.kind === 'training' ? <GraduationCap size={12} /> : <Palmtree size={12} />}
-                  {lbl(TIMEOFF_KIND, leave.kind)} {fmtDayMonth(leave.start_date)}
-                  {leave.end_date && leave.end_date !== leave.start_date && ` – ${fmtDayMonth(leave.end_date)}`}
-                </button>
-              )}
               {canEdit && (
                 <button className="ms-auto font-medium text-ink hover:underline" onClick={() => open('Allocations', { member_id: m.id })}>
                   + {L('تخصیص', 'Allocate')}
@@ -268,7 +254,7 @@ function Timeline({ people, weeks }: { people: Member[]; weeks: string[] }) {
   const ws0 = weekStart()
   const name = (pid: string) => db.Projects.find((p) => p.id === pid)?.name || pid
   const tip = (w: WeekLoad) =>
-    [`${weekLabel(w.ws)}: ${w.load}%`, ...w.projects.map((p) => `${name(p.project_id)} ${p.percent}%`), w.leaveDays ? L(`${fa(w.leaveDays)} روز مرخصی`, `${w.leaveDays} day(s) off`) : ''].filter(Boolean).join('\n')
+    [`${weekLabel(w.ws)}: ${w.load}%`, ...w.projects.map((p) => `${name(p.project_id)} ${p.percent}%`)].filter(Boolean).join('\n')
   return (
     <div className="overflow-x-auto border-t border-line">
       <table className="w-full min-w-[60rem]">
@@ -300,7 +286,6 @@ function Timeline({ people, weeks }: { people: Member[]; weeks: string[] }) {
                   <td key={ws} className="px-1 py-1.5">
                     <div className={cx('relative grid h-10 min-w-[3.25rem] place-items-center rounded-xl text-xs font-semibold num', toneCell[loadTone(w.load)], !w.allocated && 'opacity-60')} title={tip(w)}>
                       {w.allocated ? `${fa(w.load > 999 ? 999 : w.load)}%` : '—'}
-                      {w.leaveDays > 0 && <Palmtree size={11} className="absolute end-1 top-1 opacity-80" />}
                     </div>
                   </td>
                 )
@@ -313,7 +298,6 @@ function Timeline({ people, weeks }: { people: Member[]; weeks: string[] }) {
         <span className="inline-flex items-center gap-1.5"><span className="h-2.5 w-4 rounded bg-good/30" /> {L('زیر ۸۵٪', 'Under 85%')}</span>
         <span className="inline-flex items-center gap-1.5"><span className="h-2.5 w-4 rounded bg-warn/80" /> {L('۸۵ تا ۱۰۰٪', '85–100%')}</span>
         <span className="inline-flex items-center gap-1.5"><span className="h-2.5 w-4 rounded bg-bad" /> {L('بیش از ظرفیت', 'Over capacity')}</span>
-        <span className="inline-flex items-center gap-1.5"><Palmtree size={12} /> {L('مرخصی در این هفته (ظرفیت کم می‌شود)', 'Time off this week (reduces capacity)')}</span>
         <span>{L(`تا ${fmtDayMonth(addDays(weeks[weeks.length - 1], 6))}`, `through ${fmtDayMonth(addDays(weeks[weeks.length - 1], 6))}`)}</span>
       </div>
     </div>
@@ -419,7 +403,7 @@ function Matrix({ people }: { people: Member[] }) {
           </tbody>
           <tfoot className="border-t-2 border-line">
             <tr>
-              <td className="td sticky start-0 z-10 bg-surface text-xs font-medium text-sub">{L('جمع (FTE)', 'Total (FTE)')}</td>
+              <td className="td sticky start-0 z-10 bg-surface text-xs font-medium text-sub">{L('جمع (نفر تمام‌وقت)', 'Total (full-time people)')}</td>
               {projects.map((p) => (
                 <td key={p.id} className="px-1 py-2 text-center text-xs font-semibold num">
                   {fa(fte(colTotal(p.id)))}

@@ -78,7 +78,7 @@ export default function Weekly() {
               onChange={setView}
               options={[
                 { value: 'week', label: L('جلسات', 'Meetings') },
-                { value: 'actions', label: L(`اکشن پلن · ${fa(openActions.length)}`, `Action plan · ${openActions.length}`) },
+                { value: 'actions', label: L('اکشن‌پلن (اقدام‌های باز)', 'Action plan (open actions)') },
               ]}
             />
             {view === 'week' && <WeekNav ws={ws} onChange={setWs} />}
@@ -395,7 +395,7 @@ function buildAgenda(m: Meeting, db: DB, open: ReturnType<typeof useEditor>['ope
 
   const capSection = (t: Track | ''): AgendaSection => {
     const over = overloaded(db, ws).filter((x) => !t || x.m.track === t)
-    const items: AgendaItem[] = over.map(({ m: mem, w }) => ({ key: mem.id, primary: mem.name, secondary: L(`${fa(w.load)}٪ این هفته${w.leaveDays ? ` · ${fa(w.leaveDays)} روز مرخصی` : ''}`, `${w.load}% this week${w.leaveDays ? ` · ${w.leaveDays}d off` : ''}`), tone: 'red', to: '/team' }))
+    const items: AgendaItem[] = over.map(({ m: mem, w }) => ({ key: mem.id, primary: mem.name, secondary: L(`${fa(w.load)}٪ این هفته`, `${w.load}% this week`), tone: 'red', to: '/team' }))
     ;(t ? [t] : (['tech', 'product'] as Track[])).forEach((tt) => {
       const hit = weeksFrom(addDays(ws, 7), 8).map((w) => trackWeek(db, tt, w)).find((x) => x.load > 100)
       if (hit) items.push({ key: 'f' + tt, primary: L(`تیم ${lbl(TRACK, tt)} از ${weekRel(hit.ws)} به ${fa(hit.load)}٪ می‌رسد`, `${lbl(TRACK, tt)} hits ${hit.load}% ${weekRel(hit.ws).toLowerCase()}`), secondary: weekLabel(hit.ws), tone: 'amber', to: '/team' })

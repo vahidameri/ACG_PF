@@ -43,6 +43,10 @@ function monthLabel(iso: string, withYear: boolean) {
   return `${(en ? G_MONTHS_EN : G_MONTHS_FA)[d.getMonth()]}${withYear ? ` ${fa(d.getFullYear())}` : ''}`
 }
 
+function yearLabel(iso: string) {
+  return fa(locale.cal === 'jalali' ? isoToJalaliParts(iso)!.jy : parseISO(iso)!.getFullYear())
+}
+
 export default function Roadmap() {
   const { db } = useStore()
   const { lang } = useI18n()
@@ -58,7 +62,11 @@ export default function Roadmap() {
   const axisRef = useRef<HTMLDivElement>(null)
   const today = todayISO()
 
-  const projects = db.Projects.filter((p) => p.start_date && p.end_date && (status ? p.status === status : p.status !== 'cancelled') && (!cat || p.category === cat)).sort((a, b) => (a.start_date < b.start_date ? -1 : 1))
+  const order: Record<string, number> = { active: 0, planning: 1, on_hold: 2, completed: 3, cancelled: 4 }
+  const projects = db.Projects.filter((p) => p.start_date && p.end_date && (status ? p.status === status : p.status !== 'cancelled') && (!cat || p.category === cat)).sort(
+    (a, b) => order[a.status] - order[b.status] || (a.start_date < b.start_date ? -1 : 1),
+  )
+  const undated = db.Projects.filter((p) => (!p.start_date || !p.end_date) && p.status !== 'cancelled' && p.status !== 'completed')
   const cats = Array.from(new Set(db.Projects.map((p) => p.category).filter(Boolean)))
 
   const { from, to, months } = useMemo(() => {
@@ -140,14 +148,33 @@ export default function Roadmap() {
 
         <div className="card overflow-x-auto">
           <div className="relative min-w-[61.25rem] select-none">
-            <div className="flex border-b border-line">
-              <div className="eyebrow w-72 shrink-0 border-e border-line px-5 py-3.5">{L('پروژه', 'Project')}</div>
-              <div ref={axisRef} className="relative flex flex-1 cursor-col-resize" onPointerDown={startDrag} onPointerMove={onDrag} onPointerUp={endDrag} title={L('برای جابه‌جایی نشانگر بکشید', 'Drag to move the time cursor')}>
-                {months.map((m) => (
-                  <div key={m.start} className="truncate border-e border-line/70 px-2 py-3.5 text-xs text-sub last:border-e-0" style={{ width: `${(m.days / total) * 100}%` }}>
-                    {m.label}
-                  </div>
-                ))}
+            <div className="flex border-b border-line bg-muted/30">
+              <div className="eyebrow flex w-72 shrink-0 items-end border-e border-line px-5 pb-3 pt-6">{L('پروژه', 'Project')}</div>
+              <div ref={axisRef} className="relative flex-1 cursor-col-resize" onPointerDown={startDrag} onPointerMove={onDrag} onPointerUp={endDrag} title={L('برای جابه‌جایی نشانگر بکشید', 'Drag to move the time cursor')}>
+                <div className="flex h-7 items-end">
+                  {months.map((m, i) =>
+                    i === 0 || isYearStart(m.start) ? (
+                      <span key={m.start} className="absolute bottom-0.5 text-[0.625rem] font-semibold text-ink/70 num" style={{ insetInlineStart: `calc(${pos(m.start)}% + 8px)` }}>
+                        {yearLabel(m.start)}
+                      </span>
+                    ) : null,
+                  )}
+                </div>
+                <div className="flex">
+                  {months.map((m) => {
+                    const cur = today >= m.start && today < addDays(m.start, m.days)
+                    return (
+                      <div key={m.start} className={cx('truncate border-e border-line/70 px-2 pb-2.5 pt-1 text-xs last:border-e-0', cur ? 'font-semibold text-ink' : 'text-sub')} style={{ width: `${(m.days / total) * 100}%` }}>
+                        {m.label.replace(/\s?[\d۰-۹]+$/, '')}
+                      </div>
+                    )
+                  })}
+                </div>
+                {todayPos > 0 && todayPos < 100 && (
+                  <span className="absolute top-1 z-10 -translate-x-1/2 rounded-full bg-bad px-2 py-0.5 text-[0.625rem] font-semibold text-white rtl:translate-x-1/2" style={{ insetInlineStart: `${todayPos}%` }}>
+                    {L('امروز', 'Today')}
+                  </span>
+                )}
               </div>
             </div>
 
@@ -174,29 +201,41 @@ export default function Roadmap() {
                       </div>
                       <Avatar name={p.owner} size="xs" />
                     </div>
-                    <div className="relative flex-1 py-3">
+                    <div className={cx('relative flex-1', ms.length ? 'h-[4.5rem]' : 'h-14')}>
                       <Grid months={months} total={total} />
-                      {todayPos > 0 && todayPos < 100 && <div className="absolute inset-y-0 z-10 w-[2px] bg-bad/70" style={{ insetInlineStart: `${todayPos}%` }} />}
+                      {todayPos > 0 && todayPos < 100 && <div className="absolute inset-y-0 z-10 w-[2px] bg-bad/60" style={{ insetInlineStart: `${todayPos}%` }} />}
                       {visible && (
                         <div
-                          className="absolute top-1/2 h-7 -translate-y-1/2 overflow-hidden rounded-full bg-ink/[0.06] ring-1 ring-inset ring-line-strong"
-                          style={{ insetInlineStart: `${s}%`, width: `${Math.max(0.8, e - s)}%` }}
-                          title={`${p.name}: ${fmtDate(p.start_date)} — ${fmtDate(p.end_date)}`}
+                          className={cx('absolute top-3 flex h-8 items-center overflow-hidden rounded-xl ring-1 ring-inset', p.status === 'on_hold' ? 'bg-muted ring-line-strong [background-image:repeating-linear-gradient(135deg,transparent,transparent_6px,rgb(var(--line))_6px,rgb(var(--line))_8px)]' : 'bg-surface ring-line-strong')}
+                          style={{ insetInlineStart: `${s}%`, width: `${Math.max(1.2, e - s)}%` }}
+                          title={`${p.name}: ${fmtDate(p.start_date)} — ${fmtDate(p.end_date)} · ${fa(m.progress)}%`}
                         >
-                          <div className={cx('h-full opacity-85', healthColor[m.health])} style={{ width: `${m.progress}%` }} />
+                          <div className={cx('absolute inset-y-0 start-0', p.status === 'on_hold' ? 'bg-ink/10' : healthColor[m.health], p.status !== 'on_hold' && 'opacity-25')} style={{ width: `${m.progress}%` }} />
+                          {p.status !== 'on_hold' && <div className={cx('absolute inset-y-1 w-[3px] rounded-full', healthColor[m.health])} style={{ insetInlineStart: `calc(${m.progress}% - 1.5px)` }} />}
                         </div>
+                      )}
+                      {visible && e < 92 && (
+                        <span className="absolute top-[1.1rem] text-[0.6875rem] font-semibold text-sub num" style={{ insetInlineStart: `calc(${e}% + 8px)` }}>
+                          {p.status === 'on_hold' ? L('متوقف', 'paused') : `${fa(m.progress)}%`}
+                        </span>
                       )}
                       {ms.map((x) => {
                         if (x.planned_date < from || x.planned_date > to) return null
                         const late = x.status !== 'done' && x.planned_date < today
+                        const tone = x.status === 'done' ? 'bg-good' : late ? 'bg-bad' : 'bg-ink'
                         return (
                           <button
                             key={x.id}
                             onClick={() => open('Milestones', x as never)}
                             title={`${x.title} · ${fmtDate(x.planned_date)}`}
-                            className={cx('absolute top-1/2 z-20 h-3 w-3 -translate-y-1/2 rotate-45 rounded-[3px] ring-2 ring-surface transition hover:scale-125', x.status === 'done' ? 'bg-good' : late ? 'bg-bad' : 'bg-ink')}
-                            style={{ insetInlineStart: `calc(${pos(x.planned_date)}% - 6px)` }}
-                          />
+                            className="group absolute top-[1.125rem] z-20 flex -translate-x-1/2 flex-col items-center rtl:translate-x-1/2"
+                            style={{ insetInlineStart: `${pos(x.planned_date)}%` }}
+                          >
+                            <span className={cx('h-3.5 w-3.5 rotate-45 rounded-[3px] ring-2 ring-surface transition group-hover:scale-125', tone)} />
+                            {zoom !== 'all' && zoom !== 'y' && (
+                              <span className={cx('mt-2.5 max-w-[7rem] truncate rounded-md px-1 text-[0.625rem] leading-4', late ? 'text-bad' : 'text-sub', 'group-hover:bg-surface group-hover:text-ink group-hover:shadow')}>{x.title}</span>
+                            )}
+                          </button>
                         )
                       })}
                     </div>
@@ -253,7 +292,26 @@ export default function Roadmap() {
           </div>
         </div>
 
-        <Snapshot at={cursor} projects={projects} onReset={() => setCursor(today)} />
+        {!projects.length && (
+          <div className="card mt-4 grid place-items-center gap-2 px-6 py-12 text-center">
+            <div className="text-sm font-medium">{L('هنوز پروژه‌ای تاریخ شروع و پایان ندارد', 'No project has start and end dates yet')}</div>
+            <p className="max-w-md text-xs leading-6 text-sub">{L('برای هر پروژه تاریخ شروع، ددلاین و مایلستون‌ها را ثبت کنید تا روی رودمپ بیاید.', 'Add a start date, deadline and milestones to each project to place it on the roadmap.')}</p>
+          </div>
+        )}
+        {undated.length > 0 && (
+          <section className="card mt-4 p-5">
+            <div className="eyebrow">{L('بدون زمان‌بندی', 'Not scheduled')}</div>
+            <h3 className="mt-1 text-[0.9375rem] font-semibold">{L(`${fa(undated.length)} پروژه هنوز تاریخ ندارد`, `${undated.length} projects have no dates yet`)}</h3>
+            <div className="mt-3 flex flex-wrap gap-2">
+              {undated.map((p) => (
+                <button key={p.id} onClick={() => open('Projects', p as never)} className="chip-btn">
+                  {p.name} <span className="text-sub">· {L('تعیین تاریخ', 'set dates')}</span>
+                </button>
+              ))}
+            </div>
+          </section>
+        )}
+        {projects.length > 0 && <Snapshot at={cursor} projects={projects} onReset={() => setCursor(today)} />}
       </Overlap>
     </>
   )

@@ -53,7 +53,7 @@ export function PauseButton({ p, dark, compact }: { p: Project; dark?: boolean; 
                 {L(`${fa(days)} روز متوقف بوده`, `Paused for ${days} days`)}
                 {p.pause_reason && ` — ${p.pause_reason}`}.
                 {auto.on('pause_shift') && days > 0 && p.end_date && L(` ددلاین از ${fmtDayMonth(p.end_date)} به ${fmtDate(addDays(p.end_date, days))} می‌رود و مایلستون‌ها و تحویل‌های باز هم همین‌قدر جابجا می‌شوند.`, ` The deadline moves from ${fmtDayMonth(p.end_date)} to ${fmtDate(addDays(p.end_date, days))}, and open milestones and deliverables shift by the same amount.`)}
-                {L(` ${fa(people)} نفر دوباره ${fa(fte(freed))} FTE روی پروژه می‌گذارند.`, ` ${people} people put ${fte(freed)} FTE back on it.`)}
+                {L(` ${fa(people)} نفر دوباره روی پروژه می‌آیند (معادل ${fa(fte(freed))} نفر تمام‌وقت).`, ` ${people} people come back to it (${fte(freed)} full-time equivalent).`)}
               </p>
               <button className="btn-primary btn-sm w-full" onClick={() => (auto.resume(p), close())}>
                 <Play size={14} /> {L('ادامه‌ی پروژه', 'Resume project')}
@@ -62,7 +62,7 @@ export function PauseButton({ p, dark, compact }: { p: Project; dark?: boolean; 
           ) : (
             <>
               <div className="text-sm font-semibold">{L(`توقف ${p.name}`, `Pause ${p.name}`)}</div>
-              <p className="text-xs leading-5 text-sub">{L(`${fa(people)} نفر و ${fa(fte(freed))} FTE ظرفیت آزاد می‌شود و در صفحه‌ی ظرفیت دیده می‌شود. تخصیص‌ها حذف نمی‌شوند و با ادامه برمی‌گردند.`, `${people} people and ${fte(freed)} FTE are freed (visible on Capacity). Allocations are kept and come back on resume.`)}</p>
+              <p className="text-xs leading-5 text-sub">{L(`${fa(people)} نفر آزاد می‌شوند (معادل ${fa(fte(freed))} نفر تمام‌وقت) و در صفحه‌ی ظرفیت دیده می‌شود. تخصیص‌ها حذف نمی‌شوند و با ادامه برمی‌گردند.`, `${people} people are freed (${fte(freed)} full-time equivalent) (visible on Capacity). Allocations are kept and come back on resume.`)}</p>
               <textarea className="input" rows={2} value={reason} onChange={(e) => setReason(e.target.value)} placeholder={L('دلیل توقف (برای گزارش مدیریت)', 'Reason (for the leadership report)')} />
               <button className="btn-primary btn-sm w-full" onClick={() => (auto.pause(p, reason.trim()), close())}>
                 <Pause size={14} /> {L('توقف پروژه', 'Pause project')}

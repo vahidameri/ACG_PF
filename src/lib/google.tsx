@@ -22,9 +22,15 @@ interface TokenResponse {
 interface TokenClient {
   requestAccessToken: (o?: { prompt?: string; login_hint?: string }) => void
 }
+interface ScriptRun {
+  withSuccessHandler: (f: (r: unknown) => void) => ScriptRun
+  withFailureHandler: (f: (e: Error) => void) => ScriptRun
+  atlasSession: () => void
+}
 declare global {
   interface Window {
     google?: {
+      script?: { run: ScriptRun }
       accounts: {
         oauth2: {
           initTokenClient: (o: { client_id: string; scope: string; callback: (r: TokenResponse) => void; error_callback?: (e: { type: string }) => void }) => TokenClient
@@ -61,7 +67,19 @@ function loadGis() {
   return gisPromise
 }
 
+/** True when the app is served by Apps Script (HtmlService) — the zero-hosting setup. */
+export const hosted = () => typeof window !== 'undefined' && !!window.google?.script?.run
+
+function scriptSession(): Promise<{ token: string; email: string; apiUrl: string }> {
+  return new Promise((resolve, reject) =>
+    window.google!.script!.run.withSuccessHandler((r) => resolve(r as never)).withFailureHandler(reject).atlasSession(),
+  )
+}
+
 interface Ctx {
+  hosted: boolean
+  /** data API address handed over by Apps Script in hosted mode */
+  apiUrl: string
   session: GSession | null
   signIn: (clientId: string, opts?: { silent?: boolean; hint?: string }) => Promise<GSession>
   signOut: () => void
@@ -72,18 +90,53 @@ const C = createContext<Ctx | null>(null)
 export const useGoogle = () => useContext(C)!
 
 export function GoogleProvider({ children }: { children: ReactNode }) {
-  const [session, setSession] = useState<GSession | null>(load)
-  const [busy, setBusy] = useState(false)
+  const isHosted = hosted()
+  const [session, setSession] = useState<GSession | null>(isHosted ? null : load)
+  const [busy, setBusy] = useState(isHosted)
   const [error, setError] = useState('')
+  const [apiUrl, setApiUrl] = useState('')
+
+  // Hosted in Apps Script: the page already runs as the signed-in Google user — just ask for a token.
+  const loadHosted = useCallback(async () => {
+    setBusy(true)
+    try {
+      const r = await scriptSession()
+      let name = ''
+      let picture = ''
+      try {
+        const info = await fetch('https://www.googleapis.com/oauth2/v3/userinfo', { headers: { Authorization: `Bearer ${r.token}` } }).then((x) => x.json())
+        name = info.name || ''
+        picture = info.picture || ''
+      } catch {}
+      setAccessToken(r.token)
+      setApiUrl(r.apiUrl)
+      setSession({ token: r.token, exp: Date.now() + 50 * 60_000, email: String(r.email).toLowerCase(), name, picture })
+      setError('')
+    } catch (e) {
+      setError(e instanceof Error ? e.message : String(e))
+    } finally {
+      setBusy(false)
+    }
+  }, [])
+  useEffect(() => {
+    if (!isHosted) return
+    loadHosted()
+    const t = setInterval(loadHosted, 45 * 60_000)
+    return () => clearInterval(t)
+  }, [isHosted, loadHosted])
   useEffect(() => setAccessToken(session?.token || ''), [session])
   // token lifetime is one hour; renew quietly a few minutes before it expires
   useEffect(() => {
-    if (!session) return
+    if (!session || isHosted) return
     const t = setTimeout(() => setSession(null), Math.max(0, session.exp - Date.now() - 120_000))
     return () => clearTimeout(t)
-  }, [session])
+  }, [session, isHosted])
 
   const signIn = useCallback(async (clientId: string, opts: { silent?: boolean; hint?: string } = {}) => {
+    if (hosted()) {
+      await loadHosted()
+      return session as GSession
+    }
     setBusy(true)
     setError('')
     try {
@@ -112,7 +165,7 @@ export function GoogleProvider({ children }: { children: ReactNode }) {
     } finally {
       setBusy(false)
     }
-  }, [])
+  }, [loadHosted, session])
 
   const signOut = useCallback(() => {
     if (session?.token) window.google?.accounts.oauth2.revoke(session.token)
@@ -123,5 +176,5 @@ export function GoogleProvider({ children }: { children: ReactNode }) {
     setSession(null)
   }, [session])
 
-  return <C.Provider value={{ session, signIn, signOut, busy, error }}>{children}</C.Provider>
+  return <C.Provider value={{ hosted: isHosted, apiUrl, session, signIn, signOut, busy, error }}>{children}</C.Provider>
 }

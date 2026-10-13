@@ -1,7 +1,5 @@
 // Google Calendar (REST, with the signed-in user's token) + matching events to projects/people.
 import type { DB, Meeting, MeetingSeries } from './types'
-import { addDays } from './jalali'
-import { weekStart } from './weeks'
 
 export interface GEvent {
   id: string
@@ -104,21 +102,11 @@ export function seriesFor(e: GEvent, r: Relation): MeetingSeries {
 }
 
 // ------------------------------------------------------------------ demo calendar
-export function demoEvents(db: DB, lang: 'fa' | 'en'): GEvent[] {
-  const x = (fa: string, en: string) => (lang === 'en' ? en : fa)
-  const ws = weekStart()
-  const W = (w: number, d: number) => addDays(ws, w * 7 + d)
+export function demoEvents(db: DB): GEvent[] {
   const mail = (id: string) => db.Team.find((m) => m.id === id)?.email || ''
   const linked: GEvent[] = db.Meetings.filter((m) => m.gcal_id).map((m) => ({
     id: m.gcal_id, title: m.title, date: m.date, time: m.time, duration: Number(m.duration) || 45, meetUrl: m.meet_url, htmlLink: '#',
     attendees: m.attendees.split(',').map((n) => db.Team.find((t) => t.name === n.trim())?.email || '').filter(Boolean), organizer: mail('m1'), description: '',
   }))
-  const extra: GEvent[] = [
-    { id: 'gx1', title: x('بازبینی اسپرینت Kadiner', 'Kadiner sprint review'), date: W(0, 3), time: '13:00', duration: 60, meetUrl: 'https://meet.google.com/kdn-rev-01', htmlLink: '#', attendees: [mail('m8'), mail('m3'), mail('m1')], organizer: mail('m8'), description: '' },
-    { id: 'gx2', title: x('جلسه‌ی ۱:۱ وحید و جلیل', '1:1 Vahid & Jalil'), date: W(0, 4), time: '16:00', duration: 30, meetUrl: '', htmlLink: '#', attendees: [mail('m1'), mail('m2')], organizer: mail('m2'), description: '' },
-    { id: 'gx3', title: x('AISN — تماس با تأمین‌کننده‌ی داده', 'AISN — data vendor call'), date: W(1, 0), time: '11:00', duration: 45, meetUrl: 'https://meet.google.com/ais-dat-02', htmlLink: '#', attendees: [mail('m10'), mail('m1')], organizer: mail('m10'), description: '' },
-    { id: 'gx4', title: x('ناهار', 'Lunch'), date: W(0, 2), time: '13:30', duration: 60, meetUrl: '', htmlLink: '#', attendees: [], organizer: mail('m1'), description: '' },
-    { id: 'gx5', title: x('وقت تمرکز', 'Focus time'), date: W(0, 1), time: '08:30', duration: 90, meetUrl: '', htmlLink: '#', attendees: [], organizer: mail('m1'), description: '' },
-  ]
-  return [...linked, ...extra]
+  return linked
 }

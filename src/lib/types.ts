@@ -11,7 +11,11 @@ export interface Project {
   description: string
   category: string
   owner: string
-  sponsor: string
+  /** the client organisation (کارفرما) */
+  client: string
+  /** the client-side contact for the project (رابط پروژه) and how to reach them */
+  liaison: string
+  liaison_contact: string
   status: ProjectStatus
   priority: Priority
   phase: string
@@ -239,14 +243,6 @@ export interface ConfigRow {
   value: string
 }
 
-export interface TimeOff {
-  id: string
-  member_id: string
-  start_date: string
-  end_date: string
-  kind: 'leave' | 'training' | 'other'
-  note: string
-}
 
 export interface Comment {
   id: string
@@ -271,7 +267,6 @@ export interface DB {
   Comments: Comment[]
   Deliverables: Deliverable[]
   Meetings: Meeting[]
-  TimeOff: TimeOff[]
   Files: FileRef[]
   Config: ConfigRow[]
   Contracts: Contract[]

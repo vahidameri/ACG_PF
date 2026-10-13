@@ -6,7 +6,7 @@ import { uid } from '../lib/api'
 import { todayISO } from '../lib/jalali'
 import { L, tr, type T2 } from '../lib/i18n'
 import {
-  CHANNEL, CONFIDENCE, CONTRACT_KIND, CONTRACT_STATUS, DELIVERABLE_STATUS, MEETING_SERIES, MEETING_STATUS, TIMEOFF_KIND, FOLLOWUP_STATUS, HEALTH, MILESTONE_STATUS, PRIORITY, PROJECT_STATUS, RISK_STATUS, RISK_TYPE, SCOPE_STATUS, SPRINT_STATUS, TASK_STATUS,
+  CHANNEL, CONFIDENCE, CONTRACT_KIND, CONTRACT_STATUS, DELIVERABLE_STATUS, MEETING_SERIES, MEETING_STATUS, FOLLOWUP_STATUS, HEALTH, MILESTONE_STATUS, PRIORITY, PROJECT_STATUS, RISK_STATUS, RISK_TYPE, SCOPE_STATUS, SPRINT_STATUS, TASK_STATUS,
   ACCESS,
 } from '../lib/labels'
 import { Sheet, cx } from './ui'
@@ -73,7 +73,9 @@ export const SCHEMAS: Record<EditableSheet, { title: T2; prefix: string; fields:
       { key: 'description', label: ['شرح', 'Description'], type: 'textarea' },
       { key: 'objective', label: ['هدف کسب‌وکاری', 'Business objective'], type: 'text' },
       { key: 'owner', label: ['مدیر پروژه', 'Project manager'], type: 'person', half: true },
-      { key: 'sponsor', label: ['اسپانسر', 'Sponsor'], type: 'person', half: true },
+      { key: 'client', label: ['کارفرما', 'Client'], type: 'text', half: true },
+      { key: 'liaison', label: ['رابط پروژه (سمت کارفرما)', 'Client liaison'], type: 'text', half: true },
+      { key: 'liaison_contact', label: ['تلفن یا ایمیل رابط', 'Liaison phone or email'], type: 'text', half: true },
       { key: 'status', label: ['وضعیت', 'Status'], type: 'select', options: PROJECT_STATUS, half: true },
       { key: 'priority', label: ['اولویت', 'Priority'], type: 'select', options: PRIORITY, half: true },
       { key: 'phase', label: ['فاز فعلی', 'Current phase'], type: 'text', half: true },
@@ -240,18 +242,6 @@ export const SCHEMAS: Record<EditableSheet, { title: T2; prefix: string; fields:
     ],
     defaults: () => ({ kind: 'client', status: 'draft', start_date: todayISO(), notes: '', value: '', number: '' }),
   },
-  TimeOff: {
-    title: ['مرخصی / عدم حضور', 'Time off'],
-    prefix: 'TO',
-    fields: [
-      { key: 'member_id', label: ['عضو', 'Member'], type: 'member', half: true, required: true },
-      { key: 'kind', label: ['نوع', 'Type'], type: 'select', options: TIMEOFF_KIND, half: true },
-      { key: 'start_date', label: ['از', 'From'], type: 'date', half: true, required: true },
-      { key: 'end_date', label: ['تا', 'Until'], type: 'date', half: true },
-      { key: 'note', label: ['توضیح', 'Note'], type: 'text' },
-    ],
-    defaults: () => ({ kind: 'leave', start_date: todayISO(), note: '' }),
-  },
 }
 
 interface EditorCtx {
@@ -403,7 +393,6 @@ function EditorModal({ sheet, row, isNew, onClose }: { sheet: EditableSheet; row
       if (!out.baseline_date) out.baseline_date = out.target_date
       out.delivered_date = out.status === 'delivered' ? out.delivered_date || todayISO() : ''
     }
-    if (sheet === 'TimeOff' && !out.end_date) out.end_date = out.start_date
     try {
       await upsert(sheet, out as never)
       if (sheet === 'Meetings' && isNew) auto.meetingCreated(out as never)
