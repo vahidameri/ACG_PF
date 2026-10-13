@@ -527,8 +527,10 @@ function installDailyDigest() {
 
 function sendDailyDigest() {
   if (!automationOn_('daily_digest')) return;
-  // private tasks (e.g. the CEO's) are never included in a shared email
-  var data = applyPrivacy_(readAll_(), { name: '' });
+  // the digest goes to the program manager: scoped as super, so the CEO's private items stay out
+  var all = readAll_();
+  var pm = (all.Team || []).filter(function (m) { return m.access === 'super'; })[0] || {};
+  var data = applyPrivacy_(all, { name: pm.name || '', access: 'super' });
   var tz = Session.getScriptTimeZone();
   var today = Utilities.formatDate(new Date(), tz, 'yyyy-MM-dd');
   var pname = {};
