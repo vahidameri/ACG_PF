@@ -1,19 +1,31 @@
-import { useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
+import { createPortal } from 'react-dom'
 import { Link } from 'react-router-dom'
-import { ChevronDown, ChevronRight, ChevronLeft } from 'lucide-react'
+import { ChevronDown, Crosshair, Check } from 'lucide-react'
 import { useStore } from '../lib/store'
 import { HubNav } from '../components/HubNav'
 import { useEditor } from '../components/Editor'
-import { Band, Overlap, Segmented, Toolbar, FilterSelect, HealthDot, cx, healthColor, Avatar } from '../components/ui'
-import type { Project } from '../lib/types'
+import { Band, Card, Overlap, Segmented, FilterSelect, Avatar, cx, Empty } from '../components/ui'
+import type { Health, Milestone, Project } from '../lib/types'
 import { projectMetrics } from '../lib/metrics'
-import { addDays, daysBetween, fa, fmtDate, isoToJalaliParts, jalaliPartsToISO, J_MONTHS, J_MONTHS_EN, G_MONTHS_EN, G_MONTHS_FA, parseISO, toISO, todayISO, fmtDayMonth, relDays } from '../lib/jalali'
-import { PROJECT_STATUS, options } from '../lib/labels'
-import { L, locale, useI18n } from '../lib/i18n'
+import { addDays, daysBetween, fa, fmtDate, fmtDayMonth, fmtWeekday, isoToJalaliParts, jalaliPartsToISO, J_MONTHS, J_MONTHS_EN, G_MONTHS_EN, G_MONTHS_FA, parseISO, relDays, toISO, todayISO } from '../lib/jalali'
+import { HEALTH, MILESTONE_STATUS, PROJECT_STATUS } from '../lib/labels'
+import { L, lbl, locale } from '../lib/i18n'
 
-type Zoom = 'q' | 'h' | 'y' | 'all'
+type Zoom = 'month' | 'quarter' | 'year'
+const PPD: Record<Zoom, number> = { month: 16, quarter: 5, year: 2 } // pixels per day
+const LABEL_W = 248
 
-// Month boundaries in the active calendar.
+// Muted, professional palette: a light track and a solid progress fill in the same hue.
+const HUE: Record<Health | 'paused' | 'done', { track: string; fill: string; dot: string }> = {
+  green: { track: 'rgb(47 158 110 / .16)', fill: 'rgb(47 158 110 / .85)', dot: 'bg-good' },
+  amber: { track: 'rgb(212 147 44 / .18)', fill: 'rgb(212 147 44 / .9)', dot: 'bg-warn' },
+  red: { track: 'rgb(214 69 80 / .16)', fill: 'rgb(214 69 80 / .88)', dot: 'bg-bad' },
+  paused: { track: 'rgb(120 128 140 / .14)', fill: 'rgb(120 128 140 / .45)', dot: 'bg-line-strong' },
+  done: { track: 'rgb(120 128 140 / .12)', fill: 'rgb(90 98 110 / .55)', dot: 'bg-sub' },
+}
+
+// ---- calendar-aware month helpers ----
 function monthStart(iso: string) {
   if (locale.cal === 'jalali') {
     const j = isoToJalaliParts(iso)!
@@ -30,368 +42,407 @@ function nextMonth(iso: string) {
   const d = parseISO(iso)!
   return toISO(new Date(d.getFullYear(), d.getMonth() + 1, 1))
 }
-function isYearStart(iso: string) {
-  return locale.cal === 'jalali' ? isoToJalaliParts(iso)!.jm === 1 : parseISO(iso)!.getMonth() === 0
-}
-function monthLabel(iso: string, withYear: boolean) {
-  const en = locale.lang === 'en'
+function ym(iso: string) {
   if (locale.cal === 'jalali') {
     const j = isoToJalaliParts(iso)!
-    return `${(en ? J_MONTHS_EN : J_MONTHS)[j.jm - 1]}${withYear ? ` ${fa(j.jy)}` : ''}`
+    return { y: j.jy, m: j.jm }
   }
   const d = parseISO(iso)!
-  return `${(en ? G_MONTHS_EN : G_MONTHS_FA)[d.getMonth()]}${withYear ? ` ${fa(d.getFullYear())}` : ''}`
+  return { y: d.getFullYear(), m: d.getMonth() + 1 }
+}
+const monthName = (m: number, short: boolean) => {
+  const en = locale.lang === 'en'
+  const n = locale.cal === 'jalali' ? (en ? J_MONTHS_EN : J_MONTHS)[m - 1] : (en ? G_MONTHS_EN : G_MONTHS_FA)[m - 1]
+  return short && en ? n.slice(0, 3) : n
+}
+const quarterName = (m: number, y: number) => {
+  const q = Math.ceil(m / 3)
+  if (locale.cal === 'jalali') return `${L(['بهار', 'تابستان', 'پاییز', 'زمستان'][q - 1], ['Spring', 'Summer', 'Autumn', 'Winter'][q - 1])} ${fa(y)}`
+  return `Q${fa(q)} ${fa(y)}`
 }
 
-function yearLabel(iso: string) {
-  return fa(locale.cal === 'jalali' ? isoToJalaliParts(iso)!.jy : parseISO(iso)!.getFullYear())
-}
+type Tip = { x: number; y: number; body: ReactNode } | null
 
 export default function Roadmap() {
   const { db } = useStore()
-  const { lang } = useI18n()
   const { open } = useEditor()
-  const [zoom, setZoom] = useState<Zoom>('h')
-  const [status, setStatus] = useState('')
-  const [cat, setCat] = useState('')
-  const [expanded, setExpanded] = useState<Record<string, boolean>>({})
-  // Time travel: shift the visible window and drag a cursor to any date.
-  const [shift, setShift] = useState(0)
-  const [cursor, setCursor] = useState(todayISO())
-  const [dragging, setDragging] = useState(false)
-  const axisRef = useRef<HTMLDivElement>(null)
   const today = todayISO()
+  const [zoom, setZoom] = useState<Zoom>('quarter')
+  const [status, setStatus] = useState('')
+  const [owner, setOwner] = useState('')
+  const [collapsed, setCollapsed] = useState<Record<string, boolean>>({ completed: true })
+  const [cursor, setCursor] = useState('')
+  const [tip, setTip] = useState<Tip>(null)
+  const [drag, setDrag] = useState(false)
+  const todayRef = useRef<HTMLDivElement>(null)
+  const axisRef = useRef<HTMLDivElement>(null)
+  const ppd = PPD[zoom]
 
-  const order: Record<string, number> = { active: 0, planning: 1, on_hold: 2, completed: 3, cancelled: 4 }
-  const projects = db.Projects.filter((p) => p.start_date && p.end_date && (status ? p.status === status : p.status !== 'cancelled') && (!cat || p.category === cat)).sort(
-    (a, b) => order[a.status] - order[b.status] || (a.start_date < b.start_date ? -1 : 1),
-  )
-  const undated = db.Projects.filter((p) => (!p.start_date || !p.end_date) && p.status !== 'cancelled' && p.status !== 'completed')
-  const cats = Array.from(new Set(db.Projects.map((p) => p.category).filter(Boolean)))
+  const all = db.Projects.filter((p) => p.status !== 'cancelled' && (!status || p.status === status) && (!owner || p.owner === owner))
+  const dated = all.filter((p) => p.start_date && p.end_date)
+  const undated = all.filter((p) => !p.start_date || !p.end_date)
+  const owners = Array.from(new Set(db.Projects.map((p) => p.owner).filter(Boolean)))
+  const span = dated.map((p) => p.start_date + p.end_date).join()
 
+  // Visible range: every dated project, with breathing room, and always today.
   const { from, to, months } = useMemo(() => {
-    let f: string, t: string
-    if (zoom === 'all') {
-      f = projects.reduce((m, p) => (p.start_date < m ? p.start_date : m), today)
-      t = projects.reduce((m, p) => (p.end_date > m ? p.end_date : m), today)
-    } else {
-      const span = zoom === 'q' ? 90 : zoom === 'h' ? 180 : 365
-      const c = addDays(today, shift)
-      f = addDays(c, -Math.round(span * 0.3))
-      t = addDays(c, Math.round(span * 0.7))
-    }
-    const from = monthStart(f)
-    const to = nextMonth(t)
-    const months: { label: string; start: string; days: number }[] = []
-    let cur = from
-    while (cur < to) {
-      const n = nextMonth(cur)
-      months.push({ label: monthLabel(cur, months.length === 0 || isYearStart(cur)), start: cur, days: daysBetween(cur, n) })
-      cur = n
-    }
-    return { from, to, months }
-  }, [zoom, projects, today, shift])
+    const f = monthStart(addDays([today, ...dated.map((p) => p.start_date)].sort()[0], -30))
+    const last = [addDays(today, zoom === 'year' ? 365 : 150), ...dated.map((p) => p.end_date)].sort().reverse()[0]
+    const t = nextMonth(addDays(last, 20))
+    const months: { start: string; days: number; y: number; m: number }[] = []
+    for (let c = f; c < t; c = nextMonth(c)) months.push({ start: c, days: daysBetween(c, nextMonth(c)), ...ym(c) })
+    return { from: f, to: t, months }
+  }, [span, today, zoom]) // eslint-disable-line react-hooks/exhaustive-deps
 
-  const total = Math.max(1, daysBetween(from, to))
-  const pos = (iso: string) => (Math.max(0, Math.min(total, daysBetween(from, iso))) / total) * 100
-  const todayPos = pos(today)
-  const cursorPos = pos(cursor)
-  const step = zoom === 'q' ? 30 : zoom === 'h' ? 60 : 120
+  const width = daysBetween(from, to) * ppd
+  const x = (iso: string) => Math.max(0, Math.min(width, daysBetween(from, iso) * ppd))
+  const quarters = useMemo(() => {
+    const out: { key: string; label: string; days: number }[] = []
+    months.forEach((mo) => {
+      const key = `${mo.y}-${Math.ceil(mo.m / 3)}`
+      const last = out[out.length - 1]
+      if (last?.key === key) last.days += mo.days
+      else out.push({ key, label: quarterName(mo.m, mo.y), days: mo.days })
+    })
+    return out
+  }, [months])
+
+  // Open on today.
+  useEffect(() => {
+    todayRef.current?.scrollIntoView({ inline: 'center', block: 'nearest' })
+  }, [zoom, from])
+
+  // Drag along the header to look at any date.
   const dateAt = (clientX: number) => {
-    const el = axisRef.current
-    if (!el) return cursor
-    const r = el.getBoundingClientRect()
-    const rtl = locale.lang === 'fa'
-    const frac = Math.max(0, Math.min(1, rtl ? (r.right - clientX) / r.width : (clientX - r.left) / r.width))
-    return addDays(from, Math.round(frac * total))
+    const r = axisRef.current!.getBoundingClientRect()
+    const off = locale.lang === 'fa' ? r.right - clientX : clientX - r.left
+    return addDays(from, Math.round(Math.max(0, off) / ppd))
   }
-  const startDrag = (e: React.PointerEvent) => {
-    ;(e.currentTarget as HTMLElement).setPointerCapture(e.pointerId)
-    setDragging(true)
-    setCursor(dateAt(e.clientX))
+
+  const groups = (['active', 'planning', 'on_hold', 'completed'] as const)
+    .map((k) => ({ key: k, list: dated.filter((p) => p.status === k).sort((a, b) => (a.start_date < b.start_date ? -1 : 1)) }))
+    .filter((g) => g.list.length)
+
+  const show = (e: React.MouseEvent, body: ReactNode) => {
+    const r = (e.currentTarget as HTMLElement).getBoundingClientRect()
+    setTip({ x: r.left + r.width / 2, y: r.top, body })
   }
-  const onDrag = (e: React.PointerEvent) => dragging && setCursor(dateAt(e.clientX))
-  const endDrag = () => setDragging(false)
-  const nudge = (days: number) => setCursor((c) => addDays(c, days))
-  const Prev = locale.lang === 'fa' ? ChevronRight : ChevronLeft
-  const Next = locale.lang === 'fa' ? ChevronLeft : ChevronRight
 
   return (
     <>
-      <Band nav={<HubNav hub="plan" />} eyebrow={<span>{L('پورتفولیو / رودمپ', 'Portfolio / Roadmap')}</span>} title={L('رودمپ پورتفولیو', 'Portfolio roadmap')} sub={L('خط قرمز امروز است. نشانگر آبی را بکشید تا ببینید در هر تاریخ پروژه‌ها کجا باید باشند؛ با ‹ › بازه را جابه‌جا کنید.', 'The red line is today. Drag the blue cursor to see where projects should be on any date; use ‹ › to move the window.')} />
-      <Overlap>
-        <div className="card mb-4 p-3">
-          <Toolbar className="!mb-0">
-            <Segmented value={zoom} onChange={setZoom} options={[{ value: 'q', label: L('سه‌ماهه', 'Quarter') }, { value: 'h', label: L('شش‌ماهه', 'Half') }, { value: 'y', label: L('سالانه', 'Year') }, { value: 'all', label: L('کل', 'All') }]} />
-            {zoom !== 'all' && (
-              <div className="flex items-center gap-1 rounded-full border border-line p-0.5">
-                <button className="icon-btn h-8 w-8" onClick={() => setShift((x) => x - step)} title={L('عقب‌تر', 'Earlier')}>
-                  <Prev size={16} />
+      <Band
+        nav={<HubNav hub="plan" />}
+        title={L('رودمپ', 'Roadmap')}
+        sub={L('زمان‌بندی همه‌ی پروژه‌ها و مایلستون‌ها در یک نگاه. برای دیدن وضعیتِ برنامه در هر تاریخ، روی سرستون زمان بکشید.', 'Every project and milestone on one timeline. Drag along the time header to see where the plan stands on any date.')}
+      />
+      <Overlap className="space-y-4">
+        <Card pad={false}>
+          <div className="flex flex-wrap items-center gap-2 border-b border-line px-4 py-3">
+            <Segmented
+              value={zoom}
+              onChange={setZoom}
+              options={[
+                { value: 'month', label: L('ماه', 'Month') },
+                { value: 'quarter', label: L('فصل', 'Quarter') },
+                { value: 'year', label: L('سال', 'Year') },
+              ]}
+            />
+            <button className="btn-outline btn-sm" onClick={() => (setCursor(''), todayRef.current?.scrollIntoView({ inline: 'center', block: 'nearest', behavior: 'smooth' }))}>
+              <Crosshair size={14} /> {L('امروز', 'Today')}
+            </button>
+            <FilterSelect value={status} onChange={setStatus} placeholder={L('همه‌ی وضعیت‌ها', 'Any status')} options={(['active', 'planning', 'on_hold', 'completed'] as const).map((s) => ({ value: s, label: lbl(PROJECT_STATUS, s) }))} />
+            <FilterSelect value={owner} onChange={setOwner} placeholder={L('همه‌ی مدیران پروژه', 'Any lead')} options={owners.map((o) => ({ value: o, label: o }))} />
+            {cursor && (
+              <span className="inline-flex items-center gap-2 rounded-full bg-brand/10 px-3 py-1 text-xs text-brand dark:text-brand-soft">
+                {L('نمای برنامه در', 'Plan as of')} <b className="num">{fmtDate(cursor)}</b>
+                <button className="underline-offset-2 hover:underline" onClick={() => setCursor('')}>
+                  {L('پاک کردن', 'clear')}
                 </button>
-                <button className="btn-ghost btn-sm" onClick={() => { setShift(0); setCursor(today) }}>
-                  {L('امروز', 'Today')}
-                </button>
-                <button className="icon-btn h-8 w-8" onClick={() => setShift((x) => x + step)} title={L('جلوتر', 'Later')}>
-                  <Next size={16} />
-                </button>
-              </div>
+              </span>
             )}
-            <FilterSelect value={status} onChange={setStatus} placeholder={L('همه‌ی وضعیت‌ها', 'Any status')} options={options(PROJECT_STATUS, lang)} />
-            <FilterSelect value={cat} onChange={setCat} placeholder={L('دسته', 'Category')} options={cats.map((c) => ({ value: c, label: c }))} />
-            <div className="ms-auto flex items-center gap-4 text-xs text-sub">
-              <span className="flex items-center gap-1.5"><span className="h-2.5 w-2.5 rotate-45 rounded-[2px] bg-good" /> {L('انجام‌شده', 'Done')}</span>
-              <span className="flex items-center gap-1.5"><span className="h-2.5 w-2.5 rotate-45 rounded-[2px] bg-ink" /> {L('آینده', 'Upcoming')}</span>
-              <span className="flex items-center gap-1.5"><span className="h-2.5 w-2.5 rotate-45 rounded-[2px] bg-bad" /> {L('معوق', 'Overdue')}</span>
+            <div className="ms-auto hidden items-center gap-4 text-[0.6875rem] text-sub @2xl:flex">
+              {(['green', 'amber', 'red'] as Health[]).map((h) => (
+                <span key={h} className="inline-flex items-center gap-1.5">
+                  <span className="h-2.5 w-5 rounded" style={{ background: HUE[h].fill }} /> {lbl(HEALTH, h)}
+                </span>
+              ))}
+              <span className="inline-flex items-center gap-1.5">
+                <span className="h-2 w-2 rotate-45 border-2 border-ink/70" /> {L('مایلستون', 'Milestone')}
+              </span>
+              <span className="inline-flex items-center gap-1.5">
+                <span className="h-2 w-2 rotate-45 bg-good" /> {L('انجام‌شده', 'Done')}
+              </span>
+              <span className="inline-flex items-center gap-1.5">
+                <span className="h-2 w-2 rotate-45 bg-bad" /> {L('عقب‌افتاده', 'Overdue')}
+              </span>
             </div>
-          </Toolbar>
-        </div>
+          </div>
 
-        <div className="card overflow-x-auto">
-          <div className="relative min-w-[61.25rem] select-none">
-            <div className="flex border-b border-line bg-muted/30">
-              <div className="eyebrow flex w-72 shrink-0 items-end border-e border-line px-5 pb-3 pt-6">{L('پروژه', 'Project')}</div>
-              <div ref={axisRef} className="relative flex-1 cursor-col-resize" onPointerDown={startDrag} onPointerMove={onDrag} onPointerUp={endDrag} title={L('برای جابه‌جایی نشانگر بکشید', 'Drag to move the time cursor')}>
-                <div className="flex h-7 items-end">
-                  {months.map((m, i) =>
-                    i === 0 || isYearStart(m.start) ? (
-                      <span key={m.start} className="absolute bottom-0.5 text-[0.625rem] font-semibold text-ink/70 num" style={{ insetInlineStart: `calc(${pos(m.start)}% + 8px)` }}>
-                        {yearLabel(m.start)}
-                      </span>
-                    ) : null,
-                  )}
-                </div>
-                <div className="flex">
-                  {months.map((m) => {
-                    const cur = today >= m.start && today < addDays(m.start, m.days)
-                    return (
-                      <div key={m.start} className={cx('truncate border-e border-line/70 px-2 pb-2.5 pt-1 text-xs last:border-e-0', cur ? 'font-semibold text-ink' : 'text-sub')} style={{ width: `${(m.days / total) * 100}%` }}>
-                        {m.label.replace(/\s?[\d۰-۹]+$/, '')}
-                      </div>
-                    )
-                  })}
-                </div>
-                {todayPos > 0 && todayPos < 100 && (
-                  <span className="absolute top-1 z-10 -translate-x-1/2 rounded-full bg-bad px-2 py-0.5 text-[0.625rem] font-semibold text-white rtl:translate-x-1/2" style={{ insetInlineStart: `${todayPos}%` }}>
-                    {L('امروز', 'Today')}
-                  </span>
-                )}
-              </div>
-            </div>
-
-            {projects.map((p) => {
-              const m = projectMetrics(p, db)
-              const ms = db.Milestones.filter((x) => x.project_id === p.id).sort((a, b) => (a.planned_date < b.planned_date ? -1 : 1))
-              const s = pos(p.start_date)
-              const e = pos(p.end_date)
-              const visible = p.end_date >= from && p.start_date <= to
-              const isOpen = expanded[p.id]
-              return (
-                <div key={p.id} className="border-b border-line last:border-b-0">
-                  <div className="flex items-stretch transition hover:bg-muted/30">
-                    <div className="flex w-72 shrink-0 items-center gap-2.5 border-e border-line px-3 py-3">
-                      <button className="icon-btn h-7 w-7" onClick={() => setExpanded((x) => ({ ...x, [p.id]: !x[p.id] }))}>
-                        {isOpen ? <ChevronDown size={15} /> : <ChevronRight size={15} className="rtl:rotate-180" />}
-                      </button>
-                      <HealthDot h={m.health} />
-                      <div className="min-w-0 flex-1">
-                        <Link to={`/projects/${p.id}`} className="block truncate text-sm font-medium hover:underline">
-                          {p.name}
-                        </Link>
-                        <div className="text-[0.6875rem] text-sub num">{fa(m.progress)}% · {p.owner}</div>
-                      </div>
-                      <Avatar name={p.owner} size="xs" />
-                    </div>
-                    <div className={cx('relative flex-1', ms.length ? 'h-[4.5rem]' : 'h-14')}>
-                      <Grid months={months} total={total} />
-                      {todayPos > 0 && todayPos < 100 && <div className="absolute inset-y-0 z-10 w-[2px] bg-bad/60" style={{ insetInlineStart: `${todayPos}%` }} />}
-                      {visible && (
-                        <div
-                          className={cx('absolute top-3 flex h-8 items-center overflow-hidden rounded-xl ring-1 ring-inset', p.status === 'on_hold' ? 'bg-muted ring-line-strong [background-image:repeating-linear-gradient(135deg,transparent,transparent_6px,rgb(var(--line))_6px,rgb(var(--line))_8px)]' : 'bg-surface ring-line-strong')}
-                          style={{ insetInlineStart: `${s}%`, width: `${Math.max(1.2, e - s)}%` }}
-                          title={`${p.name}: ${fmtDate(p.start_date)} — ${fmtDate(p.end_date)} · ${fa(m.progress)}%`}
-                        >
-                          <div className={cx('absolute inset-y-0 start-0', p.status === 'on_hold' ? 'bg-ink/10' : healthColor[m.health], p.status !== 'on_hold' && 'opacity-25')} style={{ width: `${m.progress}%` }} />
-                          {p.status !== 'on_hold' && <div className={cx('absolute inset-y-1 w-[3px] rounded-full', healthColor[m.health])} style={{ insetInlineStart: `calc(${m.progress}% - 1.5px)` }} />}
+          {dated.length ? (
+            <div className="relative overflow-x-auto" onScroll={() => setTip(null)}>
+              <div className="relative" style={{ width: LABEL_W + width }}>
+                {/* ---------- header ---------- */}
+                <div className="flex border-b border-line bg-muted/40">
+                  <div className="sticky start-0 z-30 flex shrink-0 items-end border-e border-line bg-surface px-4 pb-2 text-[0.6875rem] font-medium text-sub" style={{ width: LABEL_W }}>
+                    {L(`${fa(dated.length)} پروژه`, `${dated.length} projects`)}
+                  </div>
+                  <div
+                    ref={axisRef}
+                    className="relative cursor-ew-resize select-none"
+                    style={{ width }}
+                    onPointerDown={(e) => (e.currentTarget.setPointerCapture(e.pointerId), setDrag(true), setCursor(dateAt(e.clientX)))}
+                    onPointerMove={(e) => drag && setCursor(dateAt(e.clientX))}
+                    onPointerUp={() => setDrag(false)}
+                  >
+                    <div className="flex h-7 border-b border-line/60">
+                      {quarters.map((q) => (
+                        <div key={q.key} className="truncate border-e border-line/60 px-2 pt-1.5 text-[0.6875rem] font-semibold text-ink/80" style={{ width: q.days * ppd }}>
+                          {q.days * ppd > 60 ? q.label : ''}
                         </div>
-                      )}
-                      {visible && e < 92 && (
-                        <span className="absolute top-[1.1rem] text-[0.6875rem] font-semibold text-sub num" style={{ insetInlineStart: `calc(${e}% + 8px)` }}>
-                          {p.status === 'on_hold' ? L('متوقف', 'paused') : `${fa(m.progress)}%`}
-                        </span>
-                      )}
-                      {ms.map((x) => {
-                        if (x.planned_date < from || x.planned_date > to) return null
-                        const late = x.status !== 'done' && x.planned_date < today
-                        const tone = x.status === 'done' ? 'bg-good' : late ? 'bg-bad' : 'bg-ink'
+                      ))}
+                    </div>
+                    <div className="flex h-7">
+                      {months.map((mo) => {
+                        const cur = today >= mo.start && today < addDays(mo.start, mo.days)
                         return (
-                          <button
-                            key={x.id}
-                            onClick={() => open('Milestones', x as never)}
-                            title={`${x.title} · ${fmtDate(x.planned_date)}`}
-                            className="group absolute top-[1.125rem] z-20 flex -translate-x-1/2 flex-col items-center rtl:translate-x-1/2"
-                            style={{ insetInlineStart: `${pos(x.planned_date)}%` }}
-                          >
-                            <span className={cx('h-3.5 w-3.5 rotate-45 rounded-[3px] ring-2 ring-surface transition group-hover:scale-125', tone)} />
-                            {zoom !== 'all' && zoom !== 'y' && (
-                              <span className={cx('mt-2.5 max-w-[7rem] truncate rounded-md px-1 text-[0.625rem] leading-4', late ? 'text-bad' : 'text-sub', 'group-hover:bg-surface group-hover:text-ink group-hover:shadow')}>{x.title}</span>
-                            )}
-                          </button>
+                          <div key={mo.start} className={cx('truncate border-e border-line/60 px-2 pt-1.5 text-[0.6875rem]', cur ? 'font-semibold text-ink' : 'text-sub')} style={{ width: mo.days * ppd }}>
+                            {mo.days * ppd > 34 ? monthName(mo.m, zoom === 'year') : ''}
+                          </div>
                         )
                       })}
                     </div>
+                    <div ref={todayRef} className="pointer-events-none absolute inset-y-0" style={{ insetInlineStart: x(today) }}>
+                      <span className="absolute top-0.5 -translate-x-1/2 rounded-full bg-bad px-1.5 py-px text-[0.5625rem] font-semibold text-white rtl:translate-x-1/2">{L('امروز', 'Today')}</span>
+                    </div>
+                    {cursor && (
+                      <span className="pointer-events-none absolute bottom-0.5 z-10 -translate-x-1/2 rounded-full bg-brand px-1.5 py-px text-[0.5625rem] font-semibold text-white num rtl:translate-x-1/2 dark:text-band" style={{ insetInlineStart: x(cursor) }}>
+                        {fmtDayMonth(cursor)}
+                      </span>
+                    )}
                   </div>
-                  {isOpen &&
-                    ms.map((x) => {
-                      const late = x.status !== 'done' && x.planned_date < today
-                      return (
-                        <div key={x.id} className="flex items-stretch bg-muted/30">
-                          <div className="w-72 shrink-0 border-e border-line py-2 pe-3 ps-14">
-                            <button onClick={() => open('Milestones', x as never)} className="block truncate text-start text-xs hover:underline">
-                              {x.title}
-                            </button>
-                            <div className={cx('text-[0.625rem] num', late ? 'text-bad' : 'text-sub')}>{fmtDate(x.planned_date)}</div>
-                          </div>
-                          <div className="relative flex-1">
-                            <Grid months={months} total={total} />
-                            {x.planned_date >= from && x.planned_date <= to && (
-                              <span className={cx('absolute top-1/2 h-2.5 w-2.5 -translate-y-1/2 rotate-45 rounded-[2px]', x.status === 'done' ? 'bg-good' : late ? 'bg-bad' : 'bg-ink')} style={{ insetInlineStart: `calc(${pos(x.planned_date)}% - 5px)` }} />
-                            )}
-                            {x.actual_date && x.actual_date !== x.planned_date && x.actual_date >= from && x.actual_date <= to && (
-                              <span
-                                className="absolute top-1/2 h-[2px] -translate-y-1/2 bg-bad/50"
-                                style={{ insetInlineStart: `${Math.min(pos(x.planned_date), pos(x.actual_date))}%`, width: `${Math.abs(pos(x.actual_date) - pos(x.planned_date))}%` }}
-                                title={L('جابه‌جایی نسبت به برنامه', 'Slip vs plan')}
-                              />
-                            )}
-                          </div>
-                        </div>
-                      )
-                    })}
                 </div>
-              )
-            })}
-            {cursorPos >= 0 && cursorPos <= 100 && (
-              <div className="pointer-events-none absolute inset-y-0 end-0 z-30" style={{ insetInlineStart: '18rem' }}>
-                <div className="absolute inset-y-0 w-[2px] bg-brand" style={{ insetInlineStart: `${cursorPos}%`, boxShadow: '0 0 0 3px rgb(var(--brand) / .12)' }} />
-                <div
-                  className="pointer-events-auto absolute top-1.5 -translate-x-1/2 cursor-grab rounded-full bg-brand px-2.5 py-1 text-[0.6875rem] font-semibold text-white shadow-float num active:cursor-grabbing rtl:translate-x-1/2 dark:text-band"
-                  style={{ insetInlineStart: `${cursorPos}%` }}
-                  onPointerDown={startDrag}
-                  onPointerMove={onDrag}
-                  onPointerUp={endDrag}
-                  tabIndex={0}
-                  onKeyDown={(e) => {
-                    if (e.key === 'ArrowLeft') nudge(locale.lang === 'fa' ? 1 : -1)
-                    if (e.key === 'ArrowRight') nudge(locale.lang === 'fa' ? -1 : 1)
-                  }}
-                >
-                  {fmtDayMonth(cursor)}
+
+                {/* ---------- body ---------- */}
+                <div className="relative">
+                  <div className="pointer-events-none absolute inset-y-0 flex" style={{ insetInlineStart: LABEL_W, width }}>
+                    {months.map((mo) => (
+                      <div key={mo.start} className="border-e border-line/50" style={{ width: mo.days * ppd }} />
+                    ))}
+                    <div className="absolute inset-y-0 w-px bg-bad/70" style={{ insetInlineStart: x(today) }} />
+                    {cursor && <div className="absolute inset-y-0 w-0 border-s border-dashed border-brand" style={{ insetInlineStart: x(cursor) }} />}
+                  </div>
+
+                  {groups.map((g) => (
+                    <div key={g.key}>
+                      <div className="flex h-8 items-center border-t border-line/60">
+                        <button
+                          onClick={() => setCollapsed((c) => ({ ...c, [g.key]: !c[g.key] }))}
+                          className="sticky start-0 z-20 flex h-full items-center gap-2 bg-surface px-4 text-[0.6875rem] font-semibold text-sub hover:text-ink"
+                          style={{ width: LABEL_W }}
+                        >
+                          <ChevronDown size={13} className={cx('transition', collapsed[g.key] && '-rotate-90 rtl:rotate-90')} />
+                          {lbl(PROJECT_STATUS, g.key)} <span className="font-normal num">{fa(g.list.length)}</span>
+                        </button>
+                      </div>
+                      {!collapsed[g.key] && g.list.map((p) => <Row key={p.id} p={p} x={x} cursor={cursor} today={today} onTip={show} onLeave={() => setTip(null)} openMs={(m) => open('Milestones', m as never)} />)}
+                    </div>
+                  ))}
                 </div>
               </div>
-            )}
-          </div>
-        </div>
+            </div>
+          ) : (
+            <Empty text={L('هنوز هیچ پروژه‌ای تاریخ شروع و ددلاین ندارد', 'No project has a start date and deadline yet')} />
+          )}
 
-        {!projects.length && (
-          <div className="card mt-4 grid place-items-center gap-2 px-6 py-12 text-center">
-            <div className="text-sm font-medium">{L('هنوز پروژه‌ای تاریخ شروع و پایان ندارد', 'No project has start and end dates yet')}</div>
-            <p className="max-w-md text-xs leading-6 text-sub">{L('برای هر پروژه تاریخ شروع، ددلاین و مایلستون‌ها را ثبت کنید تا روی رودمپ بیاید.', 'Add a start date, deadline and milestones to each project to place it on the roadmap.')}</p>
-          </div>
-        )}
-        {undated.length > 0 && (
-          <section className="card mt-4 p-5">
-            <div className="eyebrow">{L('بدون زمان‌بندی', 'Not scheduled')}</div>
-            <h3 className="mt-1 text-[0.9375rem] font-semibold">{L(`${fa(undated.length)} پروژه هنوز تاریخ ندارد`, `${undated.length} projects have no dates yet`)}</h3>
-            <div className="mt-3 flex flex-wrap gap-2">
+          {undated.length > 0 && (
+            <div className="flex flex-wrap items-center gap-2 border-t border-line px-4 py-3 text-xs">
+              <span className="text-sub">{L(`${fa(undated.length)} پروژه بدون زمان‌بندی:`, `${undated.length} not scheduled:`)}</span>
               {undated.map((p) => (
                 <button key={p.id} onClick={() => open('Projects', p as never)} className="chip-btn">
-                  {p.name} <span className="text-sub">· {L('تعیین تاریخ', 'set dates')}</span>
+                  {p.name}
                 </button>
               ))}
             </div>
-          </section>
-        )}
-        {projects.length > 0 && <Snapshot at={cursor} projects={projects} onReset={() => setCursor(today)} />}
+          )}
+        </Card>
+
+        <UpcomingMilestones projects={dated} />
       </Overlap>
+      {tip &&
+        createPortal(
+          <div className="pointer-events-none fixed z-[80] -translate-x-1/2 -translate-y-full pb-2" style={{ left: tip.x, top: tip.y }}>
+            <div className="min-w-[13rem] max-w-[18rem] rounded-xl bg-band px-3 py-2.5 text-xs leading-5 text-on-band shadow-pop">{tip.body}</div>
+          </div>,
+          document.body,
+        )}
     </>
   )
 }
 
-function Grid({ months, total }: { months: { start: string; days: number }[]; total: number }) {
+function Row({
+  p, x, cursor, today, onTip, onLeave, openMs,
+}: { p: Project; x: (iso: string) => number; cursor: string; today: string; onTip: (e: React.MouseEvent, b: ReactNode) => void; onLeave: () => void; openMs: (m: Milestone) => void }) {
+  const { db } = useStore()
+  const m = projectMetrics(p, db)
+  const ms = db.Milestones.filter((x0) => x0.project_id === p.id && x0.planned_date).sort((a, b) => (a.planned_date < b.planned_date ? -1 : 1))
+  const hue = p.status === 'on_hold' ? HUE.paused : p.status === 'completed' ? HUE.done : HUE[m.health]
+  const s = x(p.start_date)
+  const w = Math.max(6, x(p.end_date) - s)
+  const planned = cursor ? Math.round(Math.max(0, Math.min(100, (daysBetween(p.start_date, cursor) / Math.max(1, daysBetween(p.start_date, p.end_date))) * 100))) : null
+  const next = ms.find((x0) => x0.status !== 'done')
   return (
-    <div className="pointer-events-none absolute inset-0 flex">
-      {months.map((m) => (
-        <div key={m.start} className="border-e border-line/50 last:border-e-0" style={{ width: `${(m.days / total) * 100}%` }} />
-      ))}
+    <div className="group flex h-12 items-center border-t border-line/60 transition hover:bg-muted/30">
+      <div className="sticky start-0 z-20 flex h-full shrink-0 items-center gap-2.5 border-e border-line bg-surface px-4" style={{ width: LABEL_W }}>
+        <span className={cx('h-2 w-2 shrink-0 rounded-full', hue.dot)} />
+        <Link to={`/projects/${p.id}`} className="min-w-0 flex-1">
+          <span className="block truncate text-[0.8125rem] font-medium hover:underline">{p.name}</span>
+          <span className="block truncate text-[0.625rem] text-sub">{p.owner || L('بدون مدیر پروژه', 'No lead')}</span>
+        </Link>
+        <span className="shrink-0 text-end text-[0.6875rem] num">
+          <b className="font-semibold">{fa(m.progress)}%</b>
+          {planned !== null && <span className={cx('block text-[0.5625rem]', m.progress < planned - 10 ? 'text-bad' : 'text-sub')}>{L(`برنامه ${fa(planned)}٪`, `plan ${planned}%`)}</span>}
+        </span>
+      </div>
+      <div className="relative h-full flex-1">
+        <Link
+          to={`/projects/${p.id}`}
+          onMouseEnter={(e) =>
+            onTip(
+              e,
+              <>
+                <div className="font-semibold">{p.name}</div>
+                <div className="text-band-sub num">
+                  {fmtDate(p.start_date)} – {fmtDate(p.end_date)}
+                </div>
+                <div className="mt-1.5 flex justify-between gap-3">
+                  <span>{L('پیشرفت', 'Progress')}</span>
+                  <b className="num">{fa(m.progress)}%</b>
+                </div>
+                <div className="flex justify-between gap-3">
+                  <span>{L('ددلاین', 'Deadline')}</span>
+                  <span>{relDays(p.end_date)}</span>
+                </div>
+                {next && (
+                  <div className="flex justify-between gap-3">
+                    <span>{L('مایلستون بعدی', 'Next milestone')}</span>
+                    <span className="truncate">{next.title}</span>
+                  </div>
+                )}
+              </>,
+            )
+          }
+          onMouseLeave={onLeave}
+          className="absolute top-1/2 h-[22px] -translate-y-1/2 overflow-hidden rounded-md"
+          style={{ insetInlineStart: s, width: w, background: hue.track }}
+        >
+          <span className="block h-full rounded-md" style={{ width: `${m.progress}%`, background: hue.fill }} />
+        </Link>
+        {ms.map((x0) => {
+          const late = x0.status !== 'done' && x0.planned_date < today
+          return (
+            <button
+              key={x0.id}
+              onClick={() => openMs(x0)}
+              onMouseEnter={(e) =>
+                onTip(
+                  e,
+                  <>
+                    <div className="font-semibold">{x0.title}</div>
+                    <div className="text-band-sub">
+                      {p.name} · <span className="num">{fmtDate(x0.planned_date)}</span>
+                    </div>
+                    <div className={cx('mt-1', late ? 'text-[#ff8a9a]' : x0.status === 'done' ? 'text-[#7fe0b0]' : '')}>{late ? L('عقب‌افتاده', 'Overdue') : lbl(MILESTONE_STATUS, x0.status)}</div>
+                  </>,
+                )
+              }
+              onMouseLeave={onLeave}
+              className={cx(
+                'absolute top-1/2 z-10 h-[10px] w-[10px] -translate-y-1/2 rotate-45 rounded-[2px] transition hover:scale-150',
+                x0.status === 'done' ? 'bg-good ring-2 ring-surface' : late ? 'bg-bad ring-2 ring-surface' : 'border-2 border-ink/70 bg-surface',
+              )}
+              style={{ insetInlineStart: x(x0.planned_date) - 5 }}
+            />
+          )
+        })}
+      </div>
     </div>
   )
 }
 
-/** What the portfolio looks like on the cursor date: plan vs reality per project. */
-function Snapshot({ at, projects, onReset }: { at: string; projects: Project[]; onReset: () => void }) {
-  const { db } = useStore()
+/** Milestones in a clean list: overdue first, then the next 90 days by month. */
+function UpcomingMilestones({ projects }: { projects: Project[] }) {
+  const { db, canEdit, upsert, toast } = useStore()
+  const { open } = useEditor()
   const today = todayISO()
-  const isToday = at === today
-  const future = at > today
-  const rows = projects.filter((p) => p.status !== 'completed' || p.end_date >= at)
-  const dueBy = db.Milestones.filter((m) => m.planned_date <= at && projects.some((p) => p.id === m.project_id))
-  const dueOpen = dueBy.filter((m) => m.status !== 'done')
+  const ids = new Set(projects.map((p) => p.id))
+  const pname = (id: string) => db.Projects.find((p) => p.id === id)?.name || ''
+  const pending = db.Milestones.filter((m) => ids.has(m.project_id) && m.status !== 'done' && m.planned_date)
+  const overdue = pending.filter((m) => m.planned_date < today).sort((a, b) => (a.planned_date < b.planned_date ? -1 : 1))
+  const soon = pending.filter((m) => m.planned_date >= today && m.planned_date <= addDays(today, 90)).sort((a, b) => (a.planned_date < b.planned_date ? -1 : 1))
+  const byMonth = new Map<string, Milestone[]>()
+  soon.forEach((m) => {
+    const k = monthStart(m.planned_date)
+    byMonth.set(k, [...(byMonth.get(k) || []), m])
+  })
+  const done = async (m: Milestone) => {
+    await upsert('Milestones', { ...m, status: 'done', actual_date: today })
+    toast(L('مایلستون انجام شد', 'Milestone done'), 'ok', { label: L('برگرداندن', 'Undo'), run: () => upsert('Milestones', m) })
+  }
+  const item = (m: Milestone) => {
+    const late = m.planned_date < today
+    return (
+      <li key={m.id} className="group flex items-center gap-4 px-5 py-2.5 transition hover:bg-muted/40">
+        <div className={cx('w-20 shrink-0 text-xs num', late && 'font-semibold text-bad')}>
+          <div>{fmtDayMonth(m.planned_date)}</div>
+          <div className="text-[0.625rem] font-normal text-sub">{fmtWeekday(m.planned_date)}</div>
+        </div>
+        <span className={cx('h-2.5 w-2.5 shrink-0 rotate-45 rounded-[2px]', late ? 'bg-bad' : m.status === 'in_progress' ? 'bg-brand dark:bg-brand-soft' : 'border-2 border-ink/70')} />
+        <div className="min-w-0 flex-1">
+          <button className="block max-w-full truncate text-start text-sm font-medium hover:underline" onClick={() => open('Milestones', m as never)}>
+            {m.title}
+          </button>
+          <Link to={`/projects/${m.project_id}`} className="block truncate text-[0.6875rem] text-sub hover:text-ink">
+            {pname(m.project_id)}
+          </Link>
+        </div>
+        <span className={cx('hidden w-24 text-end text-[0.6875rem] @lg:block', late ? 'text-bad' : 'text-sub')}>{relDays(m.planned_date)}</span>
+        {m.owner ? <Avatar name={m.owner} size="xs" /> : <span className="w-5" />}
+        {canEdit && (
+          <button className="icon-btn h-7 w-7 opacity-0 transition group-hover:opacity-100" title={L('انجام شد', 'Mark done')} onClick={() => done(m)}>
+            <Check size={14} />
+          </button>
+        )}
+      </li>
+    )
+  }
   return (
-    <section className="card mt-4 p-5">
-      <div className="flex flex-wrap items-end justify-between gap-3">
-        <div>
-          <div className="eyebrow">{L('نمای لحظه‌ای', 'Snapshot')}</div>
-          <h3 className="mt-1 text-[0.9375rem] font-semibold">
-            {isToday ? L('امروز', 'Today') : fmtDate(at, 'long')} <span className="font-normal text-sub">· {isToday ? '' : relDays(at)}</span>
-          </h3>
-        </div>
-        <div className="flex items-center gap-4 text-xs">
-          <span>
-            {L('مایلستون‌های موعد تا این تاریخ', 'Milestones due by then')}: <b className="num">{fa(dueBy.length)}</b>
-          </span>
-          <span className={cx(dueOpen.length > 0 && 'text-bad')}>
-            {future ? L('هنوز باز', 'still open') : L('انجام‌نشده', 'not done')}: <b className="num">{fa(dueOpen.length)}</b>
-          </span>
-          {!isToday && (
-            <button className="btn-outline btn-sm" onClick={onReset}>
-              {L('بازگشت به امروز', 'Back to today')}
-            </button>
+    <Card pad={false} eyebrow={L('مایلستون‌ها', 'Milestones')} title={L('عقب‌افتاده و ۹۰ روز آینده', 'Overdue and the next 90 days')}>
+      {overdue.length + soon.length ? (
+        <div className="border-t border-line">
+          {overdue.length > 0 && (
+            <section>
+              <div className="flex items-center justify-between bg-bad/[0.05] px-5 py-1.5 text-[0.6875rem] font-semibold text-bad">
+                <span>{L('عقب‌افتاده', 'Overdue')}</span>
+                <span className="num">{fa(overdue.length)}</span>
+              </div>
+              <ul className="divide-y divide-line">{overdue.map(item)}</ul>
+            </section>
           )}
-        </div>
-      </div>
-      <div className="mt-4 grid gap-3 @lg:grid-cols-2 @2xl:grid-cols-3">
-        {rows.map((p) => {
-          const m = projectMetrics(p, db)
-          const span = Math.max(1, daysBetween(p.start_date, p.end_date))
-          const plan = Math.max(0, Math.min(100, Math.round((daysBetween(p.start_date, at) / span) * 100)))
-          const msDue = db.Milestones.filter((x) => x.project_id === p.id && x.planned_date <= at)
-          const msOpen = msDue.filter((x) => x.status !== 'done').length
-          const notStarted = at < p.start_date
-          const ended = at > p.end_date
-          return (
-            <Link key={p.id} to={`/projects/${p.id}`} className="rounded-2xl border border-line p-3.5 transition hover:border-line-strong">
-              <div className="flex items-center gap-2">
-                <HealthDot h={m.health} />
-                <span className="flex-1 truncate text-sm font-medium">{p.name}</span>
-                <span className="text-[0.6875rem] text-sub">{notStarted ? L('شروع نشده', 'not started') : ended ? L('بعد از ددلاین', 'past deadline') : L(`${fa(plan)}٪ از زمان`, `${plan}% of time`)}</span>
-              </div>
-              <div className="relative mt-3 h-2 rounded-full bg-muted">
-                <div className="absolute inset-y-0 start-0 rounded-full bg-ink/15" style={{ width: `${plan}%` }} />
-                <div className={cx('absolute inset-y-0 start-0 rounded-full', healthColor[m.health])} style={{ width: `${m.progress}%`, opacity: 0.9 }} />
-                <span className="absolute -top-1 h-4 w-[2px] rounded bg-brand" style={{ insetInlineStart: `${plan}%` }} />
-              </div>
-              <div className="mt-2 flex justify-between text-[0.6875rem] text-sub">
+          {[...byMonth.entries()].map(([k, list]) => (
+            <section key={k}>
+              <div className="flex items-center justify-between bg-muted/50 px-5 py-1.5 text-[0.6875rem] font-semibold text-sub">
                 <span>
-                  {L('پیشرفت فعلی', 'Progress now')} {fa(m.progress)}%
+                  {monthName(ym(k).m, false)} {fa(ym(k).y)}
                 </span>
-                <span className={cx(msOpen > 0 && 'font-medium text-bad')}>
-                  {L(`مایلستون موعد: ${fa(msDue.length)}${msOpen ? ` (${fa(msOpen)} باز)` : ''}`, `Milestones due: ${msDue.length}${msOpen ? ` (${msOpen} open)` : ''}`)}
-                </span>
+                <span className="num">{fa(list.length)}</span>
               </div>
-            </Link>
-          )
-        })}
-      </div>
-    </section>
+              <ul className="divide-y divide-line">{list.map(item)}</ul>
+            </section>
+          ))}
+        </div>
+      ) : (
+        <Empty text={L('مایلستون بازی در این بازه نیست', 'No open milestones in this window')} />
+      )}
+    </Card>
   )
 }

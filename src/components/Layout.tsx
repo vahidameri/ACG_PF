@@ -26,6 +26,7 @@ import { lbl } from '../lib/i18n'
 export function Layout({ children }: { children: ReactNode }) {
   const { db, me, setMe, mode, loading, error, refresh, lastSync, toasts, canEdit, dismissToast, config, setConfig, access } = useStore()
   const { signOut } = useGoogle()
+  const [, setEntered] = usePref<boolean>('acg.entered', false)
   const myMember = db.Team.find((m) => m.name === me)
   const leader = can.portfolio(access)
   const { lang, setLang } = useI18n()
@@ -254,11 +255,9 @@ export function Layout({ children }: { children: ReactNode }) {
                   {L('بک‌آفیس و تنظیمات', 'Back office & settings')}
                 </MenuItem>
               )}
-              {mode === 'live' && (
-                <MenuItem icon={<LogOut size={15} />} danger onClick={() => { close(); signOut(); setConfig({ ...config, token: '' }) }}>
-                  {L('خروج', 'Sign out')}
-                </MenuItem>
-              )}
+              <MenuItem icon={<LogOut size={15} />} danger onClick={() => { close(); if (mode === 'live') { signOut(); setConfig({ ...config, token: '' }) } setEntered(false) }}>
+                {L('خروج', 'Sign out')}
+              </MenuItem>
             </>
           )}
         </Popover>

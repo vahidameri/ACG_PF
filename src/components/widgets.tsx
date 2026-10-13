@@ -12,7 +12,7 @@ import { TASK_STATUS, TASK_STATUS_ORDER, MILESTONE_STATUS, HEALTH } from '../lib
 import type { Activity } from '../lib/activity'
 import { DIM, DIMS, type Assessment } from '../lib/rag'
 import { burndown, riskScore, sprintCommitted, sprintDonePoints } from '../lib/metrics'
-import { fa, fmtDayMonth, fmtDate, todayISO, daysFromToday, timeAgo } from '../lib/jalali'
+import { fa, fmtDayMonth, fmtDate, todayISO, daysFromToday, timeAgo, relDays } from '../lib/jalali'
 import { L, lbl, locale, tr } from '../lib/i18n'
 import { useProjectName } from './shared'
 
@@ -187,100 +187,70 @@ export function RiskMatrix({ risks, onPick }: { risks: Risk[]; onPick?: (r: Risk
 }
 
 // ---------------- Milestone timeline ----------------
-/** Horizontal timeline: project span, milestones placed by date, today marker. */
-export function MilestoneTimeline({ milestones, start, end }: { milestones: Milestone[]; start: string; end: string }) {
+/** Milestones: one segment per milestone as a progress summary, then a clean table. */
+export function MilestoneList({ milestones, compact }: { milestones: Milestone[]; compact?: boolean }) {
   const { open } = useEditor()
+  const { upsert, canEdit, toast } = useStore()
   const today = todayISO()
-  const sorted = [...milestones].filter((m) => m.planned_date).sort((a, b) => (a.planned_date < b.planned_date ? -1 : 1))
-  if (!sorted.length) return null
-  const from = start && start < sorted[0].planned_date ? start : sorted[0].planned_date
-  const last = sorted[sorted.length - 1].planned_date
-  const to = end && end > last ? end : last
-  const span = Math.max(1, daysFromToday(to) - daysFromToday(from))
-  const pos = (iso: string) => Math.max(0, Math.min(100, ((daysFromToday(iso) - daysFromToday(from)) / span) * 100))
-  const tp = pos(today)
-  const doneUpTo = sorted.filter((m) => m.status === 'done').reduce((a, m) => Math.max(a, pos(m.planned_date)), 0)
+  const sorted = [...milestones].sort((a, b) => ((a.planned_date || '9') < (b.planned_date || '9') ? -1 : 1))
+  const state = (m: Milestone) => (m.status === 'done' ? 'done' : m.status === 'missed' || (m.planned_date && m.planned_date < today) ? 'late' : m.status === 'in_progress' ? 'active' : 'todo')
+  const seg = { done: 'bg-good', late: 'bg-bad', active: 'bg-brand dark:bg-brand-soft', todo: 'bg-line-strong' }
+  const chip = { done: 'bg-good/10 text-good', late: 'bg-bad/10 text-bad', active: 'bg-brand/10 text-brand dark:text-brand-soft', todo: 'bg-muted text-sub' }
+  const label = (m: Milestone) => (state(m) === 'late' && m.status !== 'missed' ? L('عقب‌افتاده', 'Overdue') : lbl(MILESTONE_STATUS, m.status))
+  const doneN = sorted.filter((m) => m.status === 'done').length
+  const next = sorted.find((m) => m.status !== 'done')
+  const complete = async (m: Milestone) => {
+    await upsert('Milestones', { ...m, status: 'done', actual_date: todayISO() })
+    toast(L('مایلستون انجام شد', 'Milestone completed'), 'ok', { label: L('بازگردانی', 'Undo'), run: () => upsert('Milestones', m) })
+  }
   return (
-    <div className="relative px-3 pb-2 pt-14">
-      <div className="relative h-1.5 rounded-full bg-muted">
-        <div className="absolute inset-y-0 start-0 rounded-full bg-good/70" style={{ width: `${doneUpTo}%` }} />
-        {today >= from && today <= to && (
-          <div className="absolute -top-2 -bottom-2 w-[2px] bg-bad" style={{ insetInlineStart: `${tp}%` }}>
-            <span className="absolute -bottom-5 -translate-x-1/2 whitespace-nowrap text-[0.625rem] font-semibold text-bad rtl:translate-x-1/2">{L('امروز', 'Today')}</span>
-          </div>
-        )}
-        {sorted.map((m, i) => {
-          const late = m.status !== 'done' && m.planned_date < today
-          const tone = m.status === 'done' ? 'bg-good' : late || m.status === 'missed' ? 'bg-bad' : m.status === 'in_progress' ? 'bg-brand dark:bg-brand-soft' : 'bg-surface ring-2 ring-line-strong'
-          const up = i % 2 === 0
+    <div>
+      <div className="mb-1.5 flex items-baseline justify-between gap-2 text-xs">
+        <span className="font-medium">{L(`${fa(doneN)} از ${fa(sorted.length)} انجام شد`, `${doneN} of ${sorted.length} done`)}</span>
+        {next && <span className="truncate text-sub">{L(`بعدی: ${next.title} · ${relDays(next.planned_date)}`, `Next: ${next.title} · ${relDays(next.planned_date)}`)}</span>}
+      </div>
+      <div className="mb-4 flex h-1.5 gap-1">
+        {sorted.map((m) => (
+          <span key={m.id} className={cx('flex-1 rounded-full', seg[state(m)])} title={m.title} />
+        ))}
+      </div>
+      <ul className="-mx-2 divide-y divide-line">
+        {sorted.map((m) => {
+          const st = state(m)
+          const slip = m.actual_date && m.planned_date ? daysFromToday(m.actual_date) - daysFromToday(m.planned_date) : 0
           return (
-            <button key={m.id} onClick={() => open('Milestones', m as never)} className="group absolute top-1/2 -translate-x-1/2 -translate-y-1/2 rtl:translate-x-1/2" style={{ insetInlineStart: `${pos(m.planned_date)}%` }} title={m.title}>
-              <span className={cx('block h-4 w-4 rotate-45 rounded-[4px] shadow-sm transition group-hover:scale-125', tone)} />
-              <span className={cx('absolute start-1/2 w-28 -translate-x-1/2 text-center leading-4 rtl:translate-x-1/2', up ? 'bottom-6' : 'top-6')}>
-                <span className={cx('block truncate text-[0.6875rem] font-medium', late && 'text-bad')}>{m.title}</span>
-                <span className="block text-[0.625rem] text-sub num">{fmtDayMonth(m.planned_date)}</span>
+            <li key={m.id} className="group flex items-center gap-3 px-2 py-2.5">
+              <span className={cx('grid h-6 w-6 shrink-0 place-items-center rounded-full', st === 'done' ? 'bg-good text-white' : st === 'late' ? 'bg-bad/10 text-bad' : st === 'active' ? 'bg-brand/10 text-brand dark:text-brand-soft' : 'bg-muted text-sub')}>
+                {st === 'done' ? <Check size={13} strokeWidth={3} /> : <span className="h-1.5 w-1.5 rounded-full bg-current" />}
               </span>
-            </button>
+              <button onClick={() => open('Milestones', m as never)} className="min-w-0 flex-1 text-start">
+                <span className="block truncate text-sm font-medium group-hover:underline">{m.title}</span>
+                {!compact && <span className="block truncate text-[0.6875rem] text-sub">{m.owner || '—'}</span>}
+              </button>
+              <span className={cx('shrink-0 text-end text-xs num', compact ? 'w-20' : 'w-24')}>
+                <span className={cx('block', st === 'late' && 'font-semibold text-bad')}>{fmtDate(m.planned_date)}</span>
+                {m.actual_date ? (
+                  <span className={cx('block text-[0.625rem]', slip > 0 ? 'text-bad' : 'text-good')}>{slip > 0 ? L(`${fa(slip)} روز دیرتر`, `${slip}d late`) : L('به‌موقع', 'on time')}</span>
+                ) : (
+                  st !== 'done' && <span className="block text-[0.625rem] text-sub">{relDays(m.planned_date)}</span>
+                )}
+              </span>
+              {!compact && <span className={cx('hidden w-24 shrink-0 justify-center rounded-full px-2 py-0.5 text-center text-[0.6875rem] font-medium @sm:inline-flex', chip[st])}>{label(m)}</span>}
+              {canEdit && st !== 'done' ? (
+                <button className="icon-btn h-7 w-7 opacity-0 transition group-hover:opacity-100" title={L('انجام شد', 'Mark done')} onClick={() => complete(m)}>
+                  <Check size={14} />
+                </button>
+              ) : (
+                <span className="w-7" />
+              )}
+            </li>
           )
         })}
-      </div>
-      <div className="h-12" />
+      </ul>
     </div>
   )
 }
 
-export function MilestoneList({ milestones }: { milestones: Milestone[] }) {
-  const { open } = useEditor()
-  const { upsert, canEdit, toast } = useStore()
-  const sorted = [...milestones].sort((a, b) => (a.planned_date < b.planned_date ? -1 : 1))
-  return (
-    <ol className="relative ms-3 border-s-2 border-line">
-      {sorted.map((m) => {
-        const late = m.status !== 'done' && m.planned_date && daysFromToday(m.planned_date) < 0
-        const slip = m.actual_date && m.planned_date ? daysFromToday(m.planned_date) - daysFromToday(m.actual_date) : 0
-        return (
-          <li key={m.id} className="group relative mb-5 ps-6 last:mb-0">
-            <span
-              className={cx(
-                'absolute -start-[9px] top-1 flex h-4 w-4 items-center justify-center rounded-full ring-4 ring-surface',
-                m.status === 'done' ? 'bg-good' : late || m.status === 'missed' ? 'bg-bad' : m.status === 'in_progress' ? 'bg-brand' : 'bg-line-strong',
-              )}
-            >
-              {m.status === 'done' && <Check size={10} className="text-white" strokeWidth={3} />}
-            </span>
-            <div className="flex flex-wrap items-center gap-2">
-              <button onClick={() => open('Milestones', m as never)} className="text-start text-sm font-medium hover:underline">
-                {m.title}
-              </button>
-              <Chip className={cx(m.status === 'done' ? 'bg-good/10 text-good' : late || m.status === 'missed' ? 'bg-bad/10 text-bad' : m.status === 'in_progress' ? 'bg-brand-soft/50 text-ink' : '')}>
-                {late && m.status !== 'missed' ? L('عقب‌افتاده', 'Overdue') : lbl(MILESTONE_STATUS, m.status)}
-              </Chip>
-              {canEdit && m.status !== 'done' && (
-                <button
-                  className="text-[0.6875rem] text-sub opacity-0 transition hover:text-good group-hover:opacity-100"
-                  onClick={async () => {
-                    await upsert('Milestones', { ...m, status: 'done', actual_date: todayISO() })
-                    toast(L('مایلستون انجام شد', 'Milestone completed'), 'ok', { label: L('بازگردانی', 'Undo'), run: () => upsert('Milestones', m) })
-                  }}
-                >
-                  ✓ {L('انجام شد', 'Mark done')}
-                </button>
-              )}
-            </div>
-            <div className="mt-0.5 text-xs text-sub num">
-              {fmtDate(m.planned_date)}
-              {m.actual_date && ` → ${fmtDate(m.actual_date)}`}
-              {slip > 0 && <span className="text-bad"> ({L(`${fa(slip)} روز تأخیر`, `${slip}d late`)})</span>}
-              {m.owner && ` · ${m.owner}`}
-            </div>
-          </li>
-        )
-      })}
-    </ol>
-  )
-}
-
-// ---------------- Weekly update card ----------------
 export function UpdateCard({ u, showProject }: { u: Update; showProject?: boolean }) {
   const { openComposer } = useComposer()
   const pname = useProjectName()

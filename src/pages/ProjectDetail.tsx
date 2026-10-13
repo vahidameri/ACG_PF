@@ -13,7 +13,7 @@ import { PauseButton } from '../components/PauseButton'
 import { ContractsList, NewContractButton } from '../components/Contracts'
 import { can } from '../lib/access'
 import { Attachments } from '../components/Files'
-import { BurndownChart, Kanban, MilestoneList, MilestoneTimeline, RiskMatrix, SprintHeader, UpdateCard, VelocityChart, riskTone, ActivityFeed, HealthTrend, RagStrip } from '../components/widgets'
+import { BurndownChart, Kanban, MilestoneList, RiskMatrix, SprintHeader, UpdateCard, VelocityChart, riskTone, ActivityFeed, HealthTrend, RagStrip } from '../components/widgets'
 import { buildActivity } from '../lib/activity'
 import { assess } from '../lib/rag'
 import { renderMentions, stampToDate } from '../components/ItemSheet'
@@ -197,7 +197,7 @@ export default function ProjectDetail() {
                 </div>
               </Card>
               <Card eyebrow={L('رودمپ', 'Roadmap')} title={L('مایلستون‌ها', 'Milestones')} action={<AddBtn sheet="Milestones" label={L('مایلستون', 'Milestone')} />}>
-                {ms.length ? <MilestoneTimeline milestones={ms} start={p.start_date} end={p.end_date} /> : <Empty text={L('مایلستونی ثبت نشده', 'No milestones yet')} />}
+                {ms.length ? <MilestoneList milestones={ms} compact /> : <Empty text={L('مایلستونی ثبت نشده', 'No milestones yet')} />}
               </Card>
               <div className="min-w-0 space-y-4">
                 {m.activeSprint && (
@@ -303,12 +303,7 @@ export default function ProjectDetail() {
           {tab === 'milestones' && (
             <Card eyebrow={L('رودمپ پروژه', 'Project roadmap')} title={L('مایلستون‌ها', 'Milestones')} action={<AddBtn sheet="Milestones" label={L('مایلستون', 'Milestone')} />}>
               {ms.length ? (
-                <>
-                  <MilestoneTimeline milestones={ms} start={p.start_date} end={p.end_date} />
-                  <div className="mt-4 border-t border-line pt-5">
-                    <MilestoneList milestones={ms} />
-                  </div>
-                </>
+                <MilestoneList milestones={ms} />
               ) : (
                 <Empty text={L('مایلستونی ثبت نشده', 'No milestones yet')} />
               )}

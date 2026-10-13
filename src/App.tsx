@@ -27,7 +27,8 @@ import Weekly from './pages/Weekly'
 import Profile from './pages/Profile'
 import { ComposerProvider } from './components/UpdateComposer'
 import { Skeleton } from './components/ui'
-import { SignIn } from './components/SignIn'
+import { Login } from './components/Login'
+import { usePref } from './lib/prefs'
 
 /** Portfolio-wide pages are for leadership; members land on their own desk. */
 function Only({ rule, children }: { rule: 'portfolio' | 'backoffice'; children: React.ReactNode }) {
@@ -71,8 +72,9 @@ function HostedSplash({ error, retry }: { error: string; retry: () => void }) {
 function Gate({ children }: { children: React.ReactNode }) {
   const { loading, lastSync, mode, authed, error } = useStore()
   const g = useGoogle()
+  const [entered, setEntered] = usePref<boolean>('acg.entered', false)
+  if (!entered || (mode === 'live' && !authed && !g.hosted)) return <Login onEnter={() => setEntered(true)} />
   if (g.hosted && (!g.session || !g.apiUrl || (error && !lastSync))) return <HostedSplash error={g.error || (g.session && !g.apiUrl ? 'API_URL' : '') || (!lastSync ? error : '')} retry={() => g.signIn('')} />
-  if (mode === 'live' && !authed) return <SignIn />
   if (mode === 'live' && loading && !lastSync)
     return (
       <div className="mx-auto max-w-[90rem] space-y-4 pt-8">
