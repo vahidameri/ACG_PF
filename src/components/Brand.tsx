@@ -18,3 +18,27 @@ export function AcgMark({ className = 'h-6' }: { className?: string }) {
     </svg>
   )
 }
+
+/** Loading mark: the "A" draws itself, fills, the dot drops in; a ring orbits around it. */
+export function AcgLoader({ className = 'h-32 w-32' }: { className?: string }) {
+  return (
+    <div className={`acg-loader relative ${className}`} role="status" aria-label="Loading">
+      <span className="acg-orbit absolute inset-0 rounded-full border border-white/10">
+        <span className="absolute -top-1 left-1/2 h-2 w-2 -translate-x-1/2 rounded-full bg-white shadow-[0_0_12px_3px_rgba(255,255,255,0.55)]" />
+      </span>
+      <span className="acg-orbit-2 absolute inset-3 rounded-full border border-dashed border-white/[0.07]" />
+      <svg viewBox="300 150 564 604" className="absolute inset-0 m-auto h-[46%] w-[46%] overflow-visible text-white">
+        <path
+          className="acg-a"
+          pathLength={1}
+          d="M581.5 166 L316 736.5 L383.5 736.5 L582 311 L779.5 736.5 L847.5 736.5 Z"
+          fill="currentColor"
+          stroke="currentColor"
+          strokeWidth={10}
+          strokeLinejoin="round"
+        />
+        <circle className="acg-dot" cx="587" cy="706.5" r="29" fill="currentColor" />
+      </svg>
+    </div>
+  )
+}

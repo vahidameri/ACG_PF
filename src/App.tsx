@@ -28,6 +28,7 @@ import Profile from './pages/Profile'
 import { ComposerProvider } from './components/UpdateComposer'
 import { Skeleton } from './components/ui'
 import { Login } from './components/Login'
+import { AcgLoader } from './components/Brand'
 import { usePref } from './lib/prefs'
 
 /** Portfolio-wide pages are for leadership; members land on their own desk. */
@@ -50,20 +51,20 @@ function HostedSplash({ error, retry }: { error: string; retry: () => void }) {
   return (
     <div className="band fixed inset-0 z-[90] grid place-items-center px-6 text-center">
       <div className="relative z-10 max-w-md rise">
-        <div className="display text-4xl text-white">{fa ? 'اطلس' : 'Atlas'}</div>
-        <div className="mt-2 font-mono text-[0.6875rem] uppercase tracking-[0.2em] text-band-sub">ACG</div>
+        {msg ? (
+          <div className="display text-4xl text-white">{fa ? 'اطلس' : 'Atlas'}</div>
+        ) : (
+          <AcgLoader className="mx-auto h-36 w-36" />
+        )}
+        <div className={msg ? 'mt-2 font-mono text-[0.6875rem] uppercase tracking-[0.2em] text-band-sub' : 'acg-word mt-8 font-mono text-[0.6875rem] uppercase tracking-[0.35em] text-band-sub'}>ACG · Atlas</div>
         {msg ? (
           <>
-            <p className="mt-8 whitespace-pre-line break-all text-sm leading-7 text-[#ff8a9a]" dir="auto">{msg}</p>
+            <p className="mt-8 whitespace-pre-line [overflow-wrap:anywhere] text-sm leading-7 text-[#ff8a9a]" dir="auto">{msg}</p>
             <button className="btn mt-4 h-10 bg-white text-band" onClick={retry}>
               {fa ? 'تلاش دوباره' : 'Try again'}
             </button>
           </>
-        ) : (
-          <div className="mx-auto mt-8 h-1 w-40 overflow-hidden rounded-full bg-white/10">
-            <div className="h-full w-1/3 animate-[slide_1.2s_ease-in-out_infinite] rounded-full bg-white/70" />
-          </div>
-        )}
+        ) : null}
       </div>
     </div>
   )
@@ -75,6 +76,7 @@ function Gate({ children }: { children: React.ReactNode }) {
   const [entered, setEntered] = usePref<boolean>('acg.entered', false)
   if (!entered || (mode === 'live' && !authed && !g.hosted)) return <Login onEnter={() => setEntered(true)} />
   if (g.hosted && (!g.session || !g.apiUrl || (error && !lastSync))) return <HostedSplash error={g.error || (g.session && !g.apiUrl ? 'API_URL' : '') || (!lastSync ? error : '')} retry={() => g.signIn('')} />
+  if (mode === 'live' && loading && !lastSync && g.hosted) return <HostedSplash error="" retry={() => g.signIn('')} />
   if (mode === 'live' && loading && !lastSync)
     return (
       <div className="mx-auto max-w-[90rem] space-y-4 pt-8">
