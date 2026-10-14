@@ -43,7 +43,7 @@ interface ScriptRun {
 declare global {
   interface Window {
     google?: {
-      script?: { run: ScriptRun }
+      script?: { run: ScriptRun; url?: { getLocation: (cb: (l: { parameter?: Record<string, string> }) => void) => void } }
       accounts: {
         oauth2: {
           initTokenClient: (o: { client_id: string; scope: string; callback: (r: TokenResponse) => void; error_callback?: (e: { type: string }) => void }) => TokenClient
@@ -83,7 +83,18 @@ function loadGis() {
 /** True when the app is served by Apps Script (HtmlService) — the zero-hosting setup. */
 export const hosted = () => typeof window !== 'undefined' && !!window.google?.script?.run
 
-function scriptSession(): Promise<{ token: string; email: string; apiUrl: string; otp?: boolean }> {
+/** Query parameters of the Apps Script page (e.g. ?login=… from the email link). */
+function pageParams(): Promise<Record<string, string>> {
+  return new Promise((resolve) => {
+    try {
+      window.google!.script!.url!.getLocation((l) => resolve(l.parameter || {}))
+    } catch {
+      resolve({})
+    }
+  })
+}
+
+function scriptSession(): Promise<{ token: string; email: string; apiUrl: string; otp?: boolean; appUrl?: string }> {
   return new Promise((resolve, reject) =>
     window.google!.script!.run.withSuccessHandler((r) => resolve(r as never)).withFailureHandler(reject).atlasSession(),
   )
@@ -96,6 +107,8 @@ interface Ctx {
   session: GSession | null
   /** opened from the public (data) link: sign in with an email code */
   otp: boolean
+  /** the Google sign-in link (set in the back office), offered on the code login page */
+  appUrl: string
   sendCode: (email: string) => Promise<void>
   verifyCode: (email: string, code: string) => Promise<void>
   signIn: (clientId: string, opts?: { silent?: boolean; hint?: string }) => Promise<GSession>
@@ -113,6 +126,14 @@ export function GoogleProvider({ children }: { children: ReactNode }) {
   const [error, setError] = useState('')
   const [apiUrl, setApiUrl] = useState('')
   const [otp, setOtp] = useState(false)
+  const [appUrl, setAppUrl] = useState('')
+  const adopt = (r: { session: string; email: string; exp: number }) => {
+    try {
+      localStorage.setItem(OTP_KEY, JSON.stringify({ sid: r.session, email: r.email, exp: r.exp }))
+    } catch {}
+    setSessionToken(r.session)
+    setSession({ token: '', exp: r.exp, email: r.email, name: '', picture: '', kind: 'otp' })
+  }
 
   // Hosted in Apps Script: the page already runs as the signed-in Google user — just ask for a token.
   const loadHosted = useCallback(async () => {
@@ -122,8 +143,29 @@ export function GoogleProvider({ children }: { children: ReactNode }) {
       if (r.otp) {
         setOtp(true)
         setApiUrl(r.apiUrl)
-        setSession((s) => (s?.kind === 'otp' ? s : loadOtp()))
+        setAppUrl(r.appUrl || '')
         setError('')
+        // one-click link from the email: ?login=…
+        const p = await pageParams()
+        const used = (() => {
+          try {
+            return sessionStorage.getItem('acg.otp.link')
+          } catch {
+            return null
+          }
+        })()
+        if (p.login && p.login !== used) {
+          try {
+            sessionStorage.setItem('acg.otp.link', p.login)
+          } catch {}
+          try {
+            adopt(await otpCall<{ session: string; email: string; exp: number }>(r.apiUrl, { action: 'otpLink', token: p.login }))
+            return
+          } catch (e) {
+            setError(e instanceof Error ? e.message : String(e))
+          }
+        }
+        setSession((s) => (s?.kind === 'otp' ? s : loadOtp()))
         return
       }
       let name = ''
@@ -196,13 +238,8 @@ export function GoogleProvider({ children }: { children: ReactNode }) {
     await otpCall(apiUrl, { action: 'otpSend', email })
   }, [apiUrl])
   const verifyCode = useCallback(async (email: string, code: string) => {
-    const r = await otpCall<{ session: string; email: string; exp: number }>(apiUrl, { action: 'otpVerify', email, code })
-    try {
-      localStorage.setItem(OTP_KEY, JSON.stringify({ sid: r.session, email: r.email, exp: r.exp }))
-    } catch {}
-    setSessionToken(r.session)
-    setSession({ token: '', exp: r.exp, email: r.email, name: '', picture: '', kind: 'otp' })
-  }, [apiUrl])
+    adopt(await otpCall<{ session: string; email: string; exp: number }>(apiUrl, { action: 'otpVerify', email, code }))
+  }, [apiUrl]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const signOut = useCallback(() => {
     if (session?.kind === 'otp') {
@@ -223,5 +260,5 @@ export function GoogleProvider({ children }: { children: ReactNode }) {
     setSession(null)
   }, [session, apiUrl])
 
-  return <C.Provider value={{ hosted: isHosted, apiUrl, session, otp, sendCode, verifyCode, signIn, signOut, busy, error }}>{children}</C.Provider>
+  return <C.Provider value={{ hosted: isHosted, apiUrl, session, otp, appUrl, sendCode, verifyCode, signIn, signOut, busy, error }}>{children}</C.Provider>
 }

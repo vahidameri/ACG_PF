@@ -85,6 +85,7 @@ function doPost(e) {
     // email-code sign-in (no Google account needed) — before auth, these are how you get a session
     if (body.action === 'otpSend') return json_(otpSend_(body.email));
     if (body.action === 'otpVerify') return json_(otpVerify_(body.email, body.code));
+    if (body.action === 'otpLink') return json_(otpLink_(body.token));
     if (body.action === 'otpLogout') return json_(otpLogout_(body.session));
     var user = auth_(body);
     // read-only, no lock: translations for the English UI
@@ -122,16 +123,17 @@ function atlasSession() {
   var apiUrl = PropertiesService.getScriptProperties().getProperty('API_URL') || '';
   // Opened from the "Execute as: Me" (data) link by someone else: no Google token is ever handed
   // out here — the app signs them in with a code sent to their email instead.
-  if (!active || active !== effective) return { otp: true, apiUrl: apiUrl || ScriptApp.getService().getUrl() };
+  if (!active || active !== effective) return { otp: true, apiUrl: apiUrl || ScriptApp.getService().getUrl(), appUrl: setting_('app.google_url', '') };
   return { token: ScriptApp.getOAuthToken(), email: active, apiUrl: apiUrl };
 }
 
 // --------------------------------------------------------------------------
-// Email-code sign-in: a 6-digit code (10 min, 5 tries) → a 30-day session for that device.
+// Email-code sign-in: the email carries a one-click sign-in link (15 min, single use) and a 6-digit
+// code (10 min, 5 tries); either gives a 90-day session for that device.
 // Sessions are stored hashed in script properties; signing out revokes the session.
 // --------------------------------------------------------------------------
 
-var SESSION_DAYS = 30;
+var SESSION_DAYS = 90;
 
 function hash_(s) {
   return Utilities.base64EncodeWebSafe(Utilities.computeDigest(Utilities.DigestAlgorithm.SHA_256, String(s), Utilities.Charset.UTF_8));
@@ -149,12 +151,17 @@ function otpSend_(email) {
     var code = String(parseInt(Utilities.getUuid().replace(/-/g, '').slice(0, 12), 16) % 1000000);
     while (code.length < 6) code = '0' + code;
     c.put('otp.' + email, JSON.stringify({ h: hash_(code), n: 0 }), 600);
+    var link = Utilities.getUuid().replace(/-/g, '') + Utilities.getUuid().replace(/-/g, '');
+    c.put('otpl.' + hash_(link), email, 900);
+    var url = (PropertiesService.getScriptProperties().getProperty('API_URL') || ScriptApp.getService().getUrl()) + '?login=' + link;
     MailApp.sendEmail({
       to: email,
-      subject: 'کد ورود اطلس: ' + code,
-      htmlBody: '<div dir="rtl" style="font-family:Tahoma,sans-serif;line-height:1.9;color:#111">' + m.name + ' عزیز، سلام<br>کد ورود شما به اطلس ACG:' +
-        '<div style="font:700 28px/1.4 monospace;letter-spacing:6px;margin:12px 0">' + code + '</div>' +
-        '<span style="color:#666;font-size:12px">این کد ۱۰ دقیقه اعتبار دارد. اگر شما درخواست نداده‌اید، این ایمیل را نادیده بگیرید.</span></div>',
+      subject: 'ورود به اطلس · کد ' + code,
+      htmlBody: '<div dir="rtl" style="font-family:Tahoma,sans-serif;line-height:1.9;color:#111">' + m.name + ' عزیز، سلام' +
+        '<div style="margin:18px 0"><a href="' + url + '" style="background:#111;color:#fff;text-decoration:none;padding:12px 28px;border-radius:12px;font-weight:700;display:inline-block">ورود به اطلس</a></div>' +
+        'یا این کد را در صفحه‌ی ورود بزنید:' +
+        '<div style="font:700 28px/1.4 monospace;letter-spacing:6px;margin:8px 0" dir="ltr">' + code + '</div>' +
+        '<span style="color:#666;font-size:12px">لینک ۱۵ دقیقه و کد ۱۰ دقیقه اعتبار دارد. اگر شما درخواست نداده‌اید، این ایمیل را نادیده بگیرید.</span></div>',
     });
   }
   return { ok: true };
@@ -176,6 +183,21 @@ function otpVerify_(email, code) {
     throw new Error('کد اشتباه است');
   }
   c.remove('otp.' + email);
+  return newSession_(email);
+}
+
+/** One-click sign-in from the link in the email (single use). */
+function otpLink_(link) {
+  var c = CacheService.getScriptCache();
+  var k = 'otpl.' + hash_(link || '');
+  var email = link ? c.get(k) : null;
+  if (!email) throw new Error('لینک ورود منقضی شده؛ دوباره کد بگیرید');
+  c.remove(k);
+  c.remove('otp.' + email);
+  return newSession_(email);
+}
+
+function newSession_(email) {
   var token = Utilities.getUuid().replace(/-/g, '') + Utilities.getUuid().replace(/-/g, '');
   var exp = Date.now() + SESSION_DAYS * 86400000;
   var props = PropertiesService.getScriptProperties();

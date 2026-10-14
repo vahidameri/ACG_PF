@@ -69,9 +69,9 @@ export function Login({ onEnter }: { onEnter: () => void }) {
       setSent(true)
       setCode('')
     })
-  const verify = () =>
+  const verify = (c = code) =>
     run(async () => {
-      await g.verifyCode(email.trim(), code)
+      await g.verifyCode(email.trim(), c)
       onEnter()
     })
 
@@ -132,11 +132,15 @@ export function Login({ onEnter }: { onEnter: () => void }) {
                   </form>
                 ) : (
                   <form onSubmit={(e) => (e.preventDefault(), verify())} className="space-y-3">
-                    <div className="text-xs text-sub" dir="auto">
-                      {L('کد ۶ رقمی به این ایمیل رفت:', 'We sent a 6-digit code to')} <b dir="ltr">{email}</b>
+                    <div className="text-xs leading-6 text-sub" dir="auto">
+                      {L('لینک ورود و کد ۶ رقمی به این ایمیل رفت:', 'We emailed a sign-in link and a 6-digit code to')} <b dir="ltr">{email}</b>
                     </div>
-                    <input className="input h-14 w-full text-center font-mono text-2xl tracking-[0.5em]" dir="ltr" inputMode="numeric" autoComplete="one-time-code" autoFocus maxLength={6} placeholder="••••••" value={code} onChange={(e) => setCode(latinDigits(e.target.value).replace(/\D/g, '').slice(0, 6))} />
-                    <button className="btn-primary h-12 w-full" disabled={working || code.length !== 6}>
+                    <input className="input h-14 w-full text-center font-mono text-2xl tracking-[0.5em]" dir="ltr" inputMode="numeric" autoComplete="one-time-code" autoFocus maxLength={6} placeholder="••••••" value={code} onChange={(e) => {
+                        const c = latinDigits(e.target.value).replace(/\D/g, '').slice(0, 6)
+                        setCode(c)
+                        if (c.length === 6 && !working) verify(c)
+                      }} />
+                    <button className="btn-primary h-12 w-full" disabled={working || code.length !== 6} onClick={(e) => (e.preventDefault(), verify())}>
                       {working ? <Loader size={16} className="animate-spin" /> : <ArrowRight size={16} className="rtl:-scale-x-100" />}
                       {L('ورود', 'Sign in')}
                     </button>
@@ -149,6 +153,11 @@ export function Login({ onEnter }: { onEnter: () => void }) {
                       </button>
                     </div>
                   </form>
+                )}
+                {g.appUrl && (
+                  <a href={g.appUrl} target="_top" className="flex items-center justify-center gap-2 pt-3 text-xs text-sub transition hover:text-ink">
+                    <GoogleG /> {L('ورود با حساب گوگل', 'Sign in with Google')}
+                  </a>
                 )}
               </div>
             ) : (
