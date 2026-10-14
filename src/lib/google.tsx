@@ -109,8 +109,7 @@ interface Ctx {
   otp: boolean
   /** the Google sign-in link (set in the back office), offered on the code login page */
   appUrl: string
-  sendCode: (email: string) => Promise<void>
-  verifyCode: (email: string, code: string) => Promise<void>
+  passwordLogin: (username: string, password: string) => Promise<void>
   signIn: (clientId: string, opts?: { silent?: boolean; hint?: string }) => Promise<GSession>
   signOut: () => void
   busy: boolean
@@ -234,11 +233,9 @@ export function GoogleProvider({ children }: { children: ReactNode }) {
     }
   }, [loadHosted, session])
 
-  const sendCode = useCallback(async (email: string) => {
-    await otpCall(apiUrl, { action: 'otpSend', email })
-  }, [apiUrl])
-  const verifyCode = useCallback(async (email: string, code: string) => {
-    adopt(await otpCall<{ session: string; email: string; exp: number }>(apiUrl, { action: 'otpVerify', email, code }))
+  const passwordLogin = useCallback(async (username: string, password: string) => {
+    const r = await otpCall<{ session: string; email: string; exp: number }>(apiUrl, { action: 'pwLogin', username, password })
+    adopt({ ...r, email: r.email || username.toLowerCase() })
   }, [apiUrl]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const signOut = useCallback(() => {
@@ -260,5 +257,5 @@ export function GoogleProvider({ children }: { children: ReactNode }) {
     setSession(null)
   }, [session, apiUrl])
 
-  return <C.Provider value={{ hosted: isHosted, apiUrl, session, otp, appUrl, sendCode, verifyCode, signIn, signOut, busy, error }}>{children}</C.Provider>
+  return <C.Provider value={{ hosted: isHosted, apiUrl, session, otp, appUrl, passwordLogin, signIn, signOut, busy, error }}>{children}</C.Provider>
 }

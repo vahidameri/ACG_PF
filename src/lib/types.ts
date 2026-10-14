@@ -130,6 +130,8 @@ export interface Member {
   role: string
   email: string
   team: string
+  /** sign-in name (blank = made from name_en) */
+  username?: string
   track: Track | ''
   /** availability as % of one full-time person (100 = full-time, 50 = half-time, 600 = a team of six) */
   capacity: number

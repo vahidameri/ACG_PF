@@ -166,6 +166,7 @@ export const SCHEMAS: Record<EditableSheet, { title: T2; prefix: string; fields:
     fields: [
       { key: 'name', label: ['نام', 'Name'], type: 'text', required: true, half: true },
       { key: 'name_en', label: ['نام انگلیسی', 'Name in English'], type: 'text', half: true },
+      { key: 'username', label: ['نام کاربری', 'Username'], type: 'text', half: true, placeholder: ['خودکار از نام انگلیسی', 'From the English name'] },
       { key: 'role', label: ['سمت', 'Title'], type: 'select', options: { '': ['—', '—'], ...JOB_TITLE_OPTIONS }, half: true },
       { key: 'team', label: ['تیم‌ها', 'Teams'], type: 'multi', options: TEAM_NAMES },
       { key: 'track', label: ['ترک', 'Track'], type: 'select', options: { '': ['—', '—'], product: ['پروداکت', 'Product'], tech: ['تک', 'Tech'] }, half: true },

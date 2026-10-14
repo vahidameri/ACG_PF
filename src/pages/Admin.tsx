@@ -8,7 +8,7 @@ import { ContractsList } from '../components/Contracts'
 import { PauseButton } from '../components/PauseButton'
 import Settings from './Settings'
 import { L, lbl } from '../lib/i18n'
-import { ACCESS, PROJECT_STATUS, JOB_TITLE, TEAM_NAMES, teamCodes } from '../lib/labels'
+import { ACCESS, PROJECT_STATUS, JOB_TITLE, TEAM_NAMES, teamCodes, usernameOf } from '../lib/labels'
 import { capOf, memberWeek } from '../lib/capacity'
 import { fa } from '../lib/jalali'
 import type { Access } from '../lib/types'
@@ -61,7 +61,7 @@ export default function Admin({ initial = 'people' }: { initial?: Tab }) {
             { label: L('افراد فعال', 'Active people'), value: fa(active.length) },
             { label: L('پروژه‌های جاری', 'Live projects'), value: fa(db.Projects.filter((p) => p.status === 'active').length), sub: L(`${fa(db.Projects.filter((p) => p.status === 'on_hold').length)} متوقف`, `${db.Projects.filter((p) => p.status === 'on_hold').length} paused`) },
             { label: L('قراردادهای فعال', 'Active contracts'), value: fa(db.Contracts.filter((c) => c.status === 'active' || c.status === 'signed').length), sub: L(`${fa(db.Contracts.filter((c) => c.status === 'negotiation' || c.status === 'draft').length)} در جریان`, `${db.Contracts.filter((c) => c.status === 'negotiation' || c.status === 'draft').length} in progress`) },
-            { label: L('بدون ایمیل گوگل', 'No Google email'), value: fa(db.Team.filter((m) => !m.email).length), tone: db.Team.some((m) => !m.email) ? 'amber' : 'green', sub: L('بدون ایمیل نمی‌تواند وارد شود', 'can’t sign in without one') },
+            { label: L('بدون ایمیل', 'No email'), value: fa(db.Team.filter((m) => !m.email).length), sub: L('فقط با نام کاربری وارد می‌شوند', 'username sign-in only') },
           ]}
         />
       </Band>
@@ -95,7 +95,8 @@ function People() {
             <tr>
               <th className="th">{L('نام', 'Name')}</th>
               <th className="th">{L('سطح دسترسی', 'Access')}</th>
-              <th className="th">{L('ایمیل گوگل', 'Google email')}</th>
+              <th className="th">{L('نام کاربری', 'Username')}</th>
+              <th className="th">{L('ایمیل', 'Email')}</th>
               <th className="th">{L('تیم', 'Track')}</th>
               <th className="th text-center">{L('بار / ظرفیت', 'Load / capacity')}</th>
               <th className="th text-center">{L('ورود', 'Sign-in')}</th>
@@ -128,8 +129,9 @@ function People() {
                       ))}
                     </select>
                   </td>
+                  <td className="td font-mono text-xs" dir="ltr">{usernameOf(m)}</td>
                   <td className="td text-xs" dir="ltr">
-                    {m.email || <span className="text-warn">—</span>}
+                    {m.email || <span className="text-sub">—</span>}
                   </td>
                   <td className="td text-xs">{teamCodes(m.team).map((t) => lbl(TEAM_NAMES, t)).join(L('، ', ', ')) || '—'}</td>
                   <td className="td text-center text-xs num">

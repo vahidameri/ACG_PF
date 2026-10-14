@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { JOB_TITLE } from '../lib/labels'
-import { ArrowRight, Loader, Mail } from 'lucide-react'
+import { ArrowRight, KeyRound, Loader, User } from 'lucide-react'
 import { useStore } from '../lib/store'
 import { useGoogle } from '../lib/google'
 import { useI18n, L, lbl } from '../lib/i18n'
@@ -18,9 +18,6 @@ function GoogleG() {
     </svg>
   )
 }
-
-/** Persian / Arabic digits → 0-9 (people often type the code in Persian). */
-const latinDigits = (v: string) => v.replace(/[۰-۹٠-٩]/g, (d) => String((d.charCodeAt(0) & 0xf) % 10))
 
 /** The front door: Google sign-in. In the demo you can enter as any team member to see their view. */
 export function Login({ onEnter }: { onEnter: () => void }) {
@@ -45,37 +42,31 @@ export function Login({ onEnter }: { onEnter: () => void }) {
   }
   const error = err || g.error
 
-  // email-code sign-in (public link, no Google account needed)
-  const [email, setEmail] = useState(() => localStorage.getItem('acg.otp.email') || '')
-  const [code, setCode] = useState('')
-  const [sent, setSent] = useState(false)
+  // username + team password (public link, no Google account needed)
+  const [username, setUsername] = useState(() => {
+    try {
+      return localStorage.getItem('acg.pw.user') || ''
+    } catch {
+      return ''
+    }
+  })
+  const [password, setPassword] = useState('')
   const [working, setWorking] = useState(false)
-  const run = async (f: () => Promise<void>) => {
+  const pwLogin = async () => {
     setErr('')
     setWorking(true)
     try {
-      await f()
+      await g.passwordLogin(username.trim(), password)
+      try {
+        localStorage.setItem('acg.pw.user', username.trim())
+      } catch {}
+      onEnter()
     } catch (e) {
       setErr(e instanceof Error ? e.message : String(e))
     } finally {
       setWorking(false)
     }
   }
-  const send = () =>
-    run(async () => {
-      await g.sendCode(email.trim())
-      try {
-        localStorage.setItem('acg.otp.email', email.trim())
-      } catch {}
-      setSent(true)
-      setCode('')
-    })
-  const verify = (c = code) =>
-    run(async () => {
-      await g.verifyCode(email.trim(), c)
-      onEnter()
-    })
-
 
   return (
     <div className="fixed inset-0 z-[90] flex bg-bg">
@@ -120,45 +111,31 @@ export function Login({ onEnter }: { onEnter: () => void }) {
 
             {g.otp ? (
               <div className="mt-8 space-y-3">
-                {!sent ? (
-                  <form onSubmit={(e) => (e.preventDefault(), send())} className="space-y-3">
-                    <div className="relative">
-                      <Mail size={16} className="pointer-events-none absolute start-3.5 top-1/2 -translate-y-1/2 text-sub" />
-                      <input className="input h-12 w-full ps-10 text-sm" type="email" dir="ltr" autoFocus required placeholder="name@company.com" value={email} onChange={(e) => setEmail(e.target.value)} />
-                    </div>
-                    <button className="btn-primary h-12 w-full" disabled={working || !email.trim()}>
-                      {working ? <Loader size={16} className="animate-spin" /> : null}
-                      {L('ارسال کد ورود', 'Email me a code')}
-                    </button>
-                  </form>
-                ) : (
-                  <form onSubmit={(e) => (e.preventDefault(), verify())} className="space-y-3">
-                    <div className="text-xs leading-6 text-sub" dir="auto">
-                      {L('لینک ورود و کد ۶ رقمی به این ایمیل رفت:', 'We emailed a sign-in link and a 6-digit code to')} <b dir="ltr">{email}</b>
-                    </div>
-                    <input className="input h-14 w-full text-center font-mono text-2xl tracking-[0.5em]" dir="ltr" inputMode="numeric" autoComplete="one-time-code" autoFocus maxLength={6} placeholder="••••••" value={code} onChange={(e) => {
-                        const c = latinDigits(e.target.value).replace(/\D/g, '').slice(0, 6)
-                        setCode(c)
-                        if (c.length === 6 && !working) verify(c)
-                      }} />
-                    <button className="btn-primary h-12 w-full" disabled={working || code.length !== 6} onClick={(e) => (e.preventDefault(), verify())}>
-                      {working ? <Loader size={16} className="animate-spin" /> : <ArrowRight size={16} className="rtl:-scale-x-100" />}
-                      {L('ورود', 'Sign in')}
-                    </button>
-                    <div className="flex justify-between text-xs">
-                      <button type="button" className="text-sub hover:text-ink" onClick={() => (setSent(false), setErr(''))}>
-                        {L('تغییر ایمیل', 'Change email')}
-                      </button>
-                      <button type="button" className="text-sub hover:text-ink disabled:opacity-50" disabled={working} onClick={send}>
-                        {L('ارسال دوباره', 'Resend')}
-                      </button>
-                    </div>
-                  </form>
-                )}
+                <form onSubmit={(e) => (e.preventDefault(), pwLogin())} className="space-y-3">
+                  <div className="relative">
+                    <User size={16} className="pointer-events-none absolute start-3.5 top-1/2 -translate-y-1/2 text-sub" />
+                    <input className="input h-12 w-full ps-10 text-sm" dir="ltr" autoFocus={!username} autoComplete="username" autoCapitalize="none" spellCheck={false} placeholder={L('نام کاربری', 'Username')} value={username} onChange={(e) => setUsername(e.target.value)} />
+                  </div>
+                  <div className="relative">
+                    <KeyRound size={16} className="pointer-events-none absolute start-3.5 top-1/2 -translate-y-1/2 text-sub" />
+                    <input className="input h-12 w-full ps-10 text-sm" dir="ltr" type="password" autoFocus={!!username} autoComplete="current-password" placeholder={L('رمز عبور', 'Password')} value={password} onChange={(e) => setPassword(e.target.value)} />
+                  </div>
+                  <button className="btn-primary h-12 w-full" disabled={working || !username.trim() || !password}>
+                    {working ? <Loader size={16} className="animate-spin" /> : <ArrowRight size={16} className="rtl:-scale-x-100" />}
+                    {L('ورود', 'Sign in')}
+                  </button>
+                </form>
                 {g.appUrl && (
-                  <a href={g.appUrl} target="_top" className="flex items-center justify-center gap-2 pt-3 text-xs text-sub transition hover:text-ink">
-                    <GoogleG /> {L('ورود با حساب گوگل', 'Sign in with Google')}
-                  </a>
+                  <>
+                    <div className="flex items-center gap-3 py-1 text-[0.6875rem] text-sub">
+                      <span className="h-px flex-1 bg-line" />
+                      {L('یا', 'or')}
+                      <span className="h-px flex-1 bg-line" />
+                    </div>
+                    <a href={g.appUrl} target="_top" className="flex h-12 w-full items-center justify-center gap-3 rounded-xl border border-line-strong bg-surface text-sm font-semibold text-ink shadow-sm transition hover:bg-muted">
+                      <GoogleG /> {L('ورود با حساب گوگل', 'Continue with Google')}
+                    </a>
+                  </>
                 )}
               </div>
             ) : (

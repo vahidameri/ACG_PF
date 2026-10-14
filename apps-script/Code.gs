@@ -18,7 +18,7 @@
  *   viewer — read only (leadership)
  */
 
-var ATLAS_VERSION = '1.5.0'; // shown on the login page and by diagnose()
+var ATLAS_VERSION = '1.6.0'; // shown on the login page and by diagnose()
 
 var SCHEMA = {
   Projects: ['id', 'code', 'name', 'description', 'category', 'owner', 'client', 'liaison', 'liaison_contact', 'status', 'priority', 'phase', 'start_date', 'end_date', 'progress', 'health_override', 'objective', 'paused_at', 'pause_reason'],
@@ -33,7 +33,8 @@ var SCHEMA = {
   // email = the Google account used to sign in; tasks_private = '1' hides this person's tasks (e.g. the CEO)
   // role = job title code: ceo | cpo | cto | pgm | pm | pd | gd (free text also works)
   // access: super | exec | head | member. key = optional personal key (sign-in without Google).
-  Team: ['id', 'name', 'name_en', 'role', 'email', 'team', 'track', 'capacity', 'photo', 'tasks_private', 'phone', 'access', 'active', 'key'],
+  // username = sign-in name (blank = made from name_en, e.g. vahid.ameri); one shared team password
+  Team: ['id', 'name', 'name_en', 'username', 'role', 'email', 'team', 'track', 'capacity', 'photo', 'tasks_private', 'phone', 'access', 'active', 'key'],
   // start_date / end_date are optional; blank = open-ended
   Allocations: ['id', 'member_id', 'project_id', 'percent', 'start_date', 'end_date'],
   Updates: ['id', 'project_id', 'week_date', 'author', 'health', 'summary', 'done', 'next', 'blockers'],
@@ -88,10 +89,15 @@ function doPost(e) {
     if (body.action === 'otpSend') return json_(otpSend_(body.email));
     if (body.action === 'otpVerify') return json_(otpVerify_(body.email, body.code));
     if (body.action === 'otpLink') return json_(otpLink_(body.token));
+    if (body.action === 'pwLogin') return json_(pwLogin_(body.username, body.password));
     if (body.action === 'otpLogout') return json_(otpLogout_(body.session));
     var user = auth_(body);
     // read-only, no lock: translations for the English UI
     if (body.action === 'translate') return json_({ ok: true, map: translate_(body.texts, body.target) });
+    if (body.action === 'setTeamPassword') {
+      if (user.access !== 'super') throw new Error('فقط مدیر برنامه می‌تواند رمز را تغییر دهد');
+      return json_(setTeamPassword_(body.password));
+    }
     if (user.role === 'viewer') throw new Error('دسترسی شما فقط مشاهده است');
     lock.waitLock(20000);
     var result;
@@ -199,7 +205,73 @@ function otpLink_(link) {
   return newSession_(email);
 }
 
-function newSession_(email) {
+// --------------------------------------------------------------------------
+// Username + shared team password. The password is stored salted and hashed in script
+// properties; 8 wrong tries lock that username for 10 minutes.
+// --------------------------------------------------------------------------
+
+var DEFAULT_TEAM_PASSWORD = 'Atlas@1405'; // change it in the back office (settings → team password)
+
+function usernameOf_(m) {
+  var u = String(m.username || '').trim().toLowerCase();
+  if (u) return u;
+  var n = String(m.name_en || '').trim().toLowerCase().replace(/[^a-z0-9]+/g, '.').replace(/^\.+|\.+$/g, '');
+  return n || String(m.email || '').split('@')[0].toLowerCase();
+}
+
+function pwHash_(pw) {
+  var props = PropertiesService.getScriptProperties();
+  var salt = props.getProperty('PW_SALT');
+  if (!salt) {
+    salt = Utilities.getUuid();
+    props.setProperty('PW_SALT', salt);
+  }
+  return hash_(salt + '|' + pw);
+}
+
+function setTeamPassword_(pw) {
+  pw = String(pw || '');
+  if (pw.length < 6) throw new Error('رمز باید حداقل ۶ کاراکتر باشد');
+  PropertiesService.getScriptProperties().setProperty('TEAM_PASSWORD', pwHash_(pw));
+  return { ok: true };
+}
+
+function pwLogin_(username, password) {
+  var u = String(username || '').trim().toLowerCase();
+  if (!u || !password) throw new Error('نام کاربری و رمز را وارد کنید');
+  var c = CacheService.getScriptCache();
+  var tries = Number(c.get('pw.n.' + u) || 0);
+  if (tries >= 8) throw new Error('تلاش زیاد؛ ۱۰ دقیقه بعد دوباره امتحان کنید');
+  var props = PropertiesService.getScriptProperties();
+  if (!props.getProperty('TEAM_PASSWORD')) setTeamPassword_(DEFAULT_TEAM_PASSWORD);
+  var m = (rawAll_().Team || []).filter(function (x) {
+    return String(x.active).toLowerCase() !== 'false' && (usernameOf_(x) === u || String(x.email || '').toLowerCase() === u);
+  })[0];
+  if (!m || pwHash_(String(password)) !== props.getProperty('TEAM_PASSWORD')) {
+    c.put('pw.n.' + u, String(tries + 1), 600);
+    throw new Error('نام کاربری یا رمز اشتباه است');
+  }
+  c.remove('pw.n.' + u);
+  return newSession_(String(m.email || '').toLowerCase(), m.id);
+}
+
+/** Fills empty usernames in the Team tab (vahid.ameri…) so they are visible in the Sheet too. */
+function fillUsernames_() {
+  var sh = SpreadsheetApp.getActive().getSheetByName('Team');
+  if (!sh || sh.getLastRow() < 2) return;
+  var h = sh.getRange(1, 1, 1, sh.getLastColumn()).getValues()[0].map(String);
+  var col = h.indexOf('username');
+  if (col < 0) return;
+  var rows = sh.getRange(2, 1, sh.getLastRow() - 1, h.length).getValues();
+  var out = rows.map(function (r) {
+    var o = {};
+    h.forEach(function (k, i) { o[k] = r[i]; });
+    return [usernameOf_(o)];
+  });
+  sh.getRange(2, col + 1, out.length, 1).setValues(out);
+}
+
+function newSession_(email, memberId) {
   var token = Utilities.getUuid().replace(/-/g, '') + Utilities.getUuid().replace(/-/g, '');
   var exp = Date.now() + SESSION_DAYS * 86400000;
   var props = PropertiesService.getScriptProperties();
@@ -208,7 +280,7 @@ function newSession_(email) {
     if (k.indexOf('sess.') !== 0) return;
     try { if (JSON.parse(all[k]).x < Date.now()) props.deleteProperty(k); } catch (e) { props.deleteProperty(k); }
   });
-  props.setProperty('sess.' + hash_(token), JSON.stringify({ e: email, x: exp }));
+  props.setProperty('sess.' + hash_(token), JSON.stringify({ e: email, m: memberId || '', x: exp }));
   return { ok: true, session: token, email: email, exp: exp };
 }
 
@@ -217,8 +289,8 @@ function otpLogout_(token) {
   return { ok: true };
 }
 
-/** The email behind an email-code session, or an error if it is unknown or expired. */
-function sessionEmail_(token) {
+/** The person behind a session ({e: email, m: member id}), or an error if unknown or expired. */
+function sessionInfo_(token) {
   var k = 'sess.' + hash_(token);
   var raw = PropertiesService.getScriptProperties().getProperty(k);
   if (!raw) throw new Error('نشست منقضی شده؛ دوباره وارد شوید');
@@ -227,7 +299,7 @@ function sessionEmail_(token) {
     PropertiesService.getScriptProperties().deleteProperty(k);
     throw new Error('نشست منقضی شده؛ دوباره وارد شوید');
   }
-  return s.e;
+  return s;
 }
 
 /** Run once from the editor with the "Execute as: Me" deployment URL: setApiUrl('https://script.google.com/macros/s/…/exec') */
@@ -577,8 +649,15 @@ function auth_(params) {
     return { name: u.name, email: String(u.email || '').toLowerCase(), access: m && m.access ? m.access : r === 'admin' ? 'super' : 'member', role: r === 'viewer' ? 'viewer' : 'editor' };
   };
   var find = function (list, pred) { for (var i = 0; i < list.length; i++) if (active(list[i]) && pred(list[i])) return list[i]; return null; };
-  if (params.access_token || params.session) {
-    var email = params.access_token ? googleEmail_(params.access_token) : sessionEmail_(params.session);
+  if (params.session) {
+    var si = sessionInfo_(params.session);
+    var sm = si.m ? find(team, function (x) { return String(x.id) === String(si.m); }) : null;
+    if (sm) return fromTeam(sm);
+    if (!si.e) throw new Error('حساب شما غیرفعال شده است');
+    params = { access_token: '', email_: si.e };
+  }
+  if (params.access_token || params.email_) {
+    var email = params.email_ || googleEmail_(params.access_token);
     var m = find(team, function (x) { return String(x.email).toLowerCase() === email; });
     if (m) return fromTeam(m);
     var u = find(legacy, function (x) { return String(x.email).toLowerCase() === email; });
@@ -683,6 +762,11 @@ function setup() {
     upsert_('Team', { id: 'm1', name: 'وحید عامری', name_en: 'Vahid Ameri', role: 'pgm', email: me, team: 'PMO', capacity: 100, access: 'super', active: 'true', key: key }, { name: 'setup' });
     safeAlert_('راه‌اندازی انجام شد. شما (' + me + ') سوپر ادمین هستید.\n\nکلید پشتیبان (برای ورود بدون گوگل):\n' + key);
     Logger.log('Admin key: ' + key);
+  }
+  fillUsernames_();
+  if (!PropertiesService.getScriptProperties().getProperty('TEAM_PASSWORD')) {
+    setTeamPassword_(DEFAULT_TEAM_PASSWORD);
+    safeAlert_('رمز عبور تیم: ' + DEFAULT_TEAM_PASSWORD + '\nنام کاربری هر نفر در تب Team (ستون username) است.\nرمز را از بک‌آفیس ← تنظیمات عوض کنید.');
   }
   bumpVersion_();
 }
@@ -996,5 +1080,6 @@ function seedDemo() {
   put('Projects', ['CX Orbit', 'Insight X Padida', 'Roo B Roo', 'Kadiner', 'HamAfza', 'Myca', 'malek', 'SimiPass', 'Ino School', 'AISN', 'Clarity Pass'].map(function (name, i) {
     return { id: 'p' + (i + 1), code: name.replace(/[^A-Za-z]/g, '').slice(0, 4).toUpperCase(), name: name, status: 'active', priority: 'medium' };
   }));
+  fillUsernames_();
   bumpVersion_();
 }

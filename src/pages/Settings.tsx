@@ -91,6 +91,7 @@ export default function Settings({ embedded }: { embedded?: boolean }) {
 
         <Card eyebrow="Google" title={L('ورود با گوگل و تقویم', 'Google sign-in & calendar')}>
           <div className="space-y-4">
+            {admin && <TeamPasswordField />}
             {admin && <GoogleLinkField />}
             <div className="rounded-2xl bg-muted/70 p-4 text-xs leading-6 text-sub">
               {L('وضعیت', 'Status')}:{' '}
@@ -272,6 +273,36 @@ function TaskCard({ admin }: { admin: boolean }) {
         </div>
       </div>
     </Card>
+  )
+}
+
+/** One shared password for username sign-in; stored hashed on the server. */
+function TeamPasswordField() {
+  const { mode, action, toast } = useStore()
+  const [v, setV] = useState('')
+  const [show, setShow] = useState(false)
+  const save = async () => {
+    try {
+      await action('setTeamPassword', { password: v })
+      setV('')
+      toast(L('رمز عبور تیم عوض شد', 'Team password changed'))
+    } catch (e) {
+      toast(e instanceof Error ? e.message : String(e), 'err')
+    }
+  }
+  return (
+    <div>
+      <div className="label">{L('رمز عبور تیم', 'Team password')}</div>
+      <div className="flex gap-2">
+        <input className="input h-10 flex-1 text-xs" dir="ltr" type={show ? 'text' : 'password'} autoComplete="new-password" placeholder={L('رمز جدید (حداقل ۶ کاراکتر)', 'New password (6+ characters)')} value={v} onChange={(e) => setV(e.target.value)} />
+        <button className="btn-ghost h-10 px-3 text-xs" type="button" onClick={() => setShow((x) => !x)}>
+          {show ? L('پنهان', 'Hide') : L('نمایش', 'Show')}
+        </button>
+        <button className="btn-outline h-10 px-4 text-xs" disabled={mode !== 'live' || v.length < 6} onClick={save}>
+          {L('ذخیره', 'Save')}
+        </button>
+      </div>
+    </div>
   )
 }
 

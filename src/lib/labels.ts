@@ -162,6 +162,14 @@ export function teamCodes(team: string, role = '', track = ''): string[] {
   return [...new Set(out)]
 }
 
+/** Sign-in name: the username column, or made from the English name (Vahid Ameri → vahid.ameri). Mirrors Code.gs. */
+export function usernameOf(m: { username?: string; name_en?: string; email?: string }) {
+  const u = String(m.username || '').trim().toLowerCase()
+  if (u) return u
+  const n = String(m.name_en || '').trim().toLowerCase().replace(/[^a-z0-9]+/g, '.').replace(/^\.+|\.+$/g, '')
+  return n || String(m.email || '').split('@')[0].toLowerCase()
+}
+
 export const ACCESS: Record<string, T2> = {
   super: ['سوپر ادمین', 'Super admin'],
   exec: ['مدیرعامل', 'CEO'],
