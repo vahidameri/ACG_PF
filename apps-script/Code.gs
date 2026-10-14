@@ -138,13 +138,76 @@ function setApiUrl(url) {
 // --------------------------------------------------------------------------
 
 function readAll_(user) {
+  var out = JSON.parse(JSON.stringify(rawAll_()));
+  delete out[USERS_SHEET];
+  return user ? applyPrivacy_(out, user) : out;
+}
+
+// --------------------------------------------------------------------------
+// Speed: the whole sheet is cached (gzip, in chunks) and re-read only after a write.
+// Every write bumps the version, so a cached copy is never served after a change.
+// Edits made directly in the Sheet bump it too (onEdit); the cache also expires after 10 min.
+// --------------------------------------------------------------------------
+
+var CACHE_TTL = 600;
+var RAW_ = null; // per-request memo
+
+function cacheVer_() {
+  var c = CacheService.getScriptCache();
+  var v = c.get('atlas.ver');
+  if (!v) {
+    v = String(Date.now());
+    c.put('atlas.ver', v, 21600);
+  }
+  return v;
+}
+
+function bumpVersion_() {
+  RAW_ = null;
+  CacheService.getScriptCache().put('atlas.ver', Date.now() + '.' + Math.random().toString(36).slice(2, 7), 21600);
+}
+
+function rawAll_() {
+  if (RAW_) return RAW_;
+  var c = CacheService.getScriptCache();
+  var base = 'atlas.all.' + cacheVer_();
+  var n = Number(c.get(base) || 0);
+  if (n) {
+    var keys = [];
+    for (var i = 0; i < n; i++) keys.push(base + '.' + i);
+    var parts = c.getAll(keys);
+    if (Object.keys(parts).length === n) {
+      try {
+        var bytes = Utilities.base64Decode(keys.map(function (k) { return parts[k]; }).join(''));
+        RAW_ = JSON.parse(Utilities.ungzip(Utilities.newBlob(bytes, 'application/x-gzip')).getDataAsString());
+        return RAW_;
+      } catch (e) {}
+    }
+  }
   var ss = SpreadsheetApp.getActive();
   var out = {};
-  Object.keys(SCHEMA).forEach(function (name) {
+  Object.keys(SCHEMA).concat([USERS_SHEET]).forEach(function (name) {
     var sh = ss.getSheetByName(name);
     out[name] = sh ? readSheet_(sh) : [];
   });
-  return user ? applyPrivacy_(out, user) : out;
+  RAW_ = out;
+  try {
+    var s = Utilities.base64Encode(Utilities.gzip(Utilities.newBlob(JSON.stringify(out), 'application/json')).getBytes());
+    var size = 90000;
+    var count = Math.ceil(s.length / size);
+    if (count <= 40) {
+      var chunks = {};
+      for (var j = 0; j < count; j++) chunks[base + '.' + j] = s.slice(j * size, (j + 1) * size);
+      c.putAll(chunks, CACHE_TTL);
+      c.put(base, String(count), CACHE_TTL);
+    }
+  } catch (e) {}
+  return RAW_;
+}
+
+/** Simple trigger: a manual edit in the Sheet invalidates the cache. */
+function onEdit() {
+  try { bumpVersion_(); } catch (e) {}
 }
 
 // --------------------------------------------------------------------------
@@ -232,7 +295,7 @@ function guardWrite_(sheet, row, user) {
   if (sheet === 'Contracts' && a !== 'super' && a !== 'exec') throw new Error('دسترسی به قراردادها ندارید');
   if (sheet === 'Team' && a !== 'super') {
     // anyone may update their own photo / phone; only the program manager manages people
-    var cur = readSheet_(SpreadsheetApp.getActive().getSheetByName('Team')).filter(function (m) { return String(m.id) === String(row.id); })[0];
+    var cur = rawAll_().Team.filter(function (m) { return String(m.id) === String(row.id); })[0];
     if (!cur || cur.name !== user.name) throw new Error('فقط مدیر برنامه می‌تواند افراد را تعریف یا ویرایش کند');
     ['access', 'active', 'key', 'tasks_private', 'email', 'name'].forEach(function (k) { row[k] = cur[k]; });
   }
@@ -241,7 +304,7 @@ function guardWrite_(sheet, row, user) {
   if (sheet === 'FollowUps' && row.owner && row.owner !== user.name) throw new Error('فالوآپ دیگران را نمی‌توانید تغییر دهید');
   if (sheet === 'FollowUps') row.owner = user.name;
   if (row.project_id) {
-    var ok = allowedProjects_(readAll_(), user.name);
+    var ok = allowedProjects_(rawAll_(), user.name);
     var own = sheet === 'Tasks' && (row.assignee === user.name || row.reporter === user.name);
     if (!ok[row.project_id] && !own) throw new Error('این پروژه در دسترس شما نیست');
   }
@@ -250,26 +313,21 @@ function guardWrite_(sheet, row, user) {
 /** Stops edits to a private task (or its comments/files) by someone who can't see it. */
 function guardPrivate_(sheet, row, user) {
   if (!row) return;
-  var ss = SpreadsheetApp.getActive();
   var taskId = sheet === 'Tasks' ? row.id : (sheet === 'Comments' || sheet === 'Files') && row.entity === 'Tasks' ? row.entity_id : '';
   if (!taskId) return;
-  var owners = privateOwners_(readSheet_(ss.getSheetByName('Team')));
-  var tasks = readSheet_(ss.getSheetByName('Tasks'));
+  var owners = privateOwners_(rawAll_().Team);
+  var tasks = rawAll_().Tasks;
   for (var i = 0; i < tasks.length; i++) {
     if (String(tasks[i].id) === String(taskId) && !canSeeTask_(tasks[i], user, owners)) throw new Error('این تسک خصوصی است');
   }
 }
 
 function existingRow_(sheet, id) {
-  var sh = SpreadsheetApp.getActive().getSheetByName(sheet);
-  if (!sh) return null;
-  return readSheet_(sh).filter(function (r) { return String(r.id) === String(id); })[0] || null;
+  return (rawAll_()[sheet] || []).filter(function (r) { return String(r.id) === String(id); })[0] || null;
 }
 
 function setting_(key, fallback) {
-  var sh = SpreadsheetApp.getActive().getSheetByName('Config');
-  if (!sh) return fallback;
-  var rows = readSheet_(sh);
+  var rows = rawAll_().Config || [];
   for (var i = 0; i < rows.length; i++) if (String(rows[i].id) === key) return String(rows[i].value);
   return fallback;
 }
@@ -319,10 +377,12 @@ function upsert_(name, row, user) {
   if (idx > 0) {
     sh.getRange(idx, 1, 1, headers.length).setValues([values]);
     log_(user, 'update', name, row.id);
+    bumpVersion_();
   } else {
     sh.appendRow(values);
     log_(user, 'create', name, row.id);
     if (name === 'Comments') notifyMentions_(row, user);
+    bumpVersion_();
   }
   return row;
 }
@@ -334,6 +394,7 @@ function delete_(name, id, user) {
   if (idx > 0) {
     sh.deleteRow(idx);
     log_(user, 'delete', name, id);
+    bumpVersion_();
   }
   return { id: id };
 }
@@ -341,9 +402,8 @@ function delete_(name, id, user) {
 function findRow_(sh, id) {
   var last = sh.getLastRow();
   if (last < 2) return -1;
-  var ids = sh.getRange(2, 1, last - 1, 1).getValues();
-  for (var i = 0; i < ids.length; i++) if (String(ids[i][0]) === String(id)) return i + 2;
-  return -1;
+  var hit = sh.getRange(2, 1, last - 1, 1).createTextFinder(String(id)).matchEntireCell(true).findNext();
+  return hit ? hit.getRow() : -1;
 }
 
 // --------------------------------------------------------------------------
@@ -374,9 +434,8 @@ function diagnose() {
  * Google, then matched by email to the Users tab. Fallback: a personal key from the Users tab.
  */
 function auth_(params) {
-  var ss = SpreadsheetApp.getActive();
-  var team = ss.getSheetByName('Team') ? readSheet_(ss.getSheetByName('Team')) : [];
-  var legacy = ss.getSheetByName(USERS_SHEET) ? readSheet_(ss.getSheetByName(USERS_SHEET)) : [];
+  var team = rawAll_().Team || [];
+  var legacy = rawAll_()[USERS_SHEET] || [];
   var active = function (u) { return String(u.active).toLowerCase() !== 'false'; };
   var fromTeam = function (m) { return { name: m.name, email: String(m.email || '').toLowerCase(), access: m.access || 'member', role: 'editor' }; };
   // legacy Users rows: admin → super, viewer stays read-only
@@ -428,7 +487,7 @@ function log_(user, action, sheet, id) {
 /** Emails team members @mentioned in a new comment (Team tab must have their email). */
 function notifyMentions_(c, user) {
   try {
-    var team = readSheet_(SpreadsheetApp.getActive().getSheetByName('Team'));
+    var team = rawAll_().Team || [];
     team.forEach(function (m) {
       if (m.email && m.name && String(c.body).indexOf('@' + m.name) !== -1) {
         MailApp.sendEmail({
@@ -493,6 +552,7 @@ function setup() {
     safeAlert_('راه‌اندازی انجام شد. شما (' + me + ') سوپر ادمین هستید.\n\nکلید پشتیبان (برای ورود بدون گوگل):\n' + key);
     Logger.log('Admin key: ' + key);
   }
+  bumpVersion_();
 }
 
 /** Adds a person from the editor: addUser('آتنا دهقان', 'athena@acg.com', 'member'). Easier: use the back office in the app. */
@@ -804,4 +864,5 @@ function seedDemo() {
   put('Projects', ['CX Orbit', 'Insight X Padida', 'Roo B Roo', 'Kadiner', 'HamAfza', 'Myca', 'malek', 'SimiPass', 'Ino School', 'AISN', 'Clarity Pass'].map(function (name, i) {
     return { id: 'p' + (i + 1), code: name.replace(/[^A-Za-z]/g, '').slice(0, 4).toUpperCase(), name: name, status: 'active', priority: 'medium' };
   }));
+  bumpVersion_();
 }

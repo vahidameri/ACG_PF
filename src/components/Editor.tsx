@@ -9,14 +9,14 @@ import { todayISO } from '../lib/jalali'
 import { L, tr, type T2 } from '../lib/i18n'
 import {
   CHANNEL, CONFIDENCE, CONTRACT_KIND, CONTRACT_STATUS, DELIVERABLE_STATUS, MEETING_SERIES, MEETING_STATUS, FOLLOWUP_STATUS, HEALTH, MILESTONE_STATUS, PRIORITY, PROJECT_STATUS, RISK_STATUS, RISK_TYPE, SCOPE_STATUS, SPRINT_STATUS, TASK_STATUS,
-  ACCESS, JOB_TITLE_OPTIONS } from '../lib/labels'
+  ACCESS, JOB_TITLE_OPTIONS, TEAM_NAMES } from '../lib/labels'
 import { Sheet, cx } from './ui'
 import { DatePicker } from './DatePicker'
 import { ItemSheet } from './ItemSheet'
 import { useAuto } from '../lib/automations'
 import { can } from '../lib/access'
 
-type FieldType = 'text' | 'textarea' | 'select' | 'date' | 'number' | 'project' | 'person' | 'sprint' | 'member' | 'scale'
+type FieldType = 'text' | 'textarea' | 'select' | 'multi' | 'date' | 'number' | 'project' | 'person' | 'sprint' | 'member' | 'scale'
 export interface Field {
   key: string
   label: T2
@@ -167,7 +167,7 @@ export const SCHEMAS: Record<EditableSheet, { title: T2; prefix: string; fields:
       { key: 'name', label: ['نام', 'Name'], type: 'text', required: true, half: true },
       { key: 'name_en', label: ['نام انگلیسی', 'Name in English'], type: 'text', half: true },
       { key: 'role', label: ['سمت', 'Title'], type: 'select', options: { '': ['—', '—'], ...JOB_TITLE_OPTIONS }, half: true },
-      { key: 'team', label: ['تیم', 'Team'], type: 'text', half: true },
+      { key: 'team', label: ['تیم‌ها', 'Teams'], type: 'multi', options: TEAM_NAMES },
       { key: 'track', label: ['ترک', 'Track'], type: 'select', options: { '': ['—', '—'], product: ['پروداکت', 'Product'], tech: ['تک', 'Tech'] }, half: true },
       { key: 'capacity', label: ['ظرفیت', 'Capacity'], type: 'number', half: true },
       { key: 'email', label: ['ایمیل گوگل', 'Google email'], type: 'text', half: true },
@@ -290,6 +290,21 @@ export function FieldInput({ f, value, set, form, disabled, autoFocus, onSubmit 
           ))}
         </select>
       )
+    case 'multi': {
+      const on = String(v || '').split(',').filter(Boolean)
+      return (
+        <div className="flex flex-wrap gap-1.5">
+          {Object.entries(f.options!).map(([k, l]) => {
+            const sel = on.includes(k)
+            return (
+              <button key={k} type="button" disabled={disabled} onClick={() => set((sel ? on.filter((x) => x !== k) : [...on, k]).join(','))} className={cx('h-9 rounded-full border px-3.5 text-xs transition disabled:opacity-60', sel ? 'border-ink bg-ink text-surface' : 'border-line text-sub hover:text-ink')}>
+                {tr(l)}
+              </button>
+            )
+          })}
+        </div>
+      )
+    }
     case 'date':
       return <DatePicker value={String(v)} onChange={(iso) => set(iso)} />
     case 'number':

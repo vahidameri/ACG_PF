@@ -2,7 +2,7 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useRef, use
 import type { DB, Role, Row, SheetName } from './types'
 import { readWeekCfg, setWeekCfg } from './weeks'
 import { readTaskCfg, setTaskCfg } from './taskcfg'
-import { jobCode } from './labels'
+import { jobCode, teamCodes } from './labels'
 import { fetchAll, loadConfig, remoteAction, remoteDelete, remoteUpload, remoteUpsert, saveConfig, uid, type Config } from './api'
 import { useGoogle } from './google'
 import type { FileRef } from './types'
@@ -18,6 +18,29 @@ import { setPhotos } from '../components/ui'
 // Demo edits are kept per language so switching language shows sample data in that language.
 const demoKey = () => `acg.demo.v6.${locale.lang}`
 const ME_KEY = 'acg.me'
+// Last data received from the server, per signed-in account: the app opens instantly from it
+// and refreshes in the background. Cleared on sign-out.
+const snapKey = (who: string) => `acg.snap.${who.toLowerCase()}`
+function loadSnap(who: string): { at: number; data: DB; role: Role; name: string } | null {
+  if (!who) return null
+  try {
+    const s = JSON.parse(localStorage.getItem(snapKey(who)) || 'null')
+    return s && s.data ? s : null
+  } catch {
+    return null
+  }
+}
+function saveSnap(who: string, data: DB, role: Role, name: string) {
+  if (!who) return
+  try {
+    localStorage.setItem(snapKey(who), JSON.stringify({ at: Date.now(), data, role, name }))
+  } catch {}
+}
+export function clearSnaps() {
+  try {
+    Object.keys(localStorage).filter((k) => k.startsWith('acg.snap.')).forEach((k) => localStorage.removeItem(k))
+  } catch {}
+}
 
 const NUMERIC: Partial<Record<SheetName, string[]>> = {
   Milestones: ['weight'],
@@ -51,7 +74,10 @@ function normalize(raw: Partial<DB>): DB {
           if (NUMERIC[k]?.includes(key)) o[key] = o[key] === '' ? 0 : Number(o[key]) || 0
         }
         o.id = String(o.id)
-        if (k === 'Team') o.role = jobCode(String(o.role || ''))
+        if (k === 'Team') {
+          o.role = jobCode(String(o.role || ''))
+          o.team = teamCodes(String(o.team || ''), String(o.role), String(o.track || '')).join(',')
+        }
         return o
       }) as never
   }
@@ -128,8 +154,16 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(mode === 'live')
   const [error, setError] = useState('')
   const [lastSync, setLastSync] = useState<Date | null>(mode === 'demo' ? new Date() : null)
+  const lastSyncRef = useRef(lastSync)
+  lastSyncRef.current = lastSync
   const [toasts, setToasts] = useState<Toast[]>([])
   const dbRef = useRef(db)
+  // keep the local snapshot current (debounced) so the next open is instant
+  useEffect(() => {
+    if (mode !== 'live' || !lastSyncRef.current || !session?.email) return
+    const t = setTimeout(() => saveSnap(session.email, db, role, remoteName), 600)
+    return () => clearTimeout(t)
+  }, [db]) // eslint-disable-line react-hooks/exhaustive-deps
   dbRef.current = db
 
   // In live mode the signed-in identity wins; in the demo "view as" switches the viewer.
@@ -175,7 +209,10 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     setLoading(true)
     try {
       const { data, user } = await fetchAll(config)
-      setDb(normalize(data))
+      const fresh = normalize(data)
+      dbRef.current = fresh
+      setDb(fresh)
+      saveSnap(session?.email || user?.email || '', fresh, user?.role || 'viewer', user?.name || '')
       setRole(user?.role || 'viewer')
       setRemoteName(user?.name || '')
       setRemoteEmail(user?.email || session?.email || '')
@@ -196,11 +233,27 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       setError('')
       return
     }
+    // open from the last snapshot right away, then refresh in the background
+    const snap = loadSnap(session?.email || '')
+    if (snap && !lastSyncRef.current) {
+      const d = normalize(snap.data)
+      dbRef.current = d
+      setDb(d)
+      setRole(snap.role)
+      setRemoteName(snap.name)
+      setLastSync(new Date(snap.at))
+    }
     refresh()
     const iv = setInterval(() => {
       if (document.visibilityState === 'visible') refresh()
-    }, 120000)
-    return () => clearInterval(iv)
+    }, 60000)
+    // coming back to the tab pulls the latest right away
+    const onVis = () => document.visibilityState === 'visible' && refresh()
+    document.addEventListener('visibilitychange', onVis)
+    return () => {
+      clearInterval(iv)
+      document.removeEventListener('visibilitychange', onVis)
+    }
   }, [mode, refresh])
 
   // In demo mode, swap sample data when the interface language changes.

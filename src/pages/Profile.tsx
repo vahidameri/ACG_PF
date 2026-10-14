@@ -1,5 +1,5 @@
 import { Link, useParams } from 'react-router-dom'
-import { JOB_TITLE } from '../lib/labels'
+import { JOB_TITLE, TEAM_NAMES, teamCodes } from '../lib/labels'
 import { Mail, Phone, Pencil, Lock, CalendarDays, Plus } from 'lucide-react'
 import { useStore } from '../lib/store'
 import { useEditor } from '../components/Editor'
@@ -12,7 +12,6 @@ import { L, lbl } from '../lib/i18n'
 import { capOf, loadTone, memberWeek } from '../lib/capacity'
 import { isClosed } from '../lib/delivery'
 import { isTaskOverdue } from '../lib/metrics'
-import { TRACK } from '../lib/tracks'
 import { weekStart, weeksFrom } from '../lib/weeks'
 
 
@@ -44,7 +43,7 @@ export default function Profile() {
               {m.name}
               <span className="mt-2 block text-base font-normal text-band-sub">
                 {lbl(JOB_TITLE, m.role)}
-                {m.track && ` · ${L('تیم', 'Team')} ${lbl(TRACK, m.track)}`}
+                {teamCodes(m.team).length > 0 && ` · ${teamCodes(m.team).map((t) => lbl(TEAM_NAMES, t)).join(L('، ', ', '))}`}
               </span>
             </span>
           </span>

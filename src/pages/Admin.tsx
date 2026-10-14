@@ -8,8 +8,7 @@ import { ContractsList } from '../components/Contracts'
 import { PauseButton } from '../components/PauseButton'
 import Settings from './Settings'
 import { L, lbl } from '../lib/i18n'
-import { ACCESS, PROJECT_STATUS, JOB_TITLE } from '../lib/labels'
-import { TRACK } from '../lib/tracks'
+import { ACCESS, PROJECT_STATUS, JOB_TITLE, TEAM_NAMES, teamCodes } from '../lib/labels'
 import { capOf, memberWeek } from '../lib/capacity'
 import { fa } from '../lib/jalali'
 import type { Access } from '../lib/types'
@@ -132,7 +131,7 @@ function People() {
                   <td className="td text-xs" dir="ltr">
                     {m.email || <span className="text-warn">—</span>}
                   </td>
-                  <td className="td text-xs">{m.track ? lbl(TRACK, m.track) : '—'}</td>
+                  <td className="td text-xs">{teamCodes(m.team).map((t) => lbl(TEAM_NAMES, t)).join(L('، ', ', ')) || '—'}</td>
                   <td className="td text-center text-xs num">
                     <span className={cx(w.load > 100 ? 'font-semibold text-bad' : 'text-sub')}>{fa(w.load)}%</span>
                     {capOf(m) !== 100 && <span className="text-sub"> / {fa(capOf(m))}%</span>}

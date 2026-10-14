@@ -2,6 +2,7 @@
 // deliverables, contracts…) is entered in the app and stored in the Google Sheet.
 import type { DB, Member, Project } from '../lib/types'
 import { locale } from '../lib/i18n'
+import { teamCodes } from '../lib/labels'
 
 const x = (fa: string, en: string) => (locale.lang === 'en' ? en : fa)
 
@@ -37,7 +38,7 @@ const PROJECTS: [string, string, string][] = [
 
 export function buildDemo(): DB {
   const Team: Member[] = PEOPLE.map(([id, fa, en, role, track, access, priv]) => ({
-    id, name: x(fa, en), name_en: '', role, email: '', team: track === 'tech' ? x('تک', 'Tech') : track === 'product' ? x('پروداکت', 'Product') : x('مدیریت', 'Leadership'),
+    id, name: x(fa, en), name_en: '', role, email: '', team: teamCodes('', role, track || '').join(','),
     track, capacity: 100, photo: '', tasks_private: priv || '', phone: '', access, active: 'true',
   }))
   const Projects: Project[] = PROJECTS.map(([id, code, name]) => ({

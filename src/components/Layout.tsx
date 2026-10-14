@@ -4,7 +4,7 @@ import {
   LayoutGrid, Briefcase, ListChecks, BellRing, ShieldAlert, FileText, Settings, Moon, Sun, Search, Plus, RefreshCw, Menu,
   Sparkles, CheckCircle2, AlertCircle, Bell, PanelLeftClose, PanelLeftOpen, Languages, Star, AtSign, Flag, Clock, CircleAlert, Ban, CalendarDays, Keyboard, PackageCheck, CalendarRange, Gauge, UserRound, LogOut,
 } from 'lucide-react'
-import { useStore } from '../lib/store'
+import { useStore, clearSnaps } from '../lib/store'
 import { useI18n, L } from '../lib/i18n'
 import { usePins, usePref } from '../lib/prefs'
 import { buildInbox, type InboxItem } from '../lib/inbox'
@@ -255,7 +255,7 @@ export function Layout({ children }: { children: ReactNode }) {
                   {L('بک‌آفیس و تنظیمات', 'Back office & settings')}
                 </MenuItem>
               )}
-              <MenuItem icon={<LogOut size={15} />} danger onClick={() => { close(); if (mode === 'live') { signOut(); setConfig({ ...config, token: '' }) } setEntered(false) }}>
+              <MenuItem icon={<LogOut size={15} />} danger onClick={() => { close(); if (mode === 'live') { signOut(); clearSnaps(); setConfig({ ...config, token: '' }) } setEntered(false) }}>
                 {L('خروج', 'Sign out')}
               </MenuItem>
             </>

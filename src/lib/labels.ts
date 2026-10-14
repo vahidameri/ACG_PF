@@ -141,6 +141,27 @@ export const jobCode = (role: string) => {
   return JOB_TITLE[k] ? k : LEGACY_TITLE[k] || LEGACY_TITLE[r] || r
 }
 
+/** Teams (Team.team, comma-separated — a person can be in several). */
+export const TEAM_NAMES: Record<string, T2> = {
+  leadership: ['لیدرشیپ', 'Leadership'],
+  pmo: ['PMO', 'PMO'],
+  product: ['پروداکت', 'Product'],
+  tech: ['تک', 'Tech'],
+}
+const LEGACY_TEAM: Record<string, string> = { 'لیدرشیپ': 'leadership', 'مدیریت': 'leadership', 'تک': 'tech', 'پروداکت': 'product', 'محصول': 'product', 'فناوری': 'tech' }
+/** Team codes for a person; blank = derived from the title (CEO/CPO/CTO → leadership) and track. */
+export function teamCodes(team: string, role = '', track = ''): string[] {
+  const list = String(team || '').split(/[,،]/).map((x) => x.trim()).filter(Boolean).map((x) => LEGACY_TEAM[x] || x.toLowerCase())
+  if (list.length) return [...new Set(list)]
+  const r = jobCode(role)
+  const out: string[] = []
+  if (r === 'ceo' || r === 'cpo' || r === 'cto') out.push('leadership')
+  if (r === 'pgm') out.push('pmo')
+  if (r === 'cpo' || r === 'pm' || r === 'pd' || r === 'gd' || track === 'product') out.push('product')
+  if (r === 'cto' || track === 'tech') out.push('tech')
+  return [...new Set(out)]
+}
+
 export const ACCESS: Record<string, T2> = {
   super: ['سوپر ادمین', 'Super admin'],
   exec: ['مدیرعامل', 'CEO'],

@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { JOB_TITLE } from '../lib/labels'
+import { JOB_TITLE, TEAM_NAMES, teamCodes } from '../lib/labels'
 import { Link } from 'react-router-dom'
 import { Plus } from 'lucide-react'
 import { useStore } from '../lib/store'
@@ -29,11 +29,11 @@ export default function Team() {
   const { db, canEdit } = useStore()
   const { open } = useEditor()
   const [tab, setTab] = usePref<'people' | 'timeline' | 'matrix'>('acg.capacity.tab2', 'matrix')
-  const [track, setTrack] = useState<Track | 'all'>('all')
+  const [track, setTrack] = useState<string>('all')
   const ws0 = weekStart()
   const weeks = weeksFrom(ws0, HORIZON)
 
-  const people = db.Team.filter((m) => track === 'all' || m.track === track)
+  const people = db.Team.filter((m) => track === 'all' || teamCodes(m.team, m.role, m.track).includes(track))
   const now = people.map((m) => ({ m, w: memberWeek(db, m, ws0) }))
   const available = now.reduce((s, r) => s + r.w.available, 0)
   const allocated = now.reduce((s, r) => s + r.w.allocated, 0)
@@ -107,8 +107,7 @@ export default function Team() {
               onChange={setTrack}
               options={[
                 { value: 'all', label: L('همه', 'All') },
-                { value: 'product', label: lbl(TRACK, 'product') },
-                { value: 'tech', label: lbl(TRACK, 'tech') },
+                ...Object.keys(TEAM_NAMES).filter((k) => db.Team.some((m) => teamCodes(m.team).includes(k))).map((k) => ({ value: k, label: lbl(TEAM_NAMES, k) })),
               ]}
             />
           </div>
