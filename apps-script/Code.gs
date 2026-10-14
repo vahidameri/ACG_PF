@@ -83,6 +83,8 @@ function doPost(e) {
   try {
     var body = JSON.parse(e.postData.contents || '{}');
     var user = auth_(body);
+    // read-only, no lock: translations for the English UI
+    if (body.action === 'translate') return json_({ ok: true, map: translate_(body.texts, body.target) });
     if (user.role === 'viewer') throw new Error('دسترسی شما فقط مشاهده است');
     lock.waitLock(20000);
     var result;
@@ -203,6 +205,28 @@ function rawAll_() {
     }
   } catch (e) {}
   return RAW_;
+}
+
+/** Google Translate (built into Apps Script). Results are cached for 6 hours. */
+function translate_(texts, target) {
+  target = target === 'fa' ? 'fa' : 'en';
+  var list = (texts || []).slice(0, 100).map(String).filter(function (t) { return t && t.length <= 4000; });
+  var key = function (t) { return 'tr.' + target + '.' + Utilities.base64EncodeWebSafe(Utilities.computeDigest(Utilities.DigestAlgorithm.MD5, t, Utilities.Charset.UTF_8)); };
+  var c = CacheService.getScriptCache();
+  var keys = list.map(key);
+  var hit = c.getAll(keys);
+  var out = {};
+  var put = {};
+  list.forEach(function (t, i) {
+    if (hit[keys[i]] != null) { out[t] = hit[keys[i]]; return; }
+    try {
+      var r = LanguageApp.translate(t, '', target);
+      out[t] = r;
+      put[keys[i]] = r;
+    } catch (e) {}
+  });
+  if (Object.keys(put).length) c.putAll(put, 21600);
+  return out;
 }
 
 /** Simple trigger: a manual edit in the Sheet invalidates the cache. */

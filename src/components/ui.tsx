@@ -208,9 +208,14 @@ export function Progress({ value, h, className, marker }: { value: number; h?: H
 const avatarPalette = ['#1D4F61', '#6A0421', '#3a3f47', '#4b6b77', '#8a4b5b', '#2f5d50', '#5b4a7a', '#7a5a2f']
 // name → photo URL, refreshed by the store whenever the Team tab changes
 const photoByName = new Map<string, string>()
-export function setPhotos(team: { name: string; photo?: string }[]) {
+export function setPhotos(team: { name: string; name_en?: string; photo?: string }[]) {
   photoByName.clear()
-  team.forEach((m) => m.photo && photoByName.set(m.name, m.photo))
+  // keyed by both names so the photo shows in the Persian and the English UI
+  team.forEach((m) => {
+    if (!m.photo) return
+    photoByName.set(m.name, m.photo)
+    if (m.name_en) photoByName.set(m.name_en, m.photo)
+  })
 }
 export const photoOf = (name: string) => photoByName.get(name) || ''
 

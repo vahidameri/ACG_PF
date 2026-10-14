@@ -2,6 +2,7 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useRef, use
 import type { DB, Role, Row, SheetName } from './types'
 import { readWeekCfg, setWeekCfg } from './weeks'
 import { readTaskCfg, setTaskCfg } from './taskcfg'
+import { loadTr, pendingTexts, saveTr, translateDB, untranslateRow, type TrMap } from './translate'
 import { jobCode, teamCodes } from './labels'
 import { fetchAll, loadConfig, remoteAction, remoteDelete, remoteUpload, remoteUpsert, saveConfig, uid, type Config } from './api'
 import { useGoogle } from './google'
@@ -184,7 +185,36 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     setWeekCfg(readWeekCfg((k) => db.Config.find((r) => r.id === k)?.value))
     setTaskCfg(readTaskCfg((k) => db.Config.find((r) => r.id === k)?.value, db.Team))
   }, [db.Config, db.Team])
-  const shown = useMemo(() => mapDB(scopeDB(visibleDB(db, canonMe), canonMe, access), maps.toEn), [db, canonMe, access, maps])
+  // English UI: Persian free text is shown translated (fetched from the server, cached locally)
+  const [tr, setTr] = useState<TrMap>(loadTr)
+  const trFailed = useRef(new Set<string>())
+  const trRev = useMemo(() => new Map(Object.entries(tr).map(([fa, en]) => [en, fa])), [tr])
+  const trRevRef = useRef(trRev)
+  trRevRef.current = trRev
+  useEffect(() => {
+    if (lang !== 'en' || mode !== 'live' || !lastSync) return
+    const todo = pendingTexts(db, tr, trFailed.current).slice(0, 80)
+    if (!todo.length) return
+    let live = true
+    remoteAction(config, 'translate', { texts: todo, target: 'en' })
+      .then((r: { map?: TrMap }) => {
+        todo.forEach((t) => !(r.map && r.map[t]) && trFailed.current.add(t))
+        if (!live || !r.map) return
+        setTr((m) => {
+          const next = { ...m, ...r.map }
+          saveTr(next)
+          return next
+        })
+      })
+      .catch(() => todo.forEach((t) => trFailed.current.add(t)))
+    return () => {
+      live = false
+    }
+  }, [lang, mode, lastSync, db, tr]) // eslint-disable-line react-hooks/exhaustive-deps
+  const shown = useMemo(() => {
+    const v = mapDB(scopeDB(visibleDB(db, canonMe), canonMe, access), maps.toEn)
+    return lang === 'en' ? translateDB(v, tr) : v
+  }, [db, canonMe, access, maps, lang, tr])
   setPhotos(db.Team)
 
   const dismissToast = useCallback((id: number) => setToasts((t) => t.filter((x) => x.id !== id)), [])
@@ -274,7 +304,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
 
   const upsert = useCallback(
     async <S extends SheetName>(sheet: S, input: Row<S>) => {
-      const row = mapRow(sheet, input as unknown as Record<string, unknown>, toCanonRef.current) as unknown as Row<S>
+      const row = mapRow(sheet, untranslateRow(sheet, input as unknown as Record<string, unknown>, locale.lang === 'en' ? trRevRef.current : new Map()), toCanonRef.current) as unknown as Row<S>
       const prev = dbRef.current
       const list = prev[sheet] as Row<S>[]
       const exists = list.some((r) => r.id === row.id)
