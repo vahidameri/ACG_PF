@@ -438,25 +438,27 @@ select:focus-visible {
 
 /* ---------- login scene ---------- */
 .login-scene {
-  background: radial-gradient(120% 100% at 50% 0%, #2f4672 0%, #1c2a45 45%, #131c30 100%);
+  /* same navy-charcoal as the app's header band */
+  background: radial-gradient(900px 600px at 22% 30%, rgb(58 85 133 / 0.55) 0%, transparent 62%), radial-gradient(700px 420px at 92% 105%, rgb(245 179 27 / 0.08) 0%, transparent 60%),
+    linear-gradient(160deg, #1b1c1f 0%, #24262a 55%, #2c2f35 100%);
   color-scheme: dark;
 }
 .aurora {
   position: absolute;
   border-radius: 9999px;
   filter: blur(90px);
-  opacity: 0.7;
+  opacity: 0.55;
   will-change: transform;
 }
 .aurora-1 {
   width: 46rem; height: 46rem; left: -12rem; top: -14rem;
-  background: radial-gradient(circle, #5a7fc0 0%, transparent 65%);
+  background: radial-gradient(circle, #3a5585 0%, transparent 65%);
   animation: aurora-a 22s ease-in-out infinite alternate;
 }
 .aurora-2 {
   width: 38rem; height: 38rem; right: -10rem; top: 20%;
-  background: radial-gradient(circle, #2a7a8c 0%, transparent 65%);
-  opacity: 0.35;
+  background: radial-gradient(circle, #4a6aa3 0%, transparent 65%);
+  opacity: 0.28;
   animation: aurora-b 26s ease-in-out infinite alternate;
 }
 .aurora-3 {
@@ -482,7 +484,7 @@ select:focus-visible {
 @keyframes twinkle { from { opacity: 0.25; } to { opacity: 0.6; } }
 .floor {
   position: absolute; left: -50%; right: -50%; bottom: 0; height: 70%;
-  background-image: linear-gradient(rgb(143 178 255 / 0.22) 1px, transparent 1px), linear-gradient(90deg, rgb(143 178 255 / 0.22) 1px, transparent 1px);
+  background-image: linear-gradient(rgb(195 208 232 / 0.16) 1px, transparent 1px), linear-gradient(90deg, rgb(195 208 232 / 0.16) 1px, transparent 1px);
   background-size: 64px 64px;
   transform: perspective(600px) rotateX(58deg);
   transform-origin: bottom;
