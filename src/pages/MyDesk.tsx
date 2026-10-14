@@ -14,7 +14,7 @@ import { PRIORITY_ORDER } from '../lib/labels'
 import { L } from '../lib/i18n'
 import type { Task } from '../lib/types'
 import { useComposer } from '../components/UpdateComposer'
-import { inWeek, isWorkday, updateDue, weekStart } from '../lib/weeks'
+import { defaultDueDays, inWeek, isWorkday, updateDue, weekStart } from '../lib/weeks'
 import { deliverySummary } from '../lib/delivery'
 import { overloaded } from '../lib/capacity'
 import { CalendarRange, PackageCheck, FileText, Gauge } from 'lucide-react'
@@ -43,13 +43,13 @@ export default function MyDesk() {
   const [kind, setKind] = useState<'task' | 'followup'>('task')
   const [text, setText] = useState('')
   const [proj, setProj] = useState('')
-  const [due, setDue] = useState(0)
+  const [due, setDue] = useState(() => (defaultDueDays() === '' ? -1 : Number(defaultDueDays()) || 0))
   const [who, setWho] = useState('')
 
   const capture = async () => {
     const t = text.trim()
     if (!t) return
-    const dueDate = addDays(today, due)
+    const dueDate = due < 0 ? '' : addDays(today, due)
     if (kind === 'task') {
       await upsert('Tasks', {
         id: uid('T'), project_id: proj, sprint_id: '', title: t, description: '', assignee: who || me, reporter: me, status: 'todo', priority: 'medium',
@@ -230,6 +230,7 @@ export default function MyDesk() {
                 <PersonPicker value={who} onChange={setWho} placeholder={kind === 'task' ? L('خودم', 'Me') : L('با چه کسی؟', 'With whom?')} />
                 <ProjectPicker value={proj} onChange={setProj} />
                 <select value={due} onChange={(e) => setDue(Number(e.target.value))} className="h-8 rounded-full bg-transparent px-2 text-xs outline-none hover:bg-surface">
+                  <option value={-1}>{L('بدون ددلاین', 'No deadline')}</option>
                   <option value={0}>{L('امروز', 'Today')}</option>
                   <option value={1}>{L('فردا', 'Tomorrow')}</option>
                   <option value={3}>{L('۳ روز دیگر', 'In 3 days')}</option>

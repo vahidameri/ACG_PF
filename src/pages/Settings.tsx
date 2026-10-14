@@ -9,7 +9,7 @@ import { fa, timeAgo } from '../lib/jalali'
 import { L, lbl, tr, useI18n } from '../lib/i18n'
 import { ROLE } from '../lib/labels'
 import { APP_NAME } from '../lib/brand'
-import { WEEK_KEYS, weekCfg } from '../lib/weeks'
+import { TASK_DUE_KEY, WEEK_KEYS, defaultDueDays, weekCfg } from '../lib/weeks'
 
 function Switch({ on, onChange, disabled }: { on: boolean; onChange: (v: boolean) => void; disabled?: boolean }) {
   return (
@@ -192,7 +192,7 @@ function WeekCard({ admin }: { admin: boolean }) {
     setSetting(WEEK_KEYS.workdays, next.join(','))
   }
   return (
-    <Card eyebrow={<span className="flex items-center gap-1.5"><CalendarClock size={12} /> {L('هفته', 'Week')}</span>} title={L('چرخه‌ی هفتگی', 'Weekly cycle')}>
+    <Card eyebrow={<span className="flex items-center gap-1.5"><CalendarClock size={12} /> {L('هفته', 'Week')}</span>} title={L('چرخه‌ی کار', 'Work cycle')}>
       <div className="space-y-4">
         {day(L('جلسه‌ی هفتگی', 'Weekly meeting'), WEEK_KEYS.weeklyDay, c.weeklyDay)}
         <div className="flex items-center justify-between gap-4">
@@ -201,6 +201,15 @@ function WeekCard({ admin }: { admin: boolean }) {
         </div>
         {day(L('مهلت گزارش هفتگی', 'Weekly report due'), WEEK_KEYS.dueDay, c.dueDay)}
         {day(L('شروع هفته', 'Week starts'), WEEK_KEYS.start, c.start)}
+        <div className="flex items-center justify-between gap-4">
+          <div className="text-sm font-medium">{L('ددلاین پیش‌فرض تسک', 'Default task deadline')}</div>
+          <select className="input h-9 w-36 text-xs" disabled={!admin} value={defaultDueDays()} onChange={(e) => setSetting(TASK_DUE_KEY, e.target.value)}>
+            <option value="">{L('بدون ددلاین', 'None')}</option>
+            <option value="0">{L('امروز', 'Today')}</option>
+            <option value="1">{L('فردا', 'Tomorrow')}</option>
+            <option value="7">{L('هفته‌ی بعد', 'Next week')}</option>
+          </select>
+        </div>
         <div>
           <div className="mb-2 text-sm font-medium">{L('روزهای کاری', 'Workdays')}</div>
           <div className="flex flex-wrap gap-1.5">

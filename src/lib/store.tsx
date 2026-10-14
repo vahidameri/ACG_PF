@@ -1,6 +1,6 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import type { DB, Role, Row, SheetName } from './types'
-import { readWeekCfg, setWeekCfg } from './weeks'
+import { readWeekCfg, setWeekCfg, setDefaultDueDays, TASK_DUE_KEY } from './weeks'
 import { jobCode } from './labels'
 import { fetchAll, loadConfig, remoteAction, remoteDelete, remoteUpload, remoteUpsert, saveConfig, uid, type Config } from './api'
 import { useGoogle } from './google'
@@ -145,7 +145,10 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   toCanonRef.current = maps.toCanon
   const me = maps.toEn.get(canonMe) || canonMe
   // week settings are read synchronously so every page renders with the current cycle
-  useMemo(() => setWeekCfg(readWeekCfg((k) => db.Config.find((r) => r.id === k)?.value)), [db.Config])
+  useMemo(() => {
+    setWeekCfg(readWeekCfg((k) => db.Config.find((r) => r.id === k)?.value))
+    setDefaultDueDays(db.Config.find((r) => r.id === TASK_DUE_KEY)?.value ?? '')
+  }, [db.Config])
   const shown = useMemo(() => mapDB(scopeDB(visibleDB(db, canonMe), canonMe, access), maps.toEn), [db, canonMe, access, maps])
   setPhotos(db.Team)
 

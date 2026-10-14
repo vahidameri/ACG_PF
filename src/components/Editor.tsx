@@ -1,14 +1,14 @@
 import { createContext, useCallback, useContext, useState, type ReactNode } from 'react'
 import { Trash2 } from 'lucide-react'
 import type { SheetName } from '../lib/types'
-import { weekCfg } from '../lib/weeks'
+import { defaultDue, weekCfg } from '../lib/weeks'
 import { useStore } from '../lib/store'
 import { uid } from '../lib/api'
 import { todayISO } from '../lib/jalali'
 import { L, tr, type T2 } from '../lib/i18n'
 import {
   CHANNEL, CONFIDENCE, CONTRACT_KIND, CONTRACT_STATUS, DELIVERABLE_STATUS, MEETING_SERIES, MEETING_STATUS, FOLLOWUP_STATUS, HEALTH, MILESTONE_STATUS, PRIORITY, PROJECT_STATUS, RISK_STATUS, RISK_TYPE, SCOPE_STATUS, SPRINT_STATUS, TASK_STATUS,
-  ACCESS, JOB_TITLE } from '../lib/labels'
+  ACCESS, JOB_TITLE_OPTIONS } from '../lib/labels'
 import { Sheet, cx } from './ui'
 import { DatePicker } from './DatePicker'
 import { ItemSheet } from './ItemSheet'
@@ -46,7 +46,7 @@ export const SCHEMAS: Record<EditableSheet, { title: T2; prefix: string; fields:
       { key: 'track', label: ['تیم', 'Track'], type: 'select', options: { '': ['خودکار', 'Auto'], product: ['پروداکت', 'Product'], tech: ['تک', 'Tech'] }, half: true },
       { key: 'private', label: ['دیده‌شدن', 'Visibility'], type: 'select', options: { '': ['عمومی', 'Visible'], '1': ['خصوصی', 'Private'] }, half: true },
     ],
-    defaults: () => ({ private: '', status: 'todo', priority: 'medium', points: 0, created_at: todayISO(), track: '', depends_on: '', meeting_id: '' }),
+    defaults: () => ({ private: '', status: 'todo', priority: 'medium', points: 0, created_at: todayISO(), due_date: defaultDue(), track: '', depends_on: '', meeting_id: '' }),
   },
   FollowUps: {
     title: ['فالوآپ', 'Follow-up'],
@@ -165,7 +165,7 @@ export const SCHEMAS: Record<EditableSheet, { title: T2; prefix: string; fields:
     fields: [
       { key: 'name', label: ['نام', 'Name'], type: 'text', required: true, half: true },
       { key: 'name_en', label: ['نام انگلیسی', 'Name in English'], type: 'text', half: true },
-      { key: 'role', label: ['سمت', 'Title'], type: 'select', options: { '': ['—', '—'], ...JOB_TITLE }, half: true },
+      { key: 'role', label: ['سمت', 'Title'], type: 'select', options: { '': ['—', '—'], ...JOB_TITLE_OPTIONS }, half: true },
       { key: 'team', label: ['تیم', 'Team'], type: 'text', half: true },
       { key: 'track', label: ['ترک', 'Track'], type: 'select', options: { '': ['—', '—'], product: ['پروداکت', 'Product'], tech: ['تک', 'Tech'] }, half: true },
       { key: 'capacity', label: ['ظرفیت', 'Capacity'], type: 'number', half: true },
@@ -309,7 +309,7 @@ export function FieldInput({ f, value, set, form, disabled, autoFocus, onSubmit 
     case 'project':
       return (
         <select {...common} value={String(v)} onChange={(e) => set(e.target.value)}>
-          <option value="">{L('— بدون پروژه —', '— No project —')}</option>
+          <option value="">{L('— شخصی / بدون پروژه —', '— Personal / no project —')}</option>
           {db.Projects.map((p) => (
             <option key={p.id} value={p.id}>
               {p.name}

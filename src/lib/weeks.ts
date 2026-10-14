@@ -34,6 +34,13 @@ export function readWeekCfg(get: (key: string) => string | undefined): WeekCfg {
 }
 export const setWeekCfg = (c: WeekCfg) => (cfg = c)
 
+/** Default deadline for a new task, in days from today ('' = no deadline). Config key task.default_due. */
+export const TASK_DUE_KEY = 'task.default_due'
+let dueDays = ''
+export const setDefaultDueDays = (v: string) => (dueDays = v)
+export const defaultDueDays = () => dueDays
+export const defaultDue = () => (dueDays === '' ? '' : addDays(todayISO(), Number(dueDays) || 0))
+
 const offset = (day: number) => (day - cfg.start + 7) % 7
 export const isWorkday = (iso: string) => {
   const d = parseISO(iso)

@@ -131,6 +131,10 @@ const LEGACY_TITLE: Record<string, string> = {
   'مدیرعامل': 'ceo', 'هد پروداکت': 'cpo', 'هد تک': 'cto', 'مدیر برنامه': 'pgm', 'پروداکت منیجر': 'pm', 'پروداکت دیزاینر': 'pd', 'گرافیست': 'gd',
   'head of product': 'cpo', 'head of tech': 'cto', 'program manager': 'pgm', 'product manager': 'pm', 'product designer': 'pd', 'graphic designer': 'gd',
 }
+/** Title options with their code visible, e.g. "مدیرعامل · CEO". */
+export const JOB_TITLE_OPTIONS: Record<string, T2> = Object.fromEntries(
+  Object.entries(JOB_TITLE).map(([k, [fa, en]]) => [k, [`${fa} · ${k.toUpperCase()}`, en === k.toUpperCase() ? en : `${en} · ${k.toUpperCase()}`]]),
+)
 export const jobCode = (role: string) => {
   const r = String(role || '').trim()
   const k = r.toLowerCase()

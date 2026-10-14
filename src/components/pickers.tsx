@@ -157,7 +157,7 @@ export function ProjectPicker({ value, onChange }: { value: string; onChange: (v
       trigger={({ toggle }) => (
         <button className={trig} onClick={toggle} disabled={!canEdit}>
           <FolderKanban size={14} className="text-sub" />
-          <span className={cx('max-w-[12rem] truncate', !p && 'text-sub')}>{p ? p.name : L('بدون پروژه', 'No project')}</span>
+          <span className={cx('max-w-[12rem] truncate', !p && 'text-sub')}>{p ? p.name : L('شخصی', 'Personal')}</span>
         </button>
       )}
     >
