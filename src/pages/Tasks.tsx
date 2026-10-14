@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react'
-import { isCeo } from '../lib/access'
+import { canPersonal } from '../lib/taskcfg'
 import { useSearchParams } from 'react-router-dom'
 import { Plus, ArrowUpDown, MessageSquare, Link2 } from 'lucide-react'
 import { trackOf, waitingOn } from '../lib/tracks'
@@ -167,7 +167,7 @@ export default function Tasks() {
                               )}
                             </div>
                           </td>
-                          <td className="td text-xs text-sub">{pname(t.project_id) || (isCeo(db.Team.find((m) => m.name === t.assignee)) ? L('شخصی', 'Personal') : '—')}</td>
+                          <td className="td text-xs text-sub">{pname(t.project_id) || (canPersonal(db.Team.find((m) => m.name === t.assignee)) ? L('شخصی', 'Personal') : '—')}</td>
                           <td className="td">
                             <span className="flex items-center gap-1.5">
                               <TrackBadge track={trackOf(t, db)} />

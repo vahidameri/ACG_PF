@@ -1,15 +1,16 @@
 import { useState } from 'react'
-import { CalendarClock, CheckCircle2, Link2, Loader2, RotateCcw, Unplug, XCircle, Zap } from 'lucide-react'
+import { CalendarClock, CheckCircle2, ListChecks, Link2, Loader2, RotateCcw, Unplug, XCircle, Zap } from 'lucide-react'
 import { useStore } from '../lib/store'
 import { useGoogle } from '../lib/google'
 import { useAuto, AUTOMATIONS } from '../lib/automations'
 import { Band, Card, Overlap, Segmented, cx } from '../components/ui'
 import { fetchAll } from '../lib/api'
 import { fa, timeAgo } from '../lib/jalali'
-import { L, lbl, tr, useI18n } from '../lib/i18n'
+import { L, lbl, tr, useI18n, type T2 } from '../lib/i18n'
 import { ROLE } from '../lib/labels'
 import { APP_NAME } from '../lib/brand'
-import { TASK_DUE_KEY, WEEK_KEYS, defaultDueDays, weekCfg } from '../lib/weeks'
+import { WEEK_KEYS, weekCfg } from '../lib/weeks'
+import { TASK_KEYS, taskCfg } from '../lib/taskcfg'
 
 function Switch({ on, onChange, disabled }: { on: boolean; onChange: (v: boolean) => void; disabled?: boolean }) {
   return (
@@ -86,6 +87,7 @@ export default function Settings({ embedded }: { embedded?: boolean }) {
         </Card>
 
         <WeekCard admin={admin} />
+        <TaskCard admin={admin} />
 
         <Card eyebrow="Google" title={L('ورود با گوگل و تقویم', 'Google sign-in & calendar')}>
           <div className="space-y-4">
@@ -192,7 +194,7 @@ function WeekCard({ admin }: { admin: boolean }) {
     setSetting(WEEK_KEYS.workdays, next.join(','))
   }
   return (
-    <Card eyebrow={<span className="flex items-center gap-1.5"><CalendarClock size={12} /> {L('هفته', 'Week')}</span>} title={L('چرخه‌ی کار', 'Work cycle')}>
+    <Card eyebrow={<span className="flex items-center gap-1.5"><CalendarClock size={12} /> {L('هفته', 'Week')}</span>} title={L('چرخه‌ی هفتگی', 'Weekly cycle')}>
       <div className="space-y-4">
         {day(L('جلسه‌ی هفتگی', 'Weekly meeting'), WEEK_KEYS.weeklyDay, c.weeklyDay)}
         <div className="flex items-center justify-between gap-4">
@@ -201,15 +203,6 @@ function WeekCard({ admin }: { admin: boolean }) {
         </div>
         {day(L('مهلت گزارش هفتگی', 'Weekly report due'), WEEK_KEYS.dueDay, c.dueDay)}
         {day(L('شروع هفته', 'Week starts'), WEEK_KEYS.start, c.start)}
-        <div className="flex items-center justify-between gap-4">
-          <div className="text-sm font-medium">{L('ددلاین پیش‌فرض تسک‌های مدیرعامل', 'CEO task default deadline')}</div>
-          <select className="input h-9 w-36 text-xs" disabled={!admin} value={defaultDueDays()} onChange={(e) => setSetting(TASK_DUE_KEY, e.target.value)}>
-            <option value="">{L('بدون ددلاین', 'None')}</option>
-            <option value="0">{L('امروز', 'Today')}</option>
-            <option value="1">{L('فردا', 'Tomorrow')}</option>
-            <option value="7">{L('هفته‌ی بعد', 'Next week')}</option>
-          </select>
-        </div>
         <div>
           <div className="mb-2 text-sm font-medium">{L('روزهای کاری', 'Workdays')}</div>
           <div className="flex flex-wrap gap-1.5">
@@ -219,6 +212,62 @@ function WeekCard({ admin }: { admin: boolean }) {
               </button>
             ))}
           </div>
+        </div>
+      </div>
+    </Card>
+  )
+}
+
+const DUE_OPTS: [string, T2][] = [['', ['بدون ددلاین', 'None']], ['0', ['امروز', 'Today']], ['1', ['فردا', 'Tomorrow']], ['3', ['۳ روز بعد', 'In 3 days']], ['7', ['هفته‌ی بعد', 'Next week']]]
+
+/** Task rules: defaults, what is required, and who may skip the deadline or log personal tasks. */
+function TaskCard({ admin }: { admin: boolean }) {
+  const { db, setSetting } = useStore()
+  const c = taskCfg()
+  const people = db.Team.filter((m) => String(m.active) !== 'false')
+  const due = (label: string, key: string, value: string) => (
+    <div className="flex items-center justify-between gap-4">
+      <div className="text-sm font-medium">{label}</div>
+      <select className="input h-9 w-36 text-xs" disabled={!admin} value={value} onChange={(e) => setSetting(key, e.target.value)}>
+        {DUE_OPTS.map(([v, t]) => (
+          <option key={v} value={v}>
+            {tr(t)}
+          </option>
+        ))}
+      </select>
+    </div>
+  )
+  const toggle = (label: string, key: string, on: boolean) => (
+    <div className="flex items-center justify-between gap-4">
+      <div className="text-sm font-medium">{label}</div>
+      <Switch on={on} onChange={(v) => setSetting(key, v ? '1' : '0')} disabled={!admin} />
+    </div>
+  )
+  const pick = (label: string, key: string, ids: string[]) => (
+    <div>
+      <div className="mb-2 text-sm font-medium">{label}</div>
+      <div className="flex flex-wrap gap-1.5">
+        {people.map((m) => {
+          const on = ids.includes(m.id)
+          return (
+            <button key={m.id} disabled={!admin} onClick={() => setSetting(key, (on ? ids.filter((x) => x !== m.id) : [...ids, m.id]).join(','))} className={cx('h-8 rounded-full border px-3 text-xs transition disabled:opacity-60', on ? 'border-ink bg-ink text-surface' : 'border-line text-sub hover:text-ink')}>
+              {m.name}
+            </button>
+          )
+        })}
+      </div>
+    </div>
+  )
+  return (
+    <Card eyebrow={<span className="flex items-center gap-1.5"><ListChecks size={12} /> {L('تسک', 'Tasks')}</span>} title={L('قوانین تسک', 'Task rules')}>
+      <div className="space-y-4">
+        {due(L('ددلاین پیش‌فرض', 'Default deadline'), TASK_KEYS.defaultDue, c.defaultDue)}
+        {toggle(L('ددلاین اجباری', 'Deadline required'), TASK_KEYS.dueRequired, c.dueRequired)}
+        {toggle(L('پروژه اجباری', 'Project required'), TASK_KEYS.projectRequired, c.projectRequired)}
+        <div className="space-y-4 border-t border-line pt-4">
+          {pick(L('بدون ددلاین مجاز برای', 'May skip the deadline'), TASK_KEYS.noDue, c.noDue)}
+          {due(L('ددلاین پیش‌فرض این افراد', 'Their default deadline'), TASK_KEYS.flexDefaultDue, c.flexDefaultDue)}
+          {pick(L('تسک شخصی (بدون پروژه) برای', 'Personal tasks (no project) for'), TASK_KEYS.personal, c.personal)}
         </div>
       </div>
     </Card>

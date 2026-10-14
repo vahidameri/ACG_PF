@@ -1,8 +1,8 @@
 import { createContext, useCallback, useContext, useState, type ReactNode } from 'react'
 import { Trash2 } from 'lucide-react'
 import type { SheetName } from '../lib/types'
-import { defaultDue, weekCfg } from '../lib/weeks'
-import { isCeo } from '../lib/access'
+import { weekCfg } from '../lib/weeks'
+import { canPersonal, dueFor, needsDue, needsProject } from '../lib/taskcfg'
 import { useStore } from '../lib/store'
 import { uid } from '../lib/api'
 import { todayISO } from '../lib/jalali'
@@ -253,13 +253,13 @@ export const useEditor = () => useContext(Ctx)!
 
 export function EditorProvider({ children }: { children: ReactNode }) {
   const { db, me } = useStore()
-  const ceoMe = isCeo(db.Team.find((m) => m.name === me))
   const [state, setState] = useState<{ sheet: EditableSheet; row: Record<string, unknown>; isNew: boolean } | null>(null)
   const open = useCallback((sheet: EditableSheet, row?: Record<string, unknown>) => {
     const isNew = !row?.id
-    const base = { ...SCHEMAS[sheet].defaults(), ...(sheet === 'Tasks' && ceoMe ? { due_date: defaultDue() } : {}) }
+    const who = db.Team.find((m) => m.name === (row?.assignee || me))
+    const base = { ...SCHEMAS[sheet].defaults(), ...(sheet === 'Tasks' ? { due_date: dueFor(who) } : {}) }
     setState({ sheet, row: isNew ? { ...base, ...row } : { ...row }, isNew })
-  }, [ceoMe])
+  }, [db.Team, me])
   const close = () => setState(null)
   // Existing tasks & follow-ups open in the rich item sheet (inline edit + comments).
   const rich = state && !state.isNew && (state.sheet === 'Tasks' || state.sheet === 'FollowUps')
@@ -313,7 +313,7 @@ export function FieldInput({ f, value, set, form, disabled, autoFocus, onSubmit 
     case 'project':
       return (
         <select {...common} value={String(v)} onChange={(e) => set(e.target.value)}>
-          <option value="">{isCeo(db.Team.find((m) => m.name === form.assignee)) ? L('— شخصی —', '— Personal —') : L('— بدون پروژه —', '— No project —')}</option>
+          <option value="">{canPersonal(db.Team.find((m) => m.name === form.assignee)) ? L('— شخصی —', '— Personal —') : L('— بدون پروژه —', '— No project —')}</option>
           {db.Projects.map((p) => (
             <option key={p.id} value={p.id}>
               {p.name}
@@ -371,15 +371,18 @@ export function FieldInput({ f, value, set, form, disabled, autoFocus, onSubmit 
 }
 
 function EditorModal({ sheet, row, isNew, onClose }: { sheet: EditableSheet; row: Record<string, unknown>; isNew: boolean; onClose: () => void }) {
-  const { upsert, remove, toast, canEdit: editor, access, me } = useStore()
+  const { db, upsert, remove, toast, canEdit: editor, access, me } = useStore()
   // projects, people, allocations and contracts are managed by leadership only
   const canEdit = editor && (!['Projects', 'Team', 'Allocations', 'Contracts'].includes(sheet) || can.manage(access)) && (sheet !== 'Contracts' || can.contracts(access))
   const auto = useAuto()
-  const schema = SCHEMAS[sheet]
+  const base = SCHEMAS[sheet]
   const [form, setForm] = useState<Record<string, unknown>>(row)
   const [saving, setSaving] = useState(false)
   const [confirmDel, setConfirmDel] = useState(false)
   const set = (k: string, v: unknown) => setForm((f) => ({ ...f, [k]: v }))
+  // task rules from the back office: deadline / project may be required, except for listed people
+  const owner = db.Team.find((m) => m.name === form.assignee)
+  const schema = sheet !== 'Tasks' ? base : { ...base, fields: base.fields.map((f) => ((f.key === 'due_date' && needsDue(owner)) || (f.key === 'project_id' && needsProject(owner)) ? { ...f, required: true } : f)) }
   const missing = schema.fields.filter((f) => f.required && !String(form[f.key] ?? '').trim())
   const title = tr(schema.title)
 

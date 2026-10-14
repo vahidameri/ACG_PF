@@ -16,9 +16,6 @@ export const can = {
   allFollowUps: (a: Access) => a === 'super' || a === 'exec',
 }
 
-/** The CEO's tasks are flexible: optional deadline (default from settings) and personal, no-project tasks. */
-export const isCeo = (m?: { access?: string }) => m?.access === 'exec'
-
 export function accessOf(db: DB, name: string, demo: boolean): Access {
   const m = db.Team.find((x) => x.name === name)
   return (m?.access as Access) || (demo ? 'super' : 'member')
