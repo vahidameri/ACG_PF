@@ -1,7 +1,7 @@
 // Google sign-in with Google Identity Services (token model). One consent gives us the user's
 // identity (sent to Apps Script, which checks it against the Users tab) and Calendar access.
 import { createContext, useCallback, useContext, useEffect, useState, type ReactNode } from 'react'
-import { setAccessToken } from './api'
+import { otpCall, setAccessToken, setSessionToken } from './api'
 
 export const GOOGLE_SCOPES = ['openid', 'email', 'profile', 'https://www.googleapis.com/auth/calendar.events'].join(' ')
 const KEY = 'acg.gsession'
@@ -12,6 +12,19 @@ export interface GSession {
   email: string
   name: string
   picture: string
+  /** 'otp' = signed in with an email code: no Google token (no personal calendar) */
+  kind?: 'google' | 'otp'
+}
+const OTP_KEY = 'acg.otp'
+function loadOtp(): GSession | null {
+  try {
+    const s = JSON.parse(localStorage.getItem(OTP_KEY) || 'null') as (GSession & { sid: string }) | null
+    if (!s || s.exp < Date.now()) return null
+    setSessionToken(s.sid)
+    return { token: '', exp: s.exp, email: s.email, name: '', picture: '', kind: 'otp' }
+  } catch {
+    return null
+  }
 }
 
 interface TokenResponse {
@@ -70,7 +83,7 @@ function loadGis() {
 /** True when the app is served by Apps Script (HtmlService) — the zero-hosting setup. */
 export const hosted = () => typeof window !== 'undefined' && !!window.google?.script?.run
 
-function scriptSession(): Promise<{ token: string; email: string; apiUrl: string }> {
+function scriptSession(): Promise<{ token: string; email: string; apiUrl: string; otp?: boolean }> {
   return new Promise((resolve, reject) =>
     window.google!.script!.run.withSuccessHandler((r) => resolve(r as never)).withFailureHandler(reject).atlasSession(),
   )
@@ -81,6 +94,10 @@ interface Ctx {
   /** data API address handed over by Apps Script in hosted mode */
   apiUrl: string
   session: GSession | null
+  /** opened from the public (data) link: sign in with an email code */
+  otp: boolean
+  sendCode: (email: string) => Promise<void>
+  verifyCode: (email: string, code: string) => Promise<void>
   signIn: (clientId: string, opts?: { silent?: boolean; hint?: string }) => Promise<GSession>
   signOut: () => void
   busy: boolean
@@ -95,12 +112,20 @@ export function GoogleProvider({ children }: { children: ReactNode }) {
   const [busy, setBusy] = useState(isHosted)
   const [error, setError] = useState('')
   const [apiUrl, setApiUrl] = useState('')
+  const [otp, setOtp] = useState(false)
 
   // Hosted in Apps Script: the page already runs as the signed-in Google user — just ask for a token.
   const loadHosted = useCallback(async () => {
     setBusy(true)
     try {
       const r = await scriptSession()
+      if (r.otp) {
+        setOtp(true)
+        setApiUrl(r.apiUrl)
+        setSession((s) => (s?.kind === 'otp' ? s : loadOtp()))
+        setError('')
+        return
+      }
       let name = ''
       let picture = ''
       try {
@@ -124,10 +149,10 @@ export function GoogleProvider({ children }: { children: ReactNode }) {
     const t = setInterval(loadHosted, 45 * 60_000)
     return () => clearInterval(t)
   }, [isHosted, loadHosted])
-  useEffect(() => setAccessToken(session?.token || ''), [session])
+  useEffect(() => setAccessToken(session?.kind === 'otp' ? '' : session?.token || ''), [session])
   // token lifetime is one hour; renew quietly a few minutes before it expires
   useEffect(() => {
-    if (!session || isHosted) return
+    if (!session || isHosted || session.kind === 'otp') return
     const t = setTimeout(() => setSession(null), Math.max(0, session.exp - Date.now() - 120_000))
     return () => clearTimeout(t)
   }, [session, isHosted])
@@ -167,7 +192,27 @@ export function GoogleProvider({ children }: { children: ReactNode }) {
     }
   }, [loadHosted, session])
 
+  const sendCode = useCallback(async (email: string) => {
+    await otpCall(apiUrl, { action: 'otpSend', email })
+  }, [apiUrl])
+  const verifyCode = useCallback(async (email: string, code: string) => {
+    const r = await otpCall<{ session: string; email: string; exp: number }>(apiUrl, { action: 'otpVerify', email, code })
+    try {
+      localStorage.setItem(OTP_KEY, JSON.stringify({ sid: r.session, email: r.email, exp: r.exp }))
+    } catch {}
+    setSessionToken(r.session)
+    setSession({ token: '', exp: r.exp, email: r.email, name: '', picture: '', kind: 'otp' })
+  }, [apiUrl])
+
   const signOut = useCallback(() => {
+    if (session?.kind === 'otp') {
+      try {
+        const s = JSON.parse(localStorage.getItem(OTP_KEY) || 'null')
+        if (s?.sid && apiUrl) otpCall(apiUrl, { action: 'otpLogout', session: s.sid }).catch(() => {})
+        localStorage.removeItem(OTP_KEY)
+      } catch {}
+      setSessionToken('')
+    }
     try {
       if (session?.token) window.google?.accounts?.oauth2?.revoke(session.token)
     } catch {}
@@ -176,7 +221,7 @@ export function GoogleProvider({ children }: { children: ReactNode }) {
     } catch {}
     setAccessToken('')
     setSession(null)
-  }, [session])
+  }, [session, apiUrl])
 
-  return <C.Provider value={{ hosted: isHosted, apiUrl, session, signIn, signOut, busy, error }}>{children}</C.Provider>
+  return <C.Provider value={{ hosted: isHosted, apiUrl, session, otp, sendCode, verifyCode, signIn, signOut, busy, error }}>{children}</C.Provider>
 }

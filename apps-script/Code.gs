@@ -82,6 +82,10 @@ function doPost(e) {
   var lock = LockService.getScriptLock();
   try {
     var body = JSON.parse(e.postData.contents || '{}');
+    // email-code sign-in (no Google account needed) — before auth, these are how you get a session
+    if (body.action === 'otpSend') return json_(otpSend_(body.email));
+    if (body.action === 'otpVerify') return json_(otpVerify_(body.email, body.code));
+    if (body.action === 'otpLogout') return json_(otpLogout_(body.session));
     var user = auth_(body);
     // read-only, no lock: translations for the English UI
     if (body.action === 'translate') return json_({ ok: true, map: translate_(body.texts, body.target) });
@@ -115,12 +119,91 @@ function doPost(e) {
 function atlasSession() {
   var active = Session.getActiveUser().getEmail();
   var effective = Session.getEffectiveUser().getEmail();
-  if (!active || active !== effective) throw new Error('این آدرس باید با «Execute as: User accessing the web app» منتشر شود.');
-  return {
-    token: ScriptApp.getOAuthToken(),
-    email: active,
-    apiUrl: PropertiesService.getScriptProperties().getProperty('API_URL') || '',
-  };
+  var apiUrl = PropertiesService.getScriptProperties().getProperty('API_URL') || '';
+  // Opened from the "Execute as: Me" (data) link by someone else: no Google token is ever handed
+  // out here — the app signs them in with a code sent to their email instead.
+  if (!active || active !== effective) return { otp: true, apiUrl: apiUrl || ScriptApp.getService().getUrl() };
+  return { token: ScriptApp.getOAuthToken(), email: active, apiUrl: apiUrl };
+}
+
+// --------------------------------------------------------------------------
+// Email-code sign-in: a 6-digit code (10 min, 5 tries) → a 30-day session for that device.
+// Sessions are stored hashed in script properties; signing out revokes the session.
+// --------------------------------------------------------------------------
+
+var SESSION_DAYS = 30;
+
+function hash_(s) {
+  return Utilities.base64EncodeWebSafe(Utilities.computeDigest(Utilities.DigestAlgorithm.SHA_256, String(s), Utilities.Charset.UTF_8));
+}
+
+function otpSend_(email) {
+  email = String(email || '').trim().toLowerCase();
+  if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) throw new Error('ایمیل معتبر نیست');
+  var c = CacheService.getScriptCache();
+  if (c.get('otp.rl.' + email)) throw new Error('یک دقیقه صبر کنید و دوباره امتحان کنید');
+  c.put('otp.rl.' + email, '1', 60);
+  var m = (rawAll_().Team || []).filter(function (x) { return String(x.email || '').toLowerCase() === email && String(x.active).toLowerCase() !== 'false'; })[0];
+  // the reply is the same whether or not the email is on the team
+  if (m) {
+    var code = String(parseInt(Utilities.getUuid().replace(/-/g, '').slice(0, 12), 16) % 1000000);
+    while (code.length < 6) code = '0' + code;
+    c.put('otp.' + email, JSON.stringify({ h: hash_(code), n: 0 }), 600);
+    MailApp.sendEmail({
+      to: email,
+      subject: 'کد ورود اطلس: ' + code,
+      htmlBody: '<div dir="rtl" style="font-family:Tahoma,sans-serif;line-height:1.9;color:#111">' + m.name + ' عزیز، سلام<br>کد ورود شما به اطلس ACG:' +
+        '<div style="font:700 28px/1.4 monospace;letter-spacing:6px;margin:12px 0">' + code + '</div>' +
+        '<span style="color:#666;font-size:12px">این کد ۱۰ دقیقه اعتبار دارد. اگر شما درخواست نداده‌اید، این ایمیل را نادیده بگیرید.</span></div>',
+    });
+  }
+  return { ok: true };
+}
+
+function otpVerify_(email, code) {
+  email = String(email || '').trim().toLowerCase();
+  var c = CacheService.getScriptCache();
+  var raw = c.get('otp.' + email);
+  if (!raw) throw new Error('کد منقضی شده؛ دوباره کد بگیرید');
+  var o = JSON.parse(raw);
+  if (o.n >= 5) {
+    c.remove('otp.' + email);
+    throw new Error('تلاش‌های زیاد؛ دوباره کد بگیرید');
+  }
+  if (hash_(String(code || '').replace(/\D/g, '')) !== o.h) {
+    o.n++;
+    c.put('otp.' + email, JSON.stringify(o), 600);
+    throw new Error('کد اشتباه است');
+  }
+  c.remove('otp.' + email);
+  var token = Utilities.getUuid().replace(/-/g, '') + Utilities.getUuid().replace(/-/g, '');
+  var exp = Date.now() + SESSION_DAYS * 86400000;
+  var props = PropertiesService.getScriptProperties();
+  var all = props.getProperties();
+  Object.keys(all).forEach(function (k) {
+    if (k.indexOf('sess.') !== 0) return;
+    try { if (JSON.parse(all[k]).x < Date.now()) props.deleteProperty(k); } catch (e) { props.deleteProperty(k); }
+  });
+  props.setProperty('sess.' + hash_(token), JSON.stringify({ e: email, x: exp }));
+  return { ok: true, session: token, email: email, exp: exp };
+}
+
+function otpLogout_(token) {
+  if (token) PropertiesService.getScriptProperties().deleteProperty('sess.' + hash_(token));
+  return { ok: true };
+}
+
+/** The email behind an email-code session, or an error if it is unknown or expired. */
+function sessionEmail_(token) {
+  var k = 'sess.' + hash_(token);
+  var raw = PropertiesService.getScriptProperties().getProperty(k);
+  if (!raw) throw new Error('نشست منقضی شده؛ دوباره وارد شوید');
+  var s = JSON.parse(raw);
+  if (s.x < Date.now()) {
+    PropertiesService.getScriptProperties().deleteProperty(k);
+    throw new Error('نشست منقضی شده؛ دوباره وارد شوید');
+  }
+  return s.e;
 }
 
 /** Run once from the editor with the "Execute as: Me" deployment URL: setApiUrl('https://script.google.com/macros/s/…/exec') */
@@ -469,8 +552,8 @@ function auth_(params) {
     return { name: u.name, email: String(u.email || '').toLowerCase(), access: m && m.access ? m.access : r === 'admin' ? 'super' : 'member', role: r === 'viewer' ? 'viewer' : 'editor' };
   };
   var find = function (list, pred) { for (var i = 0; i < list.length; i++) if (active(list[i]) && pred(list[i])) return list[i]; return null; };
-  if (params.access_token) {
-    var email = googleEmail_(params.access_token);
+  if (params.access_token || params.session) {
+    var email = params.access_token ? googleEmail_(params.access_token) : sessionEmail_(params.session);
     var m = find(team, function (x) { return String(x.email).toLowerCase() === email; });
     if (m) return fromTeam(m);
     var u = find(legacy, function (x) { return String(x.email).toLowerCase() === email; });

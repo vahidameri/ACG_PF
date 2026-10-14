@@ -78,7 +78,7 @@ export function AutomationProvider({ children }: { children: ReactNode }) {
   const demoCal = useMemo(() => (mode === 'demo' ? demoEvents(db) : []), [mode, db])
   useEffect(() => {
     if (mode === 'demo') return setCalStatus('demo')
-    if (!session) return setCalStatus('off')
+    if (!session?.token) return setCalStatus('off')
     const ws = weekStart()
     fetchEvents(session.token, addDays(ws, -14), addDays(ws, 42))
       .then((e) => {
@@ -160,7 +160,7 @@ export function AutomationProvider({ children }: { children: ReactNode }) {
         await upsert('Meetings', { ...m, gcal_id: `g-${m.id}`, meet_url: m.meet_url || `https://meet.google.com/acg-${m.id.slice(-6)}` })
         return fire(L(`رویداد تقویم با لینک Meet ساخته شد و ${fa(emails.length)} نفر دعوت شدند (نمایشی)`, `Calendar event + Meet link created, ${emails.length} invited (demo)`))
       }
-      if (!session) return
+      if (!session?.token) return
       try {
         const ev = await createEvent(session.token, m, emails, L('ساخته‌شده از اطلس ACG', 'Created from ACG Atlas'))
         await upsert('Meetings', { ...m, gcal_id: ev.id, meet_url: ev.meetUrl || m.meet_url })

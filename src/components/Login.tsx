@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { JOB_TITLE } from '../lib/labels'
-import { Loader } from 'lucide-react'
+import { ArrowRight, Loader, Mail } from 'lucide-react'
 import { useStore } from '../lib/store'
 import { useGoogle } from '../lib/google'
 import { useI18n, L, lbl } from '../lib/i18n'
@@ -17,6 +17,9 @@ function GoogleG() {
     </svg>
   )
 }
+
+/** Persian / Arabic digits → 0-9 (people often type the code in Persian). */
+const latinDigits = (v: string) => v.replace(/[۰-۹٠-٩]/g, (d) => String((d.charCodeAt(0) & 0xf) % 10))
 
 /** The front door: Google sign-in. In the demo you can enter as any team member to see their view. */
 export function Login({ onEnter }: { onEnter: () => void }) {
@@ -40,6 +43,37 @@ export function Login({ onEnter }: { onEnter: () => void }) {
     }
   }
   const error = err || g.error
+
+  // email-code sign-in (public link, no Google account needed)
+  const [email, setEmail] = useState(() => localStorage.getItem('acg.otp.email') || '')
+  const [code, setCode] = useState('')
+  const [sent, setSent] = useState(false)
+  const [working, setWorking] = useState(false)
+  const run = async (f: () => Promise<void>) => {
+    setErr('')
+    setWorking(true)
+    try {
+      await f()
+    } catch (e) {
+      setErr(e instanceof Error ? e.message : String(e))
+    } finally {
+      setWorking(false)
+    }
+  }
+  const send = () =>
+    run(async () => {
+      await g.sendCode(email.trim())
+      try {
+        localStorage.setItem('acg.otp.email', email.trim())
+      } catch {}
+      setSent(true)
+      setCode('')
+    })
+  const verify = () =>
+    run(async () => {
+      await g.verifyCode(email.trim(), code)
+      onEnter()
+    })
 
 
   return (
@@ -83,6 +117,41 @@ export function Login({ onEnter }: { onEnter: () => void }) {
             </div>
             <h1 className="text-2xl font-semibold tracking-tight">{L('ورود به اطلس', 'Sign in to Atlas')}</h1>
 
+            {g.otp ? (
+              <div className="mt-8 space-y-3">
+                {!sent ? (
+                  <form onSubmit={(e) => (e.preventDefault(), send())} className="space-y-3">
+                    <div className="relative">
+                      <Mail size={16} className="pointer-events-none absolute start-3.5 top-1/2 -translate-y-1/2 text-sub" />
+                      <input className="input h-12 w-full ps-10 text-sm" type="email" dir="ltr" autoFocus required placeholder="name@company.com" value={email} onChange={(e) => setEmail(e.target.value)} />
+                    </div>
+                    <button className="btn-primary h-12 w-full" disabled={working || !email.trim()}>
+                      {working ? <Loader size={16} className="animate-spin" /> : null}
+                      {L('ارسال کد ورود', 'Email me a code')}
+                    </button>
+                  </form>
+                ) : (
+                  <form onSubmit={(e) => (e.preventDefault(), verify())} className="space-y-3">
+                    <div className="text-xs text-sub" dir="auto">
+                      {L('کد ۶ رقمی به این ایمیل رفت:', 'We sent a 6-digit code to')} <b dir="ltr">{email}</b>
+                    </div>
+                    <input className="input h-14 w-full text-center font-mono text-2xl tracking-[0.5em]" dir="ltr" inputMode="numeric" autoComplete="one-time-code" autoFocus maxLength={6} placeholder="••••••" value={code} onChange={(e) => setCode(latinDigits(e.target.value).replace(/\D/g, '').slice(0, 6))} />
+                    <button className="btn-primary h-12 w-full" disabled={working || code.length !== 6}>
+                      {working ? <Loader size={16} className="animate-spin" /> : <ArrowRight size={16} className="rtl:-scale-x-100" />}
+                      {L('ورود', 'Sign in')}
+                    </button>
+                    <div className="flex justify-between text-xs">
+                      <button type="button" className="text-sub hover:text-ink" onClick={() => (setSent(false), setErr(''))}>
+                        {L('تغییر ایمیل', 'Change email')}
+                      </button>
+                      <button type="button" className="text-sub hover:text-ink disabled:opacity-50" disabled={working} onClick={send}>
+                        {L('ارسال دوباره', 'Resend')}
+                      </button>
+                    </div>
+                  </form>
+                )}
+              </div>
+            ) : (
             <button
               onClick={google}
               disabled={busy && !g.hosted}
@@ -91,6 +160,7 @@ export function Login({ onEnter }: { onEnter: () => void }) {
               {busy ? <Loader size={18} className="animate-spin" /> : <GoogleG />}
               {g.hosted && g.session ? L(`ادامه با ${g.session.email}`, `Continue as ${g.session.email}`) : L('ورود با حساب گوگل', 'Continue with Google')}
             </button>
+            )}
             {error && <p className="mt-3 rounded-xl bg-bad/10 px-3 py-2 text-xs leading-5 text-bad">{error}</p>}
 
             {mode === 'demo' && (

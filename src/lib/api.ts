@@ -13,7 +13,20 @@ let accessToken = ''
 export const setAccessToken = (t: string) => {
   accessToken = t
 }
-const auth = (c: Config): Record<string, string> => (accessToken ? { access_token: accessToken } : { token: c.token })
+// Email-code session (sign-in without a Google account).
+let sessionToken = ''
+export const setSessionToken = (t: string) => {
+  sessionToken = t
+}
+const auth = (c: Config): Record<string, string> => (accessToken ? { access_token: accessToken } : sessionToken ? { session: sessionToken } : { token: c.token })
+
+/** Calls that need no sign-in: request a code, verify it, revoke a session. */
+export async function otpCall<T = Record<string, unknown>>(apiUrl: string, body: Record<string, unknown>): Promise<T> {
+  const res = await fetch(apiUrl, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify(body), redirect: 'follow' })
+  const json = await readJson(res)
+  if (!json.ok) throw new Error(json.error || 'خطا')
+  return json as T
+}
 
 const CFG_KEY = 'acg.config'
 

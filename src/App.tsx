@@ -74,7 +74,7 @@ function Gate({ children }: { children: React.ReactNode }) {
   const { loading, lastSync, mode, authed, error } = useStore()
   const g = useGoogle()
   const [entered, setEntered] = usePref<boolean>('acg.entered', false)
-  if (!entered || (mode === 'live' && !authed && !g.hosted)) return <Login onEnter={() => setEntered(true)} />
+  if (!entered || (mode === 'live' && !authed && (!g.hosted || (g.otp && !g.busy)))) return <Login onEnter={() => setEntered(true)} />
   if (g.hosted && (!g.session || !g.apiUrl || (error && !lastSync))) return <HostedSplash error={g.error || (g.session && !g.apiUrl ? 'API_URL' : '') || (!lastSync ? error : '')} retry={() => g.signIn('')} />
   if (mode === 'live' && loading && !lastSync && g.hosted) return <HostedSplash error="" retry={() => g.signIn('')} />
   if (mode === 'live' && loading && !lastSync)
