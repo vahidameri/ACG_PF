@@ -48,8 +48,12 @@ interface AllResponse {
 /** Apps Script answers with an HTML page (sign-in or error) when the data deployment isn't public. */
 async function readJson(res: Response) {
   const text = await res.text()
-  if (text.trimStart().startsWith('<'))
-    throw new Error('آدرس داده پاسخ JSON نداد. انتشار «data» باید با Execute as: Me و Who has access: Anyone باشد و setApiUrl با آدرس /exec همان انتشار اجرا شده باشد.')
+  if (text.trimStart().startsWith('<')) {
+    // show what actually answered, so the misconfiguration is obvious
+    const title = (text.match(/<title[^>]*>([^<]*)<\/title>/i)?.[1] || '').trim()
+    const where = res.url.replace(/[?#].*$/, '')
+    throw new Error(`آدرس داده به‌جای داده یک صفحه برگرداند (${res.status}${title ? ` · ${title}` : ''}). انتشار «data» باید Web app با Execute as: Me و Who has access: Anyone باشد و API_URL همان آدرس باشد.\n${where}`)
+  }
   return JSON.parse(text)
 }
 

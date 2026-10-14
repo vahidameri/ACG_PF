@@ -54,7 +54,7 @@ function HostedSplash({ error, retry }: { error: string; retry: () => void }) {
         <div className="mt-2 font-mono text-[0.6875rem] uppercase tracking-[0.2em] text-band-sub">ACG</div>
         {msg ? (
           <>
-            <p className="mt-8 text-sm leading-7 text-[#ff8a9a]">{msg}</p>
+            <p className="mt-8 whitespace-pre-line break-all text-sm leading-7 text-[#ff8a9a]" dir="auto">{msg}</p>
             <button className="btn mt-4 h-10 bg-white text-band" onClick={retry}>
               {fa ? 'تلاش دوباره' : 'Try again'}
             </button>
