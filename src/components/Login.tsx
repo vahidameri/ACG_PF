@@ -47,7 +47,7 @@ export function Login({ onEnter }: { onEnter: () => void }) {
       <aside className="band relative hidden w-[46%] max-w-[44rem] flex-col justify-between overflow-hidden p-12 lg:flex">
         <div className="relative z-10 flex items-center gap-3 text-white">
           <AcgMark className="h-8" />
-          <span className="font-mono text-[0.6875rem] uppercase tracking-[0.22em] text-band-sub">ACG · PMO</span>
+          <span className="font-mono text-[0.6875rem] uppercase tracking-[0.22em] text-band-sub">ACG · Atlas</span>
         </div>
         <div className="relative z-10 max-w-md rise">
           <div className="display text-6xl leading-none text-white">{L('اطلس', 'Atlas')}</div>

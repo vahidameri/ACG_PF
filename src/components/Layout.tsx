@@ -135,7 +135,7 @@ export function Layout({ children }: { children: ReactNode }) {
           {wide && (
             <div className="leading-tight">
               <div className="text-sm font-semibold tracking-tight">{APP_NAME()}</div>
-              <div className="font-mono text-[0.625rem] uppercase tracking-[0.18em] text-band-sub">ACG · PMO</div>
+              <div className="font-mono text-[0.625rem] uppercase tracking-[0.18em] text-band-sub">ACG · Atlas</div>
             </div>
           )}
         </Link>

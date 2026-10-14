@@ -350,6 +350,25 @@ function findRow_(sh, id) {
 // --------------------------------------------------------------------------
 
 /**
+ * Run from the editor when the app can't load or save: tests the data address the app uses,
+ * with a read (GET) and a write (POST). Both should answer JSON: {"ok":false,"error":"وارد نشده‌اید"}.
+ */
+function diagnose() {
+  var props = PropertiesService.getScriptProperties();
+  var url = props.getProperty('API_URL') || '';
+  Logger.log('API_URL = ' + (url || '(خالی — setApiUrl اجرا نشده)'));
+  Logger.log('GOOGLE_CLIENT_ID = ' + (props.getProperty('GOOGLE_CLIENT_ID') || '(خالی)'));
+  if (!url) return;
+  var show = function (label, res) {
+    var t = res.getContentText();
+    var title = (t.match(/<title[^>]*>([^<]*)<\/title>/i) || [])[1];
+    Logger.log(label + ' → ' + res.getResponseCode() + ' · ' + (t.trim().charAt(0) === '<' ? 'HTML: ' + (title || t.slice(0, 300)) : t.slice(0, 300)));
+  };
+  show('GET ', UrlFetchApp.fetch(url + '?action=ping', { muteHttpExceptions: true }));
+  show('POST', UrlFetchApp.fetch(url, { method: 'post', contentType: 'text/plain;charset=utf-8', payload: JSON.stringify({ action: 'upsert', sheet: 'Config', row: { id: 'diagnose' } }), muteHttpExceptions: true }));
+}
+
+/**
  * Who is calling. Preferred: a Google access token from "Sign in with Google" — verified with
  * Google, then matched by email to the Users tab. Fallback: a personal key from the Users tab.
  */
@@ -496,6 +515,7 @@ function onOpen() {
   SpreadsheetApp.getUi()
     .createMenu('ACG Atlas')
     .addItem('راه‌اندازی تب‌ها', 'setup')
+    .addItem('عیب‌یابی اتصال', 'diagnose')
     .addItem('افزودن کاربر جدید…', 'promptAddUser')
     .addItem('ارسال خلاصه‌ی روزانه (همین حالا)', 'sendDailyDigest')
     .addItem('فعال‌سازی ایمیل روزانه', 'installDailyDigest')
