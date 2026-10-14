@@ -18,7 +18,7 @@
  *   viewer — read only (leadership)
  */
 
-var ATLAS_VERSION = '1.6.2'; // shown on the login page and by diagnose()
+var ATLAS_VERSION = '1.7.0'; // shown on the login page and by diagnose()
 
 var SCHEMA = {
   Projects: ['id', 'code', 'name', 'description', 'category', 'owner', 'client', 'liaison', 'liaison_contact', 'status', 'priority', 'phase', 'start_date', 'end_date', 'progress', 'health_override', 'objective', 'paused_at', 'pause_reason'],
@@ -129,10 +129,14 @@ function atlasSession() {
   var active = Session.getActiveUser().getEmail();
   var effective = Session.getEffectiveUser().getEmail();
   var apiUrl = PropertiesService.getScriptProperties().getProperty('API_URL') || '';
-  // Opened from the "Execute as: Me" (data) link by someone else: no Google token is ever handed
-  // out here — the app signs them in with a code sent to their email instead.
-  if (!active || active !== effective) return { otp: true, apiUrl: apiUrl || ScriptApp.getService().getUrl(), appUrl: setting_('app.google_url', '') };
-  return { token: ScriptApp.getOAuthToken(), email: active, apiUrl: apiUrl };
+  // Username + password is always offered first. When the page already runs as the visitor's own
+  // Google account (the app link, or the owner on the data link), their token is offered as the
+  // "Continue with Google" option — never anyone else's.
+  var appUrl = '';
+  try { appUrl = setting_('app.google_url', ''); } catch (e) {} // the app link can't read the sheet
+  var out = { otp: true, apiUrl: apiUrl || ScriptApp.getService().getUrl(), appUrl: appUrl };
+  if (active && active === effective) out.google = { token: ScriptApp.getOAuthToken(), email: active };
+  return out;
 }
 
 // --------------------------------------------------------------------------

@@ -558,29 +558,19 @@ select:focus-visible {
 }
 @keyframes shine { 0%, 55% { transform: translateX(-120%); } 85%, 100% { transform: translateX(120%); } }
 
-/* hero mark with orbits */
-.hero-mark { perspective: 900px; }
-.orbit { position: absolute; inset: 0; border-radius: 9999px; border: 1px solid rgb(195 208 232 / 0.16); transform-style: preserve-3d; }
-.orbit i { position: absolute; top: -4px; left: 50%; width: 8px; height: 8px; margin-left: -4px; border-radius: 9999px; background: #fff; box-shadow: 0 0 14px 4px rgb(255 255 255 / 0.55); }
-.orbit-1 { transform: rotateX(68deg) rotateY(8deg); animation: spin-1 9s linear infinite; }
-.orbit-2 { inset: 12%; transform: rotateX(68deg) rotateY(-28deg); animation: spin-2 13s linear infinite; border-color: rgb(245 179 27 / 0.22); }
-.orbit-2 i { background: #f5b31b; box-shadow: 0 0 14px 4px rgb(245 179 27 / 0.6); }
-.orbit-3 { inset: -10%; transform: rotateX(72deg) rotateY(36deg); animation: spin-3 18s linear infinite; border-style: dashed; border-color: rgb(195 208 232 / 0.1); }
-.orbit-3 i { width: 6px; height: 6px; margin-left: -3px; top: -3px; background: #8fb2ff; box-shadow: 0 0 12px 3px rgb(143 178 255 / 0.6); }
-@keyframes spin-1 { to { transform: rotateX(68deg) rotateY(8deg) rotateZ(360deg); } }
-@keyframes spin-2 { to { transform: rotateX(68deg) rotateY(-28deg) rotateZ(-360deg); } }
-@keyframes spin-3 { to { transform: rotateX(72deg) rotateY(36deg) rotateZ(360deg); } }
-.mark-glow { position: absolute; inset: 28%; border-radius: 9999px; background: radial-gradient(circle, rgb(108 150 220 / 0.45), transparent 70%); filter: blur(24px); animation: glow 4s ease-in-out infinite alternate; }
-@keyframes glow { from { opacity: 0.6; transform: scale(0.92); } to { opacity: 1; transform: scale(1.08); } }
-.hero-a { stroke-dasharray: 1; stroke-dashoffset: 1; fill-opacity: 0; animation: hero-draw 1.8s cubic-bezier(0.65, 0, 0.35, 1) 0.2s forwards; filter: drop-shadow(0 0 18px rgb(255 255 255 / 0.25)); }
-@keyframes hero-draw { 70% { stroke-dashoffset: 0; fill-opacity: 0; } 100% { stroke-dashoffset: 0; fill-opacity: 1; } }
-.hero-dot { transform-box: fill-box; transform-origin: center; opacity: 0; animation: hero-dot 0.9s cubic-bezier(0.3, 0, 0.3, 1) 1.7s forwards; filter: drop-shadow(0 0 14px rgb(245 179 27 / 0.8)); }
-@keyframes hero-dot {
-  0% { transform: translateY(-420px) scale(0.6); opacity: 0; }
-  55% { transform: translateY(0) scale(1.2, 0.8); opacity: 1; }
-  75% { transform: translateY(-60px) scale(0.95, 1.05); }
-  100% { transform: translateY(0) scale(1); opacity: 1; }
-}
+/* hero mark: the loading animation, larger — concentric, centred rings */
+.hero-mark .mark-glow { position: absolute; inset: 22%; border-radius: 9999px; background: radial-gradient(circle, rgb(108 150 220 / 0.5), transparent 70%); filter: blur(26px); animation: glow 2.6s ease-in-out infinite alternate; }
+@keyframes glow { from { opacity: 0.55; transform: scale(0.9); } to { opacity: 1; transform: scale(1.1); } }
+.hero-mark .orb { position: absolute; border-radius: 9999px; }
+.hero-mark .orb i { position: absolute; left: 50%; border-radius: 9999px; transform: translateX(-50%); }
+.hero-mark .orb-outer { inset: 0; border: 1px solid rgb(255 255 255 / 0.14); animation: acg-spin 2.6s linear infinite; }
+.hero-mark .orb-outer i { top: -5px; width: 10px; height: 10px; background: #fff; box-shadow: 0 0 16px 5px rgb(255 255 255 / 0.6); }
+.hero-mark .orb-mid { inset: 13%; border: 1px dashed rgb(245 179 27 / 0.28); animation: acg-spin 7s linear infinite reverse; }
+.hero-mark .orb-mid i { bottom: -4px; width: 8px; height: 8px; background: #f5b31b; box-shadow: 0 0 14px 4px rgb(245 179 27 / 0.65); }
+.hero-mark .orb-inner { inset: 26%; border: 1px solid rgb(143 178 255 / 0.12); animation: acg-spin 12s linear infinite; }
+.hero-mark .orb-inner i { top: -3px; width: 6px; height: 6px; background: #8fb2ff; box-shadow: 0 0 12px 3px rgb(143 178 255 / 0.7); }
+.hero-mark .acg-a { filter: drop-shadow(0 0 18px rgb(255 255 255 / 0.3)); }
+.hero-mark .acg-dot { filter: drop-shadow(0 0 14px rgb(245 179 27 / 0.85)); }
 .hero-title {
   background: linear-gradient(180deg, #fff 20%, #c3d0e8 100%); -webkit-background-clip: text; background-clip: text; color: transparent;
   animation: rise 0.8s cubic-bezier(0.2, 0.8, 0.2, 1) 0.4s both;
@@ -589,7 +579,7 @@ select:focus-visible {
 .login-card { animation: card-in 0.9s cubic-bezier(0.2, 0.8, 0.2, 1) 0.25s both; }
 @keyframes card-in { from { opacity: 0; transform: translateY(24px) scale(0.98); } to { opacity: 1; transform: none; } }
 @media (prefers-reduced-motion: reduce) {
-  .aurora, .stars, .floor, .orbit, .mark-glow, .shine-btn::after { animation: none !important; }
+  .aurora, .stars, .floor, .hero-mark .orb, .mark-glow, .shine-btn::after { animation: none !important; }
   .hero-a { stroke-dashoffset: 0; fill-opacity: 1; animation: none !important; }
   .hero-dot { opacity: 1; animation: none !important; }
 }

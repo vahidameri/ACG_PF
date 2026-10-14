@@ -94,7 +94,7 @@ function pageParams(): Promise<Record<string, string>> {
   })
 }
 
-function scriptSession(): Promise<{ token: string; email: string; apiUrl: string; otp?: boolean; appUrl?: string }> {
+function scriptSession(): Promise<{ token: string; email: string; apiUrl: string; otp?: boolean; appUrl?: string; google?: { token: string; email: string } }> {
   return new Promise((resolve, reject) =>
     window.google!.script!.run.withSuccessHandler((r) => resolve(r as never)).withFailureHandler(reject).atlasSession(),
   )
@@ -109,6 +109,9 @@ interface Ctx {
   otp: boolean
   /** the Google sign-in link (set in the back office), offered on the code login page */
   appUrl: string
+  /** this page already runs as the visitor's Google account: one click signs them in with it */
+  googleEmail: string
+  continueWithGoogle: () => Promise<void>
   passwordLogin: (username: string, password: string) => Promise<void>
   signIn: (clientId: string, opts?: { silent?: boolean; hint?: string }) => Promise<GSession>
   signOut: () => void
@@ -126,6 +129,19 @@ export function GoogleProvider({ children }: { children: ReactNode }) {
   const [apiUrl, setApiUrl] = useState('')
   const [otp, setOtp] = useState(false)
   const [appUrl, setAppUrl] = useState('')
+  const [offer, setOffer] = useState<{ token: string; email: string } | null>(null)
+  const adoptGoogle = async (o: { token: string; email: string }) => {
+    let name = ''
+    let picture = ''
+    try {
+      const info = await fetch('https://www.googleapis.com/oauth2/v3/userinfo', { headers: { Authorization: `Bearer ${o.token}` } }).then((x) => x.json())
+      name = info.name || ''
+      picture = info.picture || ''
+    } catch {}
+    setSessionToken('')
+    setAccessToken(o.token)
+    setSession({ token: o.token, exp: Date.now() + 50 * 60_000, email: String(o.email).toLowerCase(), name, picture, kind: 'google' })
+  }
   const adopt = (r: { session: string; email: string; exp: number }) => {
     try {
       localStorage.setItem(OTP_KEY, JSON.stringify({ sid: r.session, email: r.email, exp: r.exp }))
@@ -143,7 +159,17 @@ export function GoogleProvider({ children }: { children: ReactNode }) {
         setOtp(true)
         setApiUrl(r.apiUrl)
         setAppUrl(r.appUrl || '')
+        setOffer(r.google || null)
         setError('')
+        // chose Google before on this device → keep using it (token refreshes every 45 min)
+        let viaGoogle = false
+        try {
+          viaGoogle = localStorage.getItem('acg.auth') === 'google'
+        } catch {}
+        if (r.google && viaGoogle) {
+          await adoptGoogle(r.google)
+          return
+        }
         // one-click link from the email: ?login=…
         const p = await pageParams()
         const used = (() => {
@@ -238,7 +264,18 @@ export function GoogleProvider({ children }: { children: ReactNode }) {
     adopt({ ...r, email: r.email || username.toLowerCase() })
   }, [apiUrl]) // eslint-disable-line react-hooks/exhaustive-deps
 
+  const continueWithGoogle = useCallback(async () => {
+    if (!offer) return
+    try {
+      localStorage.setItem('acg.auth', 'google')
+    } catch {}
+    await adoptGoogle(offer)
+  }, [offer]) // eslint-disable-line react-hooks/exhaustive-deps
+
   const signOut = useCallback(() => {
+    try {
+      localStorage.removeItem('acg.auth')
+    } catch {}
     if (session?.kind === 'otp') {
       try {
         const s = JSON.parse(localStorage.getItem(OTP_KEY) || 'null')
@@ -257,5 +294,5 @@ export function GoogleProvider({ children }: { children: ReactNode }) {
     setSession(null)
   }, [session, apiUrl])
 
-  return <C.Provider value={{ hosted: isHosted, apiUrl, session, otp, appUrl, passwordLogin, signIn, signOut, busy, error }}>{children}</C.Provider>
+  return <C.Provider value={{ hosted: isHosted, apiUrl, session, otp, appUrl, googleEmail: offer?.email || '', continueWithGoogle, passwordLogin, signIn, signOut, busy, error }}>{children}</C.Provider>
 }

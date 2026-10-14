@@ -100,23 +100,23 @@ export function Login({ onEnter }: { onEnter: () => void }) {
         <main className="mx-auto grid w-full max-w-6xl flex-1 items-center gap-6 px-5 pb-8 sm:gap-10 sm:px-6 lg:grid-cols-[1.1fr_1fr] lg:gap-16 lg:px-10">
           {/* hero: the A draws itself inside its orbits */}
           <section className="flex flex-col items-center text-center">
-            <div className="hero-mark relative mx-auto h-40 w-40 sm:h-64 sm:w-64 lg:h-[20rem] lg:w-[20rem]">
-              <span className="orbit orbit-1"><i /></span>
-              <span className="orbit orbit-2"><i /></span>
-              <span className="orbit orbit-3"><i /></span>
+            <div className="acg-loader hero-mark relative mx-auto h-44 w-44 sm:h-64 sm:w-64 lg:h-80 lg:w-80">
               <span className="mark-glow" />
-              <svg viewBox="300 150 564 604" className="absolute inset-0 m-auto h-[42%] w-[42%] overflow-visible">
+              <span className="orb orb-outer"><i /></span>
+              <span className="orb orb-mid"><i /></span>
+              <span className="orb orb-inner"><i /></span>
+              <svg viewBox="300 150 564 604" className="absolute inset-0 m-auto h-[40%] w-[40%] overflow-visible">
                 <defs>
-                  <linearGradient id="acg-a-grad" x1="0" y1="0" x2="1" y2="1">
+                  <linearGradient id="acg-a-grad" x1="0" y1="0" x2="0" y2="1">
                     <stop offset="0" stopColor="#ffffff" />
                     <stop offset="1" stopColor="#c3d0e8" />
                   </linearGradient>
                 </defs>
-                <path className="hero-a" pathLength={1} d="M581.5 166 L316 736.5 L383.5 736.5 L582 311 L779.5 736.5 L847.5 736.5 Z" fill="url(#acg-a-grad)" stroke="#fff" strokeWidth={8} strokeLinejoin="round" />
-                <circle className="hero-dot" cx="587" cy="706.5" r="29" fill="#f5b31b" />
+                <path className="acg-a" pathLength={1} d="M581.5 166 L316 736.5 L383.5 736.5 L582 311 L779.5 736.5 L847.5 736.5 Z" fill="url(#acg-a-grad)" stroke="#fff" strokeWidth={9} strokeLinejoin="round" />
+                <circle className="acg-dot" cx="587" cy="706.5" r="29" fill="#f5b31b" />
               </svg>
             </div>
-            <h2 className="display hero-title mt-1 text-5xl leading-none sm:text-7xl lg:text-8xl">{L('اطلس', 'Atlas')}</h2>
+            <h2 className="display hero-title mt-5 text-5xl leading-none sm:text-7xl lg:text-8xl">{L('اطلس', 'Atlas')}</h2>
             <p className="hero-sub mt-3 text-sm text-white/60 sm:text-lg">{L('اطلس پروژه‌های ACG', 'The ACG engagement atlas')}</p>
           </section>
 
@@ -144,16 +144,35 @@ export function Login({ onEnter }: { onEnter: () => void }) {
                     {L('ورود', 'Sign in')}
                   </button>
                 </form>
-                {g.appUrl && (
+                {(g.googleEmail || g.appUrl) && (
                   <>
                     <div className="flex items-center gap-3 py-1 text-[0.6875rem] text-[#9aa0ad]">
                       <span className="h-px flex-1 bg-[#e6e8ee]" />
                       {L('یا', 'or')}
                       <span className="h-px flex-1 bg-[#e6e8ee]" />
                     </div>
-                    <a href={g.appUrl} target="_top" className={gBtn}>
-                      <GoogleG /> {L('ورود با حساب گوگل', 'Continue with Google')}
-                    </a>
+                    {g.googleEmail ? (
+                      <button type="button" className={gBtn} disabled={working} onClick={async () => {
+                        setErr('')
+                        setWorking(true)
+                        try {
+                          await g.continueWithGoogle()
+                          onEnter()
+                        } catch (e) {
+                          setErr(e instanceof Error ? e.message : String(e))
+                        } finally {
+                          setWorking(false)
+                        }
+                      }}>
+                        <GoogleG />
+                        <span className="truncate">{L('ورود با گوگل', 'Continue with Google')}</span>
+                        <span className="truncate text-xs font-normal text-[#6b7180]" dir="ltr">{g.googleEmail}</span>
+                      </button>
+                    ) : (
+                      <a href={g.appUrl} target="_top" className={gBtn}>
+                        <GoogleG /> {L('ورود با حساب گوگل', 'Continue with Google')}
+                      </a>
+                    )}
                   </>
                 )}
               </div>
