@@ -5,6 +5,7 @@ import { useStore } from '../lib/store'
 import { useGoogle } from '../lib/google'
 import { useI18n, L, lbl } from '../lib/i18n'
 import { AcgLogo, AcgMark } from './Brand'
+import { VERSION } from '../lib/brand'
 import { cx } from './ui'
 
 function GoogleG() {
@@ -191,9 +192,10 @@ export function Login({ onEnter }: { onEnter: () => void }) {
             )}
           </div>
         </div>
-        <a href="https://joinacg.com" target="_blank" rel="noreferrer" dir="ltr" className="pb-6 text-center font-mono text-[0.6875rem] uppercase tracking-[0.18em] text-sub transition hover:text-ink lg:hidden">
+        <a href="https://joinacg.com" target="_blank" rel="noreferrer" dir="ltr" className="pb-2 text-center font-mono text-[0.6875rem] uppercase tracking-[0.18em] text-sub transition hover:text-ink lg:hidden">
           joinacg.com
         </a>
+        <div className="pb-5 text-center font-mono text-[0.625rem] text-sub/70" dir="ltr">v{VERSION}</div>
       </main>
     </div>
   )

@@ -18,6 +18,8 @@
  *   viewer — read only (leadership)
  */
 
+var ATLAS_VERSION = '1.5.0'; // shown on the login page and by diagnose()
+
 var SCHEMA = {
   Projects: ['id', 'code', 'name', 'description', 'category', 'owner', 'client', 'liaison', 'liaison_contact', 'status', 'priority', 'phase', 'start_date', 'end_date', 'progress', 'health_override', 'objective', 'paused_at', 'pause_reason'],
   Scope: ['id', 'project_id', 'item', 'type', 'status', 'change_note', 'date'],
@@ -71,7 +73,7 @@ function doGet(e) {
     var action = e.parameter.action || 'all';
     var me = { name: user.name, role: user.role, email: user.email, access: user.access };
     if (action === 'all') return json_({ ok: true, user: me, data: readAll_(user) });
-    if (action === 'ping') return json_({ ok: true, user: me });
+    if (action === 'ping') return json_({ ok: true, user: me, version: ATLAS_VERSION });
     throw new Error('Unknown action: ' + action);
   } catch (err) {
     return json_({ ok: false, error: String(err.message || err) });
@@ -546,6 +548,7 @@ function findRow_(sh, id) {
 function diagnose() {
   var props = PropertiesService.getScriptProperties();
   var url = props.getProperty('API_URL') || '';
+  Logger.log('نسخه‌ی Code.gs = ' + ATLAS_VERSION);
   Logger.log('API_URL = ' + (url || '(خالی — setApiUrl اجرا نشده)'));
   Logger.log('GOOGLE_CLIENT_ID = ' + (props.getProperty('GOOGLE_CLIENT_ID') || '(خالی)'));
   if (!url) return;
