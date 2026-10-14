@@ -202,7 +202,7 @@ function WeekCard({ admin }: { admin: boolean }) {
         {day(L('مهلت گزارش هفتگی', 'Weekly report due'), WEEK_KEYS.dueDay, c.dueDay)}
         {day(L('شروع هفته', 'Week starts'), WEEK_KEYS.start, c.start)}
         <div className="flex items-center justify-between gap-4">
-          <div className="text-sm font-medium">{L('ددلاین پیش‌فرض تسک', 'Default task deadline')}</div>
+          <div className="text-sm font-medium">{L('ددلاین پیش‌فرض تسک‌های مدیرعامل', 'CEO task default deadline')}</div>
           <select className="input h-9 w-36 text-xs" disabled={!admin} value={defaultDueDays()} onChange={(e) => setSetting(TASK_DUE_KEY, e.target.value)}>
             <option value="">{L('بدون ددلاین', 'None')}</option>
             <option value="0">{L('امروز', 'Today')}</option>

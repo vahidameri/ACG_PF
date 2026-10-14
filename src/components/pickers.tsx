@@ -148,7 +148,7 @@ export function PersonPicker({ value, onChange, label = true, placeholder }: { v
   )
 }
 
-export function ProjectPicker({ value, onChange }: { value: string; onChange: (v: string) => void }) {
+export function ProjectPicker({ value, onChange, emptyLabel }: { value: string; onChange: (v: string) => void; emptyLabel?: string }) {
   const { db, canEdit } = useStore()
   const p = db.Projects.find((x) => x.id === value)
   return (
@@ -157,7 +157,7 @@ export function ProjectPicker({ value, onChange }: { value: string; onChange: (v
       trigger={({ toggle }) => (
         <button className={trig} onClick={toggle} disabled={!canEdit}>
           <FolderKanban size={14} className="text-sub" />
-          <span className={cx('max-w-[12rem] truncate', !p && 'text-sub')}>{p ? p.name : L('شخصی', 'Personal')}</span>
+          <span className={cx('max-w-[12rem] truncate', !p && 'text-sub')}>{p ? p.name : emptyLabel || L('بدون پروژه', 'No project')}</span>
         </button>
       )}
     >

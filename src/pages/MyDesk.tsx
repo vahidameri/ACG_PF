@@ -7,6 +7,7 @@ import { useEditor } from '../components/Editor'
 import { Band, Card, Empty, Overlap, Avatar, cx, Segmented, StatStrip, Chip, Ring, PriorityIcon, Due } from '../components/ui'
 import { FollowUpRow, TaskRow, useProjectName } from '../components/shared'
 import { PersonPicker, ProjectPicker } from '../components/pickers'
+import { isCeo } from '../lib/access'
 import { addDays, daysFromToday, fa, fmtDate, todayISO, daysBetween, firstName, greeting, fmtWeekday, dayNum } from '../lib/jalali'
 import { isTaskOverdue, projectMetrics, riskScore } from '../lib/metrics'
 import { uid } from '../lib/api'
@@ -43,7 +44,8 @@ export default function MyDesk() {
   const [kind, setKind] = useState<'task' | 'followup'>('task')
   const [text, setText] = useState('')
   const [proj, setProj] = useState('')
-  const [due, setDue] = useState(() => (defaultDueDays() === '' ? -1 : Number(defaultDueDays()) || 0))
+  const ceo = isCeo(db.Team.find((m) => m.name === me))
+  const [due, setDue] = useState(() => (!ceo ? 0 : defaultDueDays() === '' ? -1 : Number(defaultDueDays()) || 0))
   const [who, setWho] = useState('')
 
   const capture = async () => {
@@ -228,9 +230,9 @@ export default function MyDesk() {
               />
               <div className="flex flex-wrap items-center gap-1 rounded-full bg-muted/70 p-1">
                 <PersonPicker value={who} onChange={setWho} placeholder={kind === 'task' ? L('خودم', 'Me') : L('با چه کسی؟', 'With whom?')} />
-                <ProjectPicker value={proj} onChange={setProj} />
+                <ProjectPicker value={proj} onChange={setProj} emptyLabel={ceo ? L('شخصی', 'Personal') : undefined} />
                 <select value={due} onChange={(e) => setDue(Number(e.target.value))} className="h-8 rounded-full bg-transparent px-2 text-xs outline-none hover:bg-surface">
-                  <option value={-1}>{L('بدون ددلاین', 'No deadline')}</option>
+                  {ceo && <option value={-1}>{L('بدون ددلاین', 'No deadline')}</option>}
                   <option value={0}>{L('امروز', 'Today')}</option>
                   <option value={1}>{L('فردا', 'Tomorrow')}</option>
                   <option value={3}>{L('۳ روز دیگر', 'In 3 days')}</option>

@@ -2,6 +2,7 @@ import { createContext, useCallback, useContext, useState, type ReactNode } from
 import { Trash2 } from 'lucide-react'
 import type { SheetName } from '../lib/types'
 import { defaultDue, weekCfg } from '../lib/weeks'
+import { isCeo } from '../lib/access'
 import { useStore } from '../lib/store'
 import { uid } from '../lib/api'
 import { todayISO } from '../lib/jalali'
@@ -46,7 +47,7 @@ export const SCHEMAS: Record<EditableSheet, { title: T2; prefix: string; fields:
       { key: 'track', label: ['تیم', 'Track'], type: 'select', options: { '': ['خودکار', 'Auto'], product: ['پروداکت', 'Product'], tech: ['تک', 'Tech'] }, half: true },
       { key: 'private', label: ['دیده‌شدن', 'Visibility'], type: 'select', options: { '': ['عمومی', 'Visible'], '1': ['خصوصی', 'Private'] }, half: true },
     ],
-    defaults: () => ({ private: '', status: 'todo', priority: 'medium', points: 0, created_at: todayISO(), due_date: defaultDue(), track: '', depends_on: '', meeting_id: '' }),
+    defaults: () => ({ private: '', status: 'todo', priority: 'medium', points: 0, created_at: todayISO(), track: '', depends_on: '', meeting_id: '' }),
   },
   FollowUps: {
     title: ['فالوآپ', 'Follow-up'],
@@ -251,11 +252,14 @@ const Ctx = createContext<EditorCtx | null>(null)
 export const useEditor = () => useContext(Ctx)!
 
 export function EditorProvider({ children }: { children: ReactNode }) {
+  const { db, me } = useStore()
+  const ceoMe = isCeo(db.Team.find((m) => m.name === me))
   const [state, setState] = useState<{ sheet: EditableSheet; row: Record<string, unknown>; isNew: boolean } | null>(null)
   const open = useCallback((sheet: EditableSheet, row?: Record<string, unknown>) => {
     const isNew = !row?.id
-    setState({ sheet, row: isNew ? { ...SCHEMAS[sheet].defaults(), ...row } : { ...row }, isNew })
-  }, [])
+    const base = { ...SCHEMAS[sheet].defaults(), ...(sheet === 'Tasks' && ceoMe ? { due_date: defaultDue() } : {}) }
+    setState({ sheet, row: isNew ? { ...base, ...row } : { ...row }, isNew })
+  }, [ceoMe])
   const close = () => setState(null)
   // Existing tasks & follow-ups open in the rich item sheet (inline edit + comments).
   const rich = state && !state.isNew && (state.sheet === 'Tasks' || state.sheet === 'FollowUps')
@@ -309,7 +313,7 @@ export function FieldInput({ f, value, set, form, disabled, autoFocus, onSubmit 
     case 'project':
       return (
         <select {...common} value={String(v)} onChange={(e) => set(e.target.value)}>
-          <option value="">{L('— شخصی / بدون پروژه —', '— Personal / no project —')}</option>
+          <option value="">{isCeo(db.Team.find((m) => m.name === form.assignee)) ? L('— شخصی —', '— Personal —') : L('— بدون پروژه —', '— No project —')}</option>
           {db.Projects.map((p) => (
             <option key={p.id} value={p.id}>
               {p.name}
