@@ -45,11 +45,19 @@ interface AllResponse {
   user: RemoteUser
 }
 
+/** Apps Script answers with an HTML page (sign-in or error) when the data deployment isn't public. */
+async function readJson(res: Response) {
+  const text = await res.text()
+  if (text.trimStart().startsWith('<'))
+    throw new Error('آدرس داده پاسخ JSON نداد. انتشار «data» باید با Execute as: Me و Who has access: Anyone باشد و setApiUrl با آدرس /exec همان انتشار اجرا شده باشد.')
+  return JSON.parse(text)
+}
+
 export async function fetchAll(c: Config): Promise<{ data: DB; user: RemoteUser }> {
   const q = new URLSearchParams({ action: 'all', ...auth(c) }).toString()
   const url = `${c.apiUrl}${c.apiUrl.includes('?') ? '&' : '?'}${q}`
   const res = await fetch(url, { method: 'GET', redirect: 'follow' })
-  const json = (await res.json()) as AllResponse
+  const json = (await readJson(res)) as AllResponse
   if (!json.ok) throw new Error(json.error || 'خطای ناشناخته از سرور')
   return { data: json.data, user: json.user }
 }
@@ -62,7 +70,7 @@ async function post(c: Config, body: Record<string, unknown>) {
     body: JSON.stringify({ ...body, ...auth(c) }),
     redirect: 'follow',
   })
-  const json = await res.json()
+  const json = await readJson(res)
   if (!json.ok) throw new Error(json.error || 'ذخیره انجام نشد')
   return json
 }
