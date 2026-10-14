@@ -312,7 +312,7 @@ function GoogleLinkField() {
   const [v, setV] = useState(() => setting('app.google_url', ''))
   return (
     <div>
-      <div className="label">{L('لینک ورود با گوگل (app)', 'Google sign-in link (app)')}</div>
+      <div className="label">{L('لینک ورود با گوگل (Atlas Google)', 'Google sign-in link (Atlas Google)')}</div>
       <div className="flex gap-2">
         <input className="input h-10 flex-1 text-xs" dir="ltr" placeholder="https://script.google.com/macros/s/…/exec" value={v} onChange={(e) => setV(e.target.value)} />
         <button className="btn-outline h-10 px-4 text-xs" disabled={v.trim() === setting('app.google_url', '')} onClick={() => setSetting('app.google_url', v.trim())}>
