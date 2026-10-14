@@ -18,7 +18,7 @@ import { useGoogle } from '../lib/google'
 import { APP_NAME } from '../lib/brand'
 import { hubOf, type Hub } from './HubNav'
 import { can } from '../lib/access'
-import { ACCESS } from '../lib/labels'
+import { ACCESS, JOB_TITLE } from '../lib/labels'
 import { CommandPalette } from './CommandPalette'
 import { AcgMark } from './Brand'
 import { lbl } from '../lib/i18n'
@@ -208,7 +208,7 @@ export function Layout({ children }: { children: ReactNode }) {
               {wide && (
                 <div className="min-w-0 flex-1">
                   <div className="truncate text-sm font-medium">{me || L('مهمان', 'Guest')}</div>
-                  <div className="truncate text-[0.6875rem] text-band-sub">{lbl(ACCESS, access)}</div>
+                  <div className="truncate text-[0.6875rem] text-band-sub">{lbl(JOB_TITLE, db.Team.find((m) => m.name === me)?.role || '') || lbl(ACCESS, access)}</div>
                 </div>
               )}
             </button>
@@ -232,7 +232,7 @@ export function Layout({ children }: { children: ReactNode }) {
                   <select className="input h-9 text-xs" value={me} onChange={(e) => { setMe(e.target.value); close() }}>
                     {db.Team.map((m) => (
                       <option key={m.id} value={m.name}>
-                        {m.name} — {m.role}
+                        {m.name} — {lbl(JOB_TITLE, m.role)}
                       </option>
                     ))}
                   </select>

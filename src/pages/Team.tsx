@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { JOB_TITLE } from '../lib/labels'
 import { Link } from 'react-router-dom'
 import { Plus } from 'lucide-react'
 import { useStore } from '../lib/store'
@@ -192,7 +193,7 @@ function PeopleGrid({ people }: { people: Member[] }) {
                   {m.name}
                 </Link>
                 <div className="truncate text-[0.6875rem] text-sub">
-                  {m.role}
+                  {lbl(JOB_TITLE, m.role)}
                   {capOf(m) !== 100 && ` · ${L(`ظرفیت ${fa(capOf(m))}٪`, `${capOf(m)}% capacity`)}`}
                 </div>
               </div>
@@ -276,7 +277,7 @@ function Timeline({ people, weeks }: { people: Member[]; weeks: string[] }) {
                   <Avatar name={m.name} size="sm" />
                   <span className="min-w-0">
                     <span className="block max-w-[10rem] truncate text-sm font-medium">{m.name}</span>
-                    <span className="block text-[0.6875rem] text-sub">{m.role}</span>
+                    <span className="block text-[0.6875rem] text-sub">{lbl(JOB_TITLE, m.role)}</span>
                   </span>
                 </button>
               </td>

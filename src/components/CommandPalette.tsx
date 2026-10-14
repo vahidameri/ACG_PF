@@ -1,9 +1,10 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
+import { JOB_TITLE } from '../lib/labels'
 import { createPortal } from 'react-dom'
 import { useNavigate } from 'react-router-dom'
 import { Briefcase, ListChecks, BellRing, ShieldAlert, User, CornerDownLeft, ArrowRight, Plus, Languages, Search } from 'lucide-react'
 import { useStore } from '../lib/store'
-import { useI18n, L } from '../lib/i18n'
+import { useI18n, L, lbl } from '../lib/i18n'
 import { useEditor } from './Editor'
 import { useComposer } from './UpdateComposer'
 import { can } from '../lib/access'
@@ -85,7 +86,7 @@ export function CommandPalette({ open, onClose }: { open: boolean; onClose: () =
       ...db.Tasks.map((t) => ({ key: t.id, group: G.task, label: t.title, sub: [pname(t.project_id), t.assignee].filter(Boolean).join(' · '), icon: <StatusIcon s={t.status} size={15} />, run: () => editor.open('Tasks', t as never) })),
       ...db.FollowUps.map((f) => ({ key: f.id, group: G.fu, label: f.subject, sub: f.person, icon: ico(BellRing), run: () => editor.open('FollowUps', f as never) })),
       ...db.Risks.map((r) => ({ key: r.id, group: G.risk, label: r.title, sub: pname(r.project_id), icon: ico(ShieldAlert), run: () => editor.open('Risks', r as never) })),
-      ...db.Team.map((m) => ({ key: m.id, group: G.ppl, label: m.name, sub: m.role, icon: ico(User), run: () => navigate(`/people/${m.id}`) })),
+      ...db.Team.map((m) => ({ key: m.id, group: G.ppl, label: m.name, sub: lbl(JOB_TITLE, m.role), icon: ico(User), run: () => navigate(`/people/${m.id}`) })),
     ]
     const s = q.trim().toLowerCase()
     if (!s) return [...actions, ...navs.slice(0, 6), ...data.filter((d) => d.group === G.proj).slice(0, 5)]

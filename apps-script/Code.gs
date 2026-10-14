@@ -29,6 +29,7 @@ var SCHEMA = {
   Risks: ['id', 'project_id', 'title', 'type', 'probability', 'impact', 'owner', 'mitigation', 'status', 'due_date'],
   // capacity = % of one full-time person (100 = full-time, 600 = a team of six)
   // email = the Google account used to sign in; tasks_private = '1' hides this person's tasks (e.g. the CEO)
+  // role = job title code: ceo | cpo | cto | pgm | pm | pd | gd (free text also works)
   // access: super | exec | head | member. key = optional personal key (sign-in without Google).
   Team: ['id', 'name', 'name_en', 'role', 'email', 'team', 'track', 'capacity', 'photo', 'tasks_private', 'phone', 'access', 'active', 'key'],
   // start_date / end_date are optional; blank = open-ended
@@ -488,7 +489,7 @@ function setup() {
   if (team.getLastRow() < 2) {
     var key = newKey_();
     var me = Session.getEffectiveUser().getEmail();
-    upsert_('Team', { id: 'm1', name: 'وحید عامری', name_en: 'Vahid Ameri', role: 'مدیر برنامه', email: me, team: 'PMO', capacity: 100, access: 'super', active: 'true', key: key }, { name: 'setup' });
+    upsert_('Team', { id: 'm1', name: 'وحید عامری', name_en: 'Vahid Ameri', role: 'pgm', email: me, team: 'PMO', capacity: 100, access: 'super', active: 'true', key: key }, { name: 'setup' });
     safeAlert_('راه‌اندازی انجام شد. شما (' + me + ') سوپر ادمین هستید.\n\nکلید پشتیبان (برای ورود بدون گوگل):\n' + key);
     Logger.log('Admin key: ' + key);
   }
@@ -786,17 +787,17 @@ function seedDemo() {
     if (vals.length) sh.getRange(sh.getLastRow() + 1, 1, vals.length, h.length).setValues(vals);
   };
   put('Team', [
-    ['m1', 'وحید عامری', 'Vahid Ameri', 'مدیر برنامه', '', 'super'],
-    ['m2', 'جلیل علیزاده', 'Jalil Alizadeh', 'مدیرعامل', '', 'exec'],
-    ['m3', 'وحید کیوانیان', 'Vahid Keyvanian', 'هد تک', 'tech', 'head'],
-    ['m4', 'مهرزاد گلی', 'Mehrzad Goli', 'هد پروداکت', 'product', 'head'],
-    ['m5', 'آتنا دهقان', 'Athena Dehghan', 'پروداکت منیجر', 'product', 'member'],
-    ['m6', 'علی سرمیلی', 'Ali Sormeili', 'پروداکت منیجر', 'product', 'member'],
-    ['m7', 'علی سالمه', 'Ali Salemeh', 'پروداکت منیجر', 'product', 'member'],
-    ['m8', 'مهرسا دبیر', 'Mehrsa Dabir', 'پروداکت منیجر', 'product', 'member'],
-    ['m9', 'بابک معروفی', 'Babak Maroufi', 'پروداکت منیجر', 'product', 'member'],
-    ['m10', 'امین ظفری', 'Amin Zafari', 'پروداکت منیجر', 'product', 'member'],
-    ['m11', 'هانیه منصورکیایی', 'Hanie Mansurkiae', 'پروداکت دیزاینر', 'product', 'member'],
+    ['m1', 'وحید عامری', 'Vahid Ameri', 'pgm', '', 'super'],
+    ['m2', 'جلیل علیزاده', 'Jalil Alizadeh', 'ceo', '', 'exec'],
+    ['m3', 'وحید کیوانیان', 'Vahid Keyvanian', 'cto', 'tech', 'head'],
+    ['m4', 'مهرزاد گلی', 'Mehrzad Goli', 'cpo', 'product', 'head'],
+    ['m5', 'آتنا دهقان', 'Athena Dehghan', 'pm', 'product', 'member'],
+    ['m6', 'علی سرمیلی', 'Ali Sormeili', 'pm', 'product', 'member'],
+    ['m7', 'علی سالمه', 'Ali Salemeh', 'pm', 'product', 'member'],
+    ['m8', 'مهرسا دبیر', 'Mehrsa Dabir', 'pm', 'product', 'member'],
+    ['m9', 'بابک معروفی', 'Babak Maroufi', 'pm', 'product', 'member'],
+    ['m10', 'امین ظفری', 'Amin Zafari', 'pm', 'product', 'member'],
+    ['m11', 'هانیه منصورکیایی', 'Hanie Mansurkiae', 'pd', 'product', 'member'],
   ].map(function (r) {
     return { id: r[0], name: r[1], name_en: r[2], role: r[3], track: r[4], access: r[5], capacity: 100, active: 'true', tasks_private: r[5] === 'exec' ? '1' : '' };
   }));

@@ -1,8 +1,9 @@
 import { useState } from 'react'
+import { JOB_TITLE } from '../lib/labels'
 import { Loader } from 'lucide-react'
 import { useStore } from '../lib/store'
 import { useGoogle } from '../lib/google'
-import { useI18n, L } from '../lib/i18n'
+import { useI18n, L, lbl } from '../lib/i18n'
 import { AcgLogo, AcgMark } from './Brand'
 import { cx } from './ui'
 
@@ -99,7 +100,7 @@ export function Login({ onEnter }: { onEnter: () => void }) {
                   <select className="input h-11 flex-1 text-sm" value={who} onChange={(e) => setWho(e.target.value)}>
                     {db.Team.map((m) => (
                       <option key={m.id} value={m.id}>
-                        {m.name} — {m.role}
+                        {m.name} — {lbl(JOB_TITLE, m.role)}
                       </option>
                     ))}
                   </select>

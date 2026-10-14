@@ -6,7 +6,7 @@ import { useEditor, type EditableSheet } from '../components/Editor'
 import { Band, Card, Empty, HealthBadge, Overlap, Progress, StatStrip, Tabs, cx, healthText, Avatar, Chip, Segmented } from '../components/ui'
 import { projectMetrics, riskScore } from '../lib/metrics'
 import { fa, fmtDate, relDays, timeAgo } from '../lib/jalali'
-import { PROJECT_STATUS, RISK_STATUS, RISK_TYPE, SCOPE_STATUS, SPRINT_STATUS, PRIORITY } from '../lib/labels'
+import { PROJECT_STATUS, RISK_STATUS, RISK_TYPE, SCOPE_STATUS, SPRINT_STATUS, PRIORITY, JOB_TITLE } from '../lib/labels'
 import { L, lbl } from '../lib/i18n'
 import { TaskRow, FollowUpRow, PinButton } from '../components/shared'
 import { PauseButton } from '../components/PauseButton'
@@ -463,7 +463,7 @@ export default function ProjectDetail() {
                       <div className="min-w-0 flex-1">
                         <div className="text-sm font-medium">{mem.name}</div>
                         <div className="text-xs text-sub">
-                          {mem.role} · {L(`${fa(memTasks)} تسک باز`, `${memTasks} open tasks`)}
+                          {lbl(JOB_TITLE, mem.role)} · {L(`${fa(memTasks)} تسک باز`, `${memTasks} open tasks`)}
                         </div>
                         <div className="mt-2 flex items-center gap-2">
                           <Progress value={Number(a.percent)} />

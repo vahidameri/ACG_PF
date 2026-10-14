@@ -117,6 +117,26 @@ export const MEETING_STATUS: Record<Meeting['status'], T2> = {
   cancelled: ['لغو شد', 'Cancelled'],
 }
 
+/** Job titles (Team.role). Stored as the code; old free-text titles are mapped by jobCode. */
+export const JOB_TITLE: Record<string, T2> = {
+  ceo: ['مدیرعامل', 'CEO'],
+  cpo: ['مدیر ارشد محصول', 'CPO'],
+  cto: ['مدیر ارشد فناوری', 'CTO'],
+  pgm: ['مدیر برنامه', 'Program Manager'],
+  pm: ['مدیر محصول', 'Product Manager'],
+  pd: ['طراح محصول', 'Product Designer'],
+  gd: ['گرافیست', 'Graphic Designer'],
+}
+const LEGACY_TITLE: Record<string, string> = {
+  'مدیرعامل': 'ceo', 'هد پروداکت': 'cpo', 'هد تک': 'cto', 'مدیر برنامه': 'pgm', 'پروداکت منیجر': 'pm', 'پروداکت دیزاینر': 'pd', 'گرافیست': 'gd',
+  'head of product': 'cpo', 'head of tech': 'cto', 'program manager': 'pgm', 'product manager': 'pm', 'product designer': 'pd', 'graphic designer': 'gd',
+}
+export const jobCode = (role: string) => {
+  const r = String(role || '').trim()
+  const k = r.toLowerCase()
+  return JOB_TITLE[k] ? k : LEGACY_TITLE[k] || LEGACY_TITLE[r] || r
+}
+
 export const ACCESS: Record<string, T2> = {
   super: ['سوپر ادمین', 'Super admin'],
   exec: ['مدیرعامل', 'CEO'],

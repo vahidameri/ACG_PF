@@ -7,18 +7,18 @@ const x = (fa: string, en: string) => (locale.lang === 'en' ? en : fa)
 
 export const demoMe = () => x('وحید عامری', 'Vahid Ameri')
 
-const PEOPLE: [string, string, string, string, string, Member['track'], Member['access'], string?][] = [
-  ['m1', 'وحید عامری', 'Vahid Ameri', 'مدیر برنامه', 'Program Manager', '', 'super'],
-  ['m2', 'جلیل علیزاده', 'Jalil Alizadeh', 'مدیرعامل', 'CEO', '', 'exec', '1'],
-  ['m3', 'وحید کیوانیان', 'Vahid Keyvanian', 'هد تک', 'Head of Tech', 'tech', 'head'],
-  ['m4', 'مهرزاد گلی', 'Mehrzad Goli', 'هد پروداکت', 'Head of Product', 'product', 'head'],
-  ['m5', 'آتنا دهقان', 'Athena Dehghan', 'پروداکت منیجر', 'Product Manager', 'product', 'member'],
-  ['m6', 'علی سرمیلی', 'Ali Sormeili', 'پروداکت منیجر', 'Product Manager', 'product', 'member'],
-  ['m7', 'علی سالمه', 'Ali Salemeh', 'پروداکت منیجر', 'Product Manager', 'product', 'member'],
-  ['m8', 'مهرسا دبیر', 'Mehrsa Dabir', 'پروداکت منیجر', 'Product Manager', 'product', 'member'],
-  ['m9', 'بابک معروفی', 'Babak Maroufi', 'پروداکت منیجر', 'Product Manager', 'product', 'member'],
-  ['m10', 'امین ظفری', 'Amin Zafari', 'پروداکت منیجر', 'Product Manager', 'product', 'member'],
-  ['m11', 'هانیه منصورکیایی', 'Hanie Mansurkiae', 'پروداکت دیزاینر', 'Product Designer', 'product', 'member'],
+const PEOPLE: [string, string, string, string, Member['track'], Member['access'], string?][] = [
+  ['m1', 'وحید عامری', 'Vahid Ameri', 'pgm', '', 'super'],
+  ['m2', 'جلیل علیزاده', 'Jalil Alizadeh', 'ceo', '', 'exec', '1'],
+  ['m3', 'وحید کیوانیان', 'Vahid Keyvanian', 'cto', 'tech', 'head'],
+  ['m4', 'مهرزاد گلی', 'Mehrzad Goli', 'cpo', 'product', 'head'],
+  ['m5', 'آتنا دهقان', 'Athena Dehghan', 'pm', 'product', 'member'],
+  ['m6', 'علی سرمیلی', 'Ali Sormeili', 'pm', 'product', 'member'],
+  ['m7', 'علی سالمه', 'Ali Salemeh', 'pm', 'product', 'member'],
+  ['m8', 'مهرسا دبیر', 'Mehrsa Dabir', 'pm', 'product', 'member'],
+  ['m9', 'بابک معروفی', 'Babak Maroufi', 'pm', 'product', 'member'],
+  ['m10', 'امین ظفری', 'Amin Zafari', 'pm', 'product', 'member'],
+  ['m11', 'هانیه منصورکیایی', 'Hanie Mansurkiae', 'pd', 'product', 'member'],
 ]
 
 const PROJECTS: [string, string, string][] = [
@@ -36,8 +36,8 @@ const PROJECTS: [string, string, string][] = [
 ]
 
 export function buildDemo(): DB {
-  const Team: Member[] = PEOPLE.map(([id, fa, en, roleFa, roleEn, track, access, priv]) => ({
-    id, name: x(fa, en), name_en: '', role: x(roleFa, roleEn), email: '', team: track === 'tech' ? x('تک', 'Tech') : track === 'product' ? x('پروداکت', 'Product') : x('مدیریت', 'Leadership'),
+  const Team: Member[] = PEOPLE.map(([id, fa, en, role, track, access, priv]) => ({
+    id, name: x(fa, en), name_en: '', role, email: '', team: track === 'tech' ? x('تک', 'Tech') : track === 'product' ? x('پروداکت', 'Product') : x('مدیریت', 'Leadership'),
     track, capacity: 100, photo: '', tasks_private: priv || '', phone: '', access, active: 'true',
   }))
   const Projects: Project[] = PROJECTS.map(([id, code, name]) => ({

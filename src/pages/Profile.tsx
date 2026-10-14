@@ -1,4 +1,5 @@
 import { Link, useParams } from 'react-router-dom'
+import { JOB_TITLE } from '../lib/labels'
 import { Mail, Phone, Pencil, Lock, CalendarDays, Plus } from 'lucide-react'
 import { useStore } from '../lib/store'
 import { useEditor } from '../components/Editor'
@@ -42,7 +43,7 @@ export default function Profile() {
             <span>
               {m.name}
               <span className="mt-2 block text-base font-normal text-band-sub">
-                {m.role}
+                {lbl(JOB_TITLE, m.role)}
                 {m.track && ` · ${L('تیم', 'Team')} ${lbl(TRACK, m.track)}`}
               </span>
             </span>

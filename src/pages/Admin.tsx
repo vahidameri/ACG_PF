@@ -8,7 +8,7 @@ import { ContractsList } from '../components/Contracts'
 import { PauseButton } from '../components/PauseButton'
 import Settings from './Settings'
 import { L, lbl } from '../lib/i18n'
-import { ACCESS, PROJECT_STATUS } from '../lib/labels'
+import { ACCESS, PROJECT_STATUS, JOB_TITLE } from '../lib/labels'
 import { TRACK } from '../lib/tracks'
 import { capOf, memberWeek } from '../lib/capacity'
 import { fa } from '../lib/jalali'
@@ -116,7 +116,7 @@ function People() {
                         <span className="flex items-center gap-1.5 text-sm font-medium hover:underline">
                           {m.name} {String(m.tasks_private) === '1' && <Lock size={12} className="text-sub" />}
                         </span>
-                        <span className="block text-[0.6875rem] text-sub">{m.role}</span>
+                        <span className="block text-[0.6875rem] text-sub">{lbl(JOB_TITLE, m.role)}</span>
                       </span>
                     </Link>
                   </td>

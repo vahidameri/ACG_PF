@@ -1,6 +1,7 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import type { DB, Role, Row, SheetName } from './types'
 import { readWeekCfg, setWeekCfg } from './weeks'
+import { jobCode } from './labels'
 import { fetchAll, loadConfig, remoteAction, remoteDelete, remoteUpload, remoteUpsert, saveConfig, uid, type Config } from './api'
 import { useGoogle } from './google'
 import type { FileRef } from './types'
@@ -49,6 +50,7 @@ function normalize(raw: Partial<DB>): DB {
           if (NUMERIC[k]?.includes(key)) o[key] = o[key] === '' ? 0 : Number(o[key]) || 0
         }
         o.id = String(o.id)
+        if (k === 'Team') o.role = jobCode(String(o.role || ''))
         return o
       }) as never
   }
