@@ -113,6 +113,9 @@ interface Ctx {
   googleEmail: string
   continueWithGoogle: () => Promise<void>
   passwordLogin: (username: string, password: string) => Promise<void>
+  /** forgot password: a sign-in link + code to the person's email */
+  sendCode: (id: string) => Promise<void>
+  verifyCode: (id: string, code: string) => Promise<void>
   signIn: (clientId: string, opts?: { silent?: boolean; hint?: string }) => Promise<GSession>
   signOut: () => void
   busy: boolean
@@ -264,6 +267,13 @@ export function GoogleProvider({ children }: { children: ReactNode }) {
     adopt({ ...r, email: r.email || username.toLowerCase() })
   }, [apiUrl]) // eslint-disable-line react-hooks/exhaustive-deps
 
+  const sendCode = useCallback(async (id: string) => {
+    await otpCall(apiUrl, { action: 'otpSend', email: id })
+  }, [apiUrl])
+  const verifyCode = useCallback(async (id: string, code: string) => {
+    adopt(await otpCall<{ session: string; email: string; exp: number }>(apiUrl, { action: 'otpVerify', email: id, code }))
+  }, [apiUrl]) // eslint-disable-line react-hooks/exhaustive-deps
+
   const continueWithGoogle = useCallback(async () => {
     if (!offer) return
     try {
@@ -294,5 +304,5 @@ export function GoogleProvider({ children }: { children: ReactNode }) {
     setSession(null)
   }, [session, apiUrl])
 
-  return <C.Provider value={{ hosted: isHosted, apiUrl, session, otp, appUrl, googleEmail: offer?.email || '', continueWithGoogle, passwordLogin, signIn, signOut, busy, error }}>{children}</C.Provider>
+  return <C.Provider value={{ hosted: isHosted, apiUrl, session, otp, appUrl, googleEmail: offer?.email || '', continueWithGoogle, passwordLogin, sendCode, verifyCode, signIn, signOut, busy, error }}>{children}</C.Provider>
 }

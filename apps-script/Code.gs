@@ -18,7 +18,7 @@
  *   viewer — read only (leadership)
  */
 
-var ATLAS_VERSION = '1.7.1'; // shown on the login page and by diagnose()
+var ATLAS_VERSION = '1.7.2'; // shown on the login page and by diagnose()
 
 var SCHEMA = {
   Projects: ['id', 'code', 'name', 'description', 'category', 'owner', 'client', 'liaison', 'liaison_contact', 'status', 'priority', 'phase', 'start_date', 'end_date', 'progress', 'health_override', 'objective', 'paused_at', 'pause_reason'],
@@ -151,13 +151,23 @@ function hash_(s) {
   return Utilities.base64EncodeWebSafe(Utilities.computeDigest(Utilities.DigestAlgorithm.SHA_256, String(s), Utilities.Charset.UTF_8));
 }
 
-function otpSend_(email) {
-  email = String(email || '').trim().toLowerCase();
-  if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) throw new Error('ایمیل معتبر نیست');
+/** "Forgot password": a username or an email → that person's email (blank if none). */
+function loginEmail_(id) {
+  id = String(id || '').trim().toLowerCase();
+  var m = (rawAll_().Team || []).filter(function (x) {
+    return String(x.active).toLowerCase() !== 'false' && (usernameOf_(x) === id || String(x.email || '').toLowerCase() === id);
+  })[0];
+  return m ? String(m.email || '').toLowerCase() : '';
+}
+
+function otpSend_(id) {
+  var key = String(id || '').trim().toLowerCase();
+  if (!key) throw new Error('نام کاربری یا ایمیل را وارد کنید');
+  var email = loginEmail_(key);
   var c = CacheService.getScriptCache();
-  if (c.get('otp.rl.' + email)) throw new Error('یک دقیقه صبر کنید و دوباره امتحان کنید');
-  c.put('otp.rl.' + email, '1', 60);
-  var m = (rawAll_().Team || []).filter(function (x) { return String(x.email || '').toLowerCase() === email && String(x.active).toLowerCase() !== 'false'; })[0];
+  if (c.get('otp.rl.' + key)) throw new Error('یک دقیقه صبر کنید و دوباره امتحان کنید');
+  c.put('otp.rl.' + key, '1', 60);
+  var m = email ? (rawAll_().Team || []).filter(function (x) { return String(x.email || '').toLowerCase() === email && String(x.active).toLowerCase() !== 'false'; })[0] : null;
   // the reply is the same whether or not the email is on the team
   if (m) {
     var code = String(parseInt(Utilities.getUuid().replace(/-/g, '').slice(0, 12), 16) % 1000000);
@@ -179,8 +189,8 @@ function otpSend_(email) {
   return { ok: true };
 }
 
-function otpVerify_(email, code) {
-  email = String(email || '').trim().toLowerCase();
+function otpVerify_(id, code) {
+  var email = loginEmail_(id) || String(id || '').trim().toLowerCase();
   var c = CacheService.getScriptCache();
   var raw = c.get('otp.' + email);
   if (!raw) throw new Error('کد منقضی شده؛ دوباره کد بگیرید');

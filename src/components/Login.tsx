@@ -52,6 +52,36 @@ export function Login({ onEnter }: { onEnter: () => void }) {
   })
   const [password, setPassword] = useState('')
   const [showPw, setShowPw] = useState(false)
+  // forgot password → sign-in link + code by email
+  const [forgot, setForgot] = useState<'' | 'ask' | 'code'>('')
+  const [code, setCode] = useState('')
+  const [notice, setNotice] = useState('')
+  const sendCode = async () => {
+    setErr('')
+    setWorking(true)
+    try {
+      await g.sendCode(username.trim())
+      setForgot('code')
+      setCode('')
+      setNotice(L('اگر ایمیلی برای این حساب ثبت شده باشد، لینک ورود و کد ۶ رقمی به آن رفت.', 'If this account has an email, a sign-in link and a 6-digit code are on their way.'))
+    } catch (e) {
+      setErr(e instanceof Error ? e.message : String(e))
+    } finally {
+      setWorking(false)
+    }
+  }
+  const verifyCode = async (c: string) => {
+    setErr('')
+    setWorking(true)
+    try {
+      await g.verifyCode(username.trim(), c)
+      onEnter()
+    } catch (e) {
+      setErr(e instanceof Error ? e.message : String(e))
+    } finally {
+      setWorking(false)
+    }
+  }
   const [working, setWorking] = useState(false)
   const pwLogin = async () => {
     setErr('')
@@ -127,6 +157,46 @@ export function Login({ onEnter }: { onEnter: () => void }) {
 
             {g.otp ? (
               <div className="mt-7 space-y-3">
+                {forgot ? (
+                  <form onSubmit={(e) => (e.preventDefault(), forgot === 'ask' ? sendCode() : verifyCode(code))} className="space-y-3">
+                    <div className="text-sm font-semibold">{L('بازیابی ورود', 'Sign-in help')}</div>
+                    {forgot === 'ask' ? (
+                      <>
+                        <label className="light-field">
+                          <User size={16} className="shrink-0 text-[#9aa0ad]" />
+                          <input dir="ltr" autoFocus autoCapitalize="none" spellCheck={false} placeholder={L('نام کاربری یا ایمیل', 'Username or email')} value={username} onChange={(e) => setUsername(e.target.value)} />
+                        </label>
+                        <button className="shine-btn flex h-12 w-full items-center justify-center gap-2 rounded-2xl text-sm font-bold text-[#111]" disabled={working || !username.trim()}>
+                          {working ? <Loader size={16} className="animate-spin" /> : null}
+                          {L('ارسال کد به ایمیل', 'Email me a code')}
+                        </button>
+                      </>
+                    ) : (
+                      <>
+                        <p className="text-xs leading-6 text-[#6b7180]">{notice}</p>
+                        <input className="light-field w-full text-center font-mono text-2xl tracking-[0.5em] outline-none" dir="ltr" inputMode="numeric" autoComplete="one-time-code" autoFocus maxLength={6} placeholder="••••••" value={code} onChange={(e) => {
+                          const c = e.target.value.replace(/[\u06F0-\u06F9\u0660-\u0669]/g, (d) => String((d.charCodeAt(0) & 0xf) % 10)).replace(/\D/g, '').slice(0, 6)
+                          setCode(c)
+                          if (c.length === 6 && !working) verifyCode(c)
+                        }} />
+                        <button className="shine-btn flex h-12 w-full items-center justify-center gap-2 rounded-2xl text-sm font-bold text-[#111]" disabled={working || code.length !== 6}>
+                          {working ? <Loader size={16} className="animate-spin" /> : <ArrowRight size={16} className="rtl:-scale-x-100" />}
+                          {L('ورود', 'Sign in')}
+                        </button>
+                      </>
+                    )}
+                    <div className="flex justify-between text-xs">
+                      <button type="button" className="text-[#6b7180] transition hover:text-[#16181d]" onClick={() => (setForgot(''), setErr(''))}>
+                        {L('بازگشت به ورود', 'Back to sign in')}
+                      </button>
+                      {forgot === 'code' && (
+                        <button type="button" className="text-[#6b7180] transition hover:text-[#16181d] disabled:opacity-50" disabled={working} onClick={sendCode}>
+                          {L('ارسال دوباره', 'Resend')}
+                        </button>
+                      )}
+                    </div>
+                  </form>
+                ) : (
                 <form onSubmit={(e) => (e.preventDefault(), pwLogin())} className="space-y-3">
                   <label className="light-field">
                     <User size={16} className="shrink-0 text-[#9aa0ad]" />
@@ -139,12 +209,18 @@ export function Login({ onEnter }: { onEnter: () => void }) {
                       {showPw ? <EyeOff size={16} /> : <Eye size={16} />}
                     </button>
                   </label>
+                  <div className="flex justify-end">
+                    <button type="button" className="text-xs text-[#6b7180] transition hover:text-[#16181d]" onClick={() => (setForgot('ask'), setErr(''))}>
+                      {L('رمز را فراموش کرده‌اید؟', 'Forgot password?')}
+                    </button>
+                  </div>
                   <button className="shine-btn flex h-12 w-full items-center justify-center gap-2 rounded-2xl text-sm font-bold text-[#111]" disabled={working || !username.trim() || !password}>
                     {working ? <Loader size={16} className="animate-spin" /> : <ArrowRight size={16} className="rtl:-scale-x-100" />}
                     {L('ورود', 'Sign in')}
                   </button>
                 </form>
-                {(g.googleEmail || g.appUrl) && (
+                )}
+                {!forgot && (g.googleEmail || g.appUrl) && (
                   <>
                     <div className="flex items-center gap-3 py-1 text-[0.6875rem] text-[#9aa0ad]">
                       <span className="h-px flex-1 bg-[#e6e8ee]" />
