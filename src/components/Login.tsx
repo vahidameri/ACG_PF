@@ -1,10 +1,10 @@
 import { useState } from 'react'
 import { JOB_TITLE } from '../lib/labels'
-import { ArrowRight, KeyRound, Loader, User } from 'lucide-react'
+import { ArrowRight, Eye, EyeOff, KeyRound, Loader, User } from 'lucide-react'
 import { useStore } from '../lib/store'
 import { useGoogle } from '../lib/google'
 import { useI18n, L, lbl } from '../lib/i18n'
-import { AcgLogo, AcgMark } from './Brand'
+import { AcgMark } from './Brand'
 import { VERSION } from '../lib/brand'
 import { cx } from './ui'
 
@@ -51,6 +51,7 @@ export function Login({ onEnter }: { onEnter: () => void }) {
     }
   })
   const [password, setPassword] = useState('')
+  const [showPw, setShowPw] = useState(false)
   const [working, setWorking] = useState(false)
   const pwLogin = async () => {
     setErr('')
@@ -68,112 +69,132 @@ export function Login({ onEnter }: { onEnter: () => void }) {
     }
   }
 
-  return (
-    <div className="fixed inset-0 z-[90] flex bg-bg">
-      {/* brand side */}
-      <aside className="band relative hidden w-[46%] max-w-[44rem] flex-col justify-between overflow-hidden p-12 lg:flex">
-        <div className="relative z-10 flex items-center gap-3 text-white">
-          <AcgMark className="h-8" />
-          <span className="font-mono text-[0.6875rem] uppercase tracking-[0.22em] text-band-sub">ACG · Atlas</span>
-        </div>
-        <div className="relative z-10 max-w-md rise">
-          <div className="display text-6xl leading-none text-white">{L('اطلس', 'Atlas')}</div>
-          <p className="mt-4 text-lg text-[#c3d0e8]">{L('اطلس پروژه‌های ACG', 'The ACG engagement atlas')}</p>
-        </div>
-        <div className="relative z-10 flex items-center justify-between text-[0.6875rem] text-band-sub">
-          <span>Antwerp Consulting Group</span>
-          <a href="https://joinacg.com" target="_blank" rel="noreferrer" dir="ltr" className="font-mono uppercase tracking-[0.18em] transition hover:text-white">
-            joinacg.com
-          </a>
-        </div>
-      </aside>
+  const gBtn = 'light-btn flex h-12 w-full items-center justify-center gap-3 rounded-2xl text-sm font-semibold text-[#16181d] disabled:opacity-60'
 
-      {/* sign-in side */}
-      <main className="relative flex flex-1 flex-col">
-        <div className="flex items-center justify-between px-6 py-5 sm:px-10">
-          <AcgLogo className="h-5 text-ink lg:invisible" />
-          <div className="flex rounded-full border border-line p-0.5">
+  return (
+    <div className="login-scene fixed inset-0 z-[90] overflow-y-auto text-white">
+      {/* living backdrop: aurora, stars and a perspective map floor */}
+      <div aria-hidden className="pointer-events-none fixed inset-0 overflow-hidden">
+        <span className="aurora aurora-1" />
+        <span className="aurora aurora-2" />
+        <span className="aurora aurora-3" />
+        <span className="stars" />
+        <span className="floor" />
+      </div>
+
+      <div className="relative z-10 flex min-h-full flex-col">
+        <header className="flex items-center justify-between px-6 py-5 sm:px-10">
+          <div className="flex items-center gap-3">
+            <AcgMark className="h-7 text-white" />
+            <span className="font-mono text-[0.6875rem] uppercase tracking-[0.25em] text-white/50">ACG · Atlas</span>
+          </div>
+          <div className="glass flex rounded-full p-0.5">
             {(['fa', 'en'] as const).map((l) => (
-              <button key={l} onClick={() => setLang(l)} className={cx('h-7 rounded-full px-3 text-[0.6875rem] font-semibold transition', lang === l ? 'bg-ink text-surface' : 'text-sub hover:text-ink')}>
+              <button key={l} onClick={() => setLang(l)} className={cx('h-7 rounded-full px-3 text-[0.6875rem] font-semibold transition', lang === l ? 'bg-white text-[#111]' : 'text-white/60 hover:text-white')}>
                 {l === 'fa' ? 'فا' : 'EN'}
               </button>
             ))}
           </div>
-        </div>
+        </header>
 
-        <div className="flex flex-1 items-center justify-center px-6 pb-16">
-          <div className="w-full max-w-sm rise">
-            <div className="mb-8 lg:hidden">
-              <div className="display text-4xl">{L('اطلس', 'Atlas')}</div>
-              <p className="mt-1 text-sm text-sub">{L('اطلس پروژه‌های ACG', 'The ACG engagement atlas')}</p>
+        <main className="mx-auto grid w-full max-w-6xl flex-1 items-center gap-6 px-5 pb-8 sm:gap-10 sm:px-6 lg:grid-cols-[1.1fr_1fr] lg:gap-16 lg:px-10">
+          {/* hero: the A draws itself inside its orbits */}
+          <section className="flex flex-col items-center text-center">
+            <div className="hero-mark relative mx-auto h-40 w-40 sm:h-64 sm:w-64 lg:h-[20rem] lg:w-[20rem]">
+              <span className="orbit orbit-1"><i /></span>
+              <span className="orbit orbit-2"><i /></span>
+              <span className="orbit orbit-3"><i /></span>
+              <span className="mark-glow" />
+              <svg viewBox="300 150 564 604" className="absolute inset-0 m-auto h-[42%] w-[42%] overflow-visible">
+                <defs>
+                  <linearGradient id="acg-a-grad" x1="0" y1="0" x2="1" y2="1">
+                    <stop offset="0" stopColor="#ffffff" />
+                    <stop offset="1" stopColor="#c3d0e8" />
+                  </linearGradient>
+                </defs>
+                <path className="hero-a" pathLength={1} d="M581.5 166 L316 736.5 L383.5 736.5 L582 311 L779.5 736.5 L847.5 736.5 Z" fill="url(#acg-a-grad)" stroke="#fff" strokeWidth={8} strokeLinejoin="round" />
+                <circle className="hero-dot" cx="587" cy="706.5" r="29" fill="#f5b31b" />
+              </svg>
             </div>
+            <h2 className="display hero-title mt-1 text-5xl leading-none sm:text-7xl lg:text-8xl">{L('اطلس', 'Atlas')}</h2>
+            <p className="hero-sub mt-3 text-sm text-white/60 sm:text-lg">{L('اطلس پروژه‌های ACG', 'The ACG engagement atlas')}</p>
+          </section>
+
+          {/* the form, on glass */}
+          <section className="login-card light-card mx-auto w-full max-w-md rounded-[2rem] p-7 text-[#16181d] sm:p-9">
             <h1 className="text-2xl font-semibold tracking-tight">{L('ورود به اطلس', 'Sign in to Atlas')}</h1>
+            <p className="mt-1.5 text-sm text-[#6b7180]">{L('خوش آمدید', 'Welcome back')}</p>
 
             {g.otp ? (
-              <div className="mt-8 space-y-3">
+              <div className="mt-7 space-y-3">
                 <form onSubmit={(e) => (e.preventDefault(), pwLogin())} className="space-y-3">
-                  <div className="relative">
-                    <User size={16} className="pointer-events-none absolute start-3.5 top-1/2 -translate-y-1/2 text-sub" />
-                    <input className="input h-12 w-full ps-10 text-sm" dir="ltr" autoFocus={!username} autoComplete="username" autoCapitalize="none" spellCheck={false} placeholder={L('نام کاربری', 'Username')} value={username} onChange={(e) => setUsername(e.target.value)} />
-                  </div>
-                  <div className="relative">
-                    <KeyRound size={16} className="pointer-events-none absolute start-3.5 top-1/2 -translate-y-1/2 text-sub" />
-                    <input className="input h-12 w-full ps-10 text-sm" dir="ltr" type="password" autoFocus={!!username} autoComplete="current-password" placeholder={L('رمز عبور', 'Password')} value={password} onChange={(e) => setPassword(e.target.value)} />
-                  </div>
-                  <button className="btn-primary h-12 w-full" disabled={working || !username.trim() || !password}>
+                  <label className="light-field">
+                    <User size={16} className="shrink-0 text-[#9aa0ad]" />
+                    <input dir="ltr" autoFocus={!username} autoComplete="username" autoCapitalize="none" spellCheck={false} placeholder={L('نام کاربری', 'Username')} value={username} onChange={(e) => setUsername(e.target.value)} />
+                  </label>
+                  <label className="light-field">
+                    <KeyRound size={16} className="shrink-0 text-[#9aa0ad]" />
+                    <input dir="ltr" type={showPw ? 'text' : 'password'} autoFocus={!!username} autoComplete="current-password" placeholder={L('رمز عبور', 'Password')} value={password} onChange={(e) => setPassword(e.target.value)} />
+                    <button type="button" tabIndex={-1} onClick={() => setShowPw((x) => !x)} className="shrink-0 text-[#9aa0ad] transition hover:text-[#16181d]" aria-label={L('نمایش رمز', 'Show password')}>
+                      {showPw ? <EyeOff size={16} /> : <Eye size={16} />}
+                    </button>
+                  </label>
+                  <button className="shine-btn flex h-12 w-full items-center justify-center gap-2 rounded-2xl text-sm font-bold text-[#111]" disabled={working || !username.trim() || !password}>
                     {working ? <Loader size={16} className="animate-spin" /> : <ArrowRight size={16} className="rtl:-scale-x-100" />}
                     {L('ورود', 'Sign in')}
                   </button>
                 </form>
                 {g.appUrl && (
                   <>
-                    <div className="flex items-center gap-3 py-1 text-[0.6875rem] text-sub">
-                      <span className="h-px flex-1 bg-line" />
+                    <div className="flex items-center gap-3 py-1 text-[0.6875rem] text-[#9aa0ad]">
+                      <span className="h-px flex-1 bg-[#e6e8ee]" />
                       {L('یا', 'or')}
-                      <span className="h-px flex-1 bg-line" />
+                      <span className="h-px flex-1 bg-[#e6e8ee]" />
                     </div>
-                    <a href={g.appUrl} target="_top" className="flex h-12 w-full items-center justify-center gap-3 rounded-xl border border-line-strong bg-surface text-sm font-semibold text-ink shadow-sm transition hover:bg-muted">
+                    <a href={g.appUrl} target="_top" className={gBtn}>
                       <GoogleG /> {L('ورود با حساب گوگل', 'Continue with Google')}
                     </a>
                   </>
                 )}
               </div>
             ) : (
-            <button
-              onClick={google}
-              disabled={busy && !g.hosted}
-              className="mt-8 flex h-12 w-full items-center justify-center gap-3 rounded-xl border border-line-strong bg-surface text-sm font-semibold text-ink shadow-sm transition hover:bg-muted disabled:opacity-60"
-            >
-              {busy ? <Loader size={18} className="animate-spin" /> : <GoogleG />}
-              {g.hosted && g.session ? L(`ادامه با ${g.session.email}`, `Continue as ${g.session.email}`) : L('ورود با حساب گوگل', 'Continue with Google')}
-            </button>
+              <button onClick={google} disabled={busy && !g.hosted} className={cx(gBtn, 'mt-7')}>
+                {busy ? <Loader size={18} className="animate-spin" /> : <GoogleG />}
+                {g.hosted && g.session ? L(`ادامه با ${g.session.email}`, `Continue as ${g.session.email}`) : L('ورود با حساب گوگل', 'Continue with Google')}
+              </button>
             )}
-            {error && <p className="mt-3 rounded-xl bg-bad/10 px-3 py-2 text-xs leading-5 text-bad">{error}</p>}
+            {error && <p className="mt-3 rounded-xl bg-[#fde8eb] px-3 py-2 text-xs leading-5 text-[#c0283d]">{error}</p>}
 
             {mode === 'demo' && (
-              <div className="mt-8 border-t border-line pt-6">
-                <div className="mb-2 text-xs font-medium">{L('نمایشی', 'Demo')}</div>
+              <div className="mt-7 border-t border-[#e6e8ee] pt-6">
+                <div className="mb-2 text-xs font-medium text-[#6b7180]">{L('نمایشی', 'Demo')}</div>
                 <div className="flex gap-2">
-                  <select className="input h-11 flex-1 text-sm" value={who} onChange={(e) => setWho(e.target.value)}>
+                  <select className="light-select h-11 flex-1 rounded-2xl px-3 text-sm" value={who} onChange={(e) => setWho(e.target.value)}>
                     {db.Team.map((m) => (
                       <option key={m.id} value={m.id}>
                         {m.name} — {lbl(JOB_TITLE, m.role)}
                       </option>
                     ))}
                   </select>
-                  <button className="btn-primary h-11 px-5" onClick={() => (setMe(db.Team.find((m) => m.id === who)?.name || ''), onEnter())}>
+                  <button className="shine-btn h-11 rounded-2xl px-5 text-sm font-bold text-[#111]" onClick={() => (setMe(db.Team.find((m) => m.id === who)?.name || ''), onEnter())}>
                     {L('ورود', 'Enter')}
                   </button>
                 </div>
               </div>
             )}
-          </div>
-        </div>
-        <a href="https://joinacg.com" target="_blank" rel="noreferrer" dir="ltr" className="pb-2 text-center font-mono text-[0.6875rem] uppercase tracking-[0.18em] text-sub transition hover:text-ink lg:hidden">
-          joinacg.com
-        </a>
-        <div className="pb-5 text-center font-mono text-[0.625rem] text-sub/70" dir="ltr">v{VERSION}</div>
-      </main>
+          </section>
+        </main>
+
+        <footer className="flex items-center justify-between px-6 pb-5 text-[0.6875rem] text-white/35 sm:px-10">
+          <span>Antwerp Consulting Group</span>
+          <span className="flex items-center gap-4" dir="ltr">
+            <a href="https://joinacg.com" target="_blank" rel="noreferrer" className="font-mono uppercase tracking-[0.18em] transition hover:text-white">
+              joinacg.com
+            </a>
+            <span className="font-mono">v{VERSION}</span>
+          </span>
+        </footer>
+      </div>
     </div>
   )
 }
