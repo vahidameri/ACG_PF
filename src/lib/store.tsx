@@ -186,23 +186,31 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     setTaskCfg(readTaskCfg((k) => db.Config.find((r) => r.id === k)?.value, db.Team))
   }, [db.Config, db.Team])
   // English UI: Persian free text is shown translated (fetched from the server, cached locally)
-  const [tr, setTr] = useState<TrMap>(loadTr)
+  const [tr, setTr] = useState<TrMap>(() => loadTr(lang))
+  const trLang = useRef(lang)
   const trFailed = useRef(new Set<string>())
+  // switch to the other direction's dictionary when the UI language changes
+  if (trLang.current !== lang) {
+    trLang.current = lang
+    trFailed.current = new Set()
+    setTr(loadTr(lang))
+  }
   const trRev = useMemo(() => new Map(Object.entries(tr).map(([fa, en]) => [en, fa])), [tr])
   const trRevRef = useRef(trRev)
   trRevRef.current = trRev
   useEffect(() => {
-    if (lang !== 'en' || mode !== 'live' || !lastSync) return
-    const todo = pendingTexts(db, tr, trFailed.current).slice(0, 80)
+    if (mode !== 'live' || !lastSync) return
+    const to = lang
+    const todo = pendingTexts(db, to, tr, trFailed.current).slice(0, 80)
     if (!todo.length) return
     let live = true
-    remoteAction(config, 'translate', { texts: todo, target: 'en' })
+    remoteAction(config, 'translate', { texts: todo, target: to })
       .then((r: { map?: TrMap }) => {
         todo.forEach((t) => !(r.map && r.map[t]) && trFailed.current.add(t))
-        if (!live || !r.map) return
+        if (!live || !r.map || trLang.current !== to) return
         setTr((m) => {
           const next = { ...m, ...r.map }
-          saveTr(next)
+          saveTr(to, next)
           return next
         })
       })
@@ -213,7 +221,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   }, [lang, mode, lastSync, db, tr]) // eslint-disable-line react-hooks/exhaustive-deps
   const shown = useMemo(() => {
     const v = mapDB(scopeDB(visibleDB(db, canonMe), canonMe, access), maps.toEn)
-    return lang === 'en' ? translateDB(v, tr) : v
+    return translateDB(v, tr)
   }, [db, canonMe, access, maps, lang, tr])
   setPhotos(db.Team)
 
@@ -304,7 +312,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
 
   const upsert = useCallback(
     async <S extends SheetName>(sheet: S, input: Row<S>) => {
-      const row = mapRow(sheet, untranslateRow(sheet, input as unknown as Record<string, unknown>, locale.lang === 'en' ? trRevRef.current : new Map()), toCanonRef.current) as unknown as Row<S>
+      const row = mapRow(sheet, untranslateRow(sheet, input as unknown as Record<string, unknown>, trRevRef.current), toCanonRef.current) as unknown as Row<S>
       const prev = dbRef.current
       const list = prev[sheet] as Row<S>[]
       const exists = list.some((r) => r.id === row.id)

@@ -168,7 +168,9 @@ export function GoogleProvider({ children }: { children: ReactNode }) {
   }, [loadHosted, session])
 
   const signOut = useCallback(() => {
-    if (session?.token) window.google?.accounts.oauth2.revoke(session.token)
+    try {
+      if (session?.token) window.google?.accounts?.oauth2?.revoke(session.token)
+    } catch {}
     try {
       sessionStorage.removeItem(KEY)
     } catch {}
