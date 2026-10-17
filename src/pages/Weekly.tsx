@@ -441,13 +441,13 @@ function buildAgenda(m: Meeting, db: DB, open: ReturnType<typeof useEditor>['ope
       delSection,
       {
         icon: Workflow,
-        title: L('تحویل‌ها و هماهنگی با سایدهای دیگر', 'Hand-offs with the other sides'),
+        title: L('تحویل‌ها و هماهنگی با واحدهای دیگر', 'Hand-offs with the other units'),
         items: [
-          ...hs.slice(0, 6).map((h) => ({ key: 'h' + h.id, primary: h.title, secondary: `${lbl(TRACK, h.from_side)} → ${lbl(TRACK, h.to_side)} · ${h.status === 'returned' ? L('برگشت خورده', 'returned') : L('منتظر پاسخ', 'awaiting reply')}${Number(h.round) > 1 ? L(` · دور ${fa(h.round)}`, ` · round ${h.round}`) : ''}`, tone: (h.status === 'returned' ? 'red' : 'amber') as Health, to: '/teams' })),
+          ...hs.slice(0, 6).map((h) => ({ key: 'h' + h.id, primary: h.title, secondary: `${L(`از ${lbl(TRACK, h.from_side)} به ${lbl(TRACK, h.to_side)}`, `${lbl(TRACK, h.from_side)} to ${lbl(TRACK, h.to_side)}`)} · ${h.status === 'returned' ? L('برگشت خورده', 'returned') : L('منتظر پاسخ', 'awaiting reply')}${Number(h.round) > 1 ? L(` · دور ${fa(h.round)}`, ` · round ${h.round}`) : ''}`, tone: (h.status === 'returned' ? 'red' : 'amber') as Health, to: '/teams' })),
           ...owed.slice(0, 4).map((t) => ({ key: 'o' + t.id, primary: t.title, secondary: L(`${pname(t.project_id)} · ${owedTo(t)} منتظر این است`, `${pname(t.project_id)} · ${owedTo(t)} waiting on this`), tone: 'amber' as Health, onClick: () => open('Tasks', t as never) })),
           ...waiting.slice(0, 4).map((t) => ({ key: 'w' + t.id, primary: t.title, secondary: L(`${pname(t.project_id)} · ${sideOf(t)} منتظر ${waitsOn(t)}`, `${pname(t.project_id)} · waiting on ${waitsOn(t)}`), tone: 'red' as Health, onClick: () => open('Tasks', t as never) })),
         ],
-        empty: L('تحویل یا وابستگی بازی با سایدهای دیگر نیست', 'No open hand-offs with other sides'),
+        empty: L('تحویل یا وابستگی بازی با واحدهای دیگر نیست', 'No open hand-offs with other units'),
       },
       capSection(track),
       updSection,

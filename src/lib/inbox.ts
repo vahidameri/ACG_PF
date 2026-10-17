@@ -69,7 +69,7 @@ export function buildInbox(db: DB, me: string): InboxItem[] {
     else if (h.from_person === me && h.status === 'sent' && h.due_date && h.due_date < today)
       out.push({ id: `ho-${h.id}`, kind: 'handoff', tone: 'warn', when: h.due_date, title: h.title, sub: L(`${lbl(TRACK, h.to_side)} هنوز پاسخ نداده`, `${lbl(TRACK, h.to_side)} has not answered yet`), target: { sheet: 'Tasks', id: h.task_id } })
   })
-  // weekly delivery day of the projects I lead (leadership sees all of them on the Compass)
+  // weekly delivery day of the projects I lead (leadership sees all of them on the Lookout)
   db.Projects.filter((p) => p.owner === me).forEach((p) => {
     const st = weekState(p, db)
     if (st === 'today' || st === 'soon' || st === 'late' || st === 'missed')
@@ -82,7 +82,7 @@ export function buildInbox(db: DB, me: string): InboxItem[] {
 /** In-app notification kinds; the program manager can switch any of them off (Config notify.off). */
 export const NOTIFY_KINDS: { id: InboxItem['kind']; label: [string, string] }[] = [
   { id: 'assigned', label: ['تسک تازه برای من', 'New task for me'] },
-  { id: 'handoff', label: ['تحویل بین سایدها (رسیده، برگشتی، بی‌پاسخ)', 'Hand-offs (new, returned, unanswered)'] },
+  { id: 'handoff', label: ['تحویل بین واحدها (رسیده، برگشتی، بی‌پاسخ)', 'Hand-offs (new, returned, unanswered)'] },
   { id: 'remind', label: ['تاریخ پیگیری، تحویل به پروداکت، تست', 'Follow-up, hand-off and testing dates'] },
   { id: 'deadline', label: ['ددلاین امروز و فردا', 'Deadline today or tomorrow'] },
   { id: 'overdue', label: ['تسک معوق', 'Overdue task'] },

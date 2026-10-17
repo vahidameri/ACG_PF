@@ -44,7 +44,7 @@ export const SCHEMAS: Record<EditableSheet, { title: T2; prefix: string; fields:
       { key: 'sprint_id', label: ['اسپرینت', 'Sprint'], type: 'sprint', half: true },
       { key: 'assignee', label: ['مسئول انجام (یک یا چند نفر)', 'Assignees (one or more)'], type: 'assignees' },
       { key: 'collaborators', label: ['همکاران (تسک مشترک)', 'Shared with'], type: 'people' },
-      { key: 'watchers', label: ['پیگیرها (قطب‌نما و اعلان)', 'Tracked by (Compass & alerts)'], type: 'people' },
+      { key: 'watchers', label: ['پیگیرها (دیده‌بان و اعلان)', 'Tracked by (Lookout & alerts)'], type: 'people' },
       { key: 'status', label: ['وضعیت', 'Status'], type: 'status', half: true },
       { key: 'priority', label: ['اولویت', 'Priority'], type: 'select', options: PRIORITY, half: true },
       { key: 'start_date', label: ['تاریخ شروع', 'Start date'], type: 'date', half: true },
@@ -57,7 +57,7 @@ export const SCHEMAS: Record<EditableSheet, { title: T2; prefix: string; fields:
       { key: 'estimate', label: ['تخمین (ساعت)', 'Estimate (hours)'], type: 'number', half: true },
       { key: 'points', label: ['استوری‌پوینت', 'Story points'], type: 'number', half: true },
       { key: 'tags', label: ['برچسب‌ها', 'Tags'], type: 'text', half: true, placeholder: ['با کاما جدا کنید', 'Comma separated'] },
-      { key: 'track', label: ['ساید', 'Side'], type: 'side', half: true },
+      { key: 'track', label: ['واحد', 'Unit'], type: 'side', half: true },
       { key: 'private', label: ['دیده‌شدن', 'Visibility'], type: 'select', options: { '': ['عمومی', 'Visible'], '1': ['خصوصی', 'Private'] }, half: true },
     ],
     defaults: () => ({ private: '', status: 'todo', priority: 'medium', points: 0, created_at: todayISO(), track: '', depends_on: '', meeting_id: '', deadline: '', handoff_date: '', test_date: '', follow_date: '', area: '', collaborators: '', watchers: '', notify: '', start_date: '', estimate: '', checklist: '' }),
@@ -183,7 +183,7 @@ export const SCHEMAS: Record<EditableSheet, { title: T2; prefix: string; fields:
       { key: 'username', label: ['نام کاربری', 'Username'], type: 'text', half: true, placeholder: ['خودکار از نام انگلیسی', 'From the English name'] },
       { key: 'role', label: ['سمت', 'Title'], type: 'title', half: true },
       { key: 'team', label: ['تیم‌ها', 'Teams'], type: 'multi', options: TEAM_NAMES },
-      { key: 'track', label: ['ساید', 'Side'], type: 'side', half: true },
+      { key: 'track', label: ['واحد', 'Unit'], type: 'side', half: true },
       { key: 'capacity', label: ['ظرفیت', 'Capacity'], type: 'number', half: true },
       { key: 'email', label: ['ایمیل گوگل', 'Google email'], type: 'text', half: true },
       { key: 'phone', label: ['تلفن', 'Phone'], type: 'text', half: true },
@@ -213,7 +213,7 @@ export const SCHEMAS: Record<EditableSheet, { title: T2; prefix: string; fields:
       { key: 'project_id', label: ['پروژه', 'Project'], type: 'project', half: true, required: true },
       { key: 'owner', label: ['مسئول', 'Owner'], type: 'person', half: true },
       { key: 'target_date', label: ['تاریخ تحویل', 'Target date'], type: 'date', half: true, required: true },
-      { key: 'track', label: ['ساید', 'Side'], type: 'side', half: true },
+      { key: 'track', label: ['واحد', 'Unit'], type: 'side', half: true },
       { key: 'status', label: ['وضعیت', 'Status'], type: 'select', options: DELIVERABLE_STATUS, half: true },
       { key: 'confidence', label: ['اطمینان', 'Confidence'], type: 'select', options: CONFIDENCE, half: true },
       { key: 'baseline_date', label: ['تاریخ تعهد اولیه', 'Baseline date'], type: 'date', half: true },
@@ -333,7 +333,7 @@ export function FieldInput({ f, value, set, form, disabled, autoFocus, onSubmit 
     case 'side':
       return (
         <select {...common} value={String(v)} onChange={(e) => set(e.target.value)}>
-          <option value="">{f.key === 'track' && 'assignee' in form ? L('خودکار (ساید مسئول)', 'Auto (assignee’s side)') : '—'}</option>
+          <option value="">{f.key === 'track' && 'assignee' in form ? L('خودکار (واحد مسئول)', 'Auto (assignee’s unit)') : '—'}</option>
           {TRACKS.map((t) => (
             <option key={t} value={t}>
               {lbl(TRACK, t)}

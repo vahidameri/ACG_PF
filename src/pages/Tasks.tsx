@@ -133,7 +133,7 @@ export default function Tasks() {
             <FilterSelect value={project} onChange={(v) => set('project', v)} placeholder={L('همه‌ی پروژه‌ها', 'All projects')} options={db.Projects.map((p) => ({ value: p.id, label: p.name }))} />
             <FilterSelect value={assignee} onChange={(v) => set('assignee', v)} placeholder={L('همه‌ی افراد', 'Everyone')} options={assignees.map((a) => ({ value: a, label: a === me ? `${a} (${L('من', 'me')})` : a }))} />
             {view === 'list' && <FilterSelect value={get('status')} onChange={(v) => set('status', v)} placeholder={L('باز', 'Open')} options={[{ value: 'all', label: L('همه', 'All') }, ...columns().map((c) => ({ value: c.id, label: statusLabel(c.id) }))]} />}
-            <FilterSelect value={track} onChange={(v) => set('track', v)} placeholder={L('همه‌ی سایدها', 'All sides')} options={TRACKS.map((t) => ({ value: t, label: lbl(TRACK, t) }))} />
+            <FilterSelect value={track} onChange={(v) => set('track', v)} placeholder={L('همه‌ی واحدها', 'All units')} options={TRACKS.map((t) => ({ value: t, label: lbl(TRACK, t) }))} />
             <FilterSelect value={prio} onChange={(v) => set('priority', v)} placeholder={L('اولویت', 'Priority')} options={options(PRIORITY, lang)} />
             <FilterSelect
               value={due}
@@ -194,7 +194,7 @@ export default function Tasks() {
                       </SortTh>
                       <th className="th">{L('عنوان', 'Title')}</th>
                       <th className="th">{L('پروژه', 'Project')}</th>
-                      <th className="th">{L('ساید', 'Side')}</th>
+                      <th className="th">{L('واحد', 'Unit')}</th>
                       <SortTh k="priority">{L('اولویت', 'Priority')}</SortTh>
                       <SortTh k="assignee">{L('مسئول', 'Assignee')}</SortTh>
                       <SortTh k="due_date">{L('سررسید', 'Due')}</SortTh>

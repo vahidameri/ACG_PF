@@ -3,7 +3,7 @@ import { NavLink, useLocation, useNavigate, Link } from 'react-router-dom'
 import {
   LayoutGrid, Briefcase, ListChecks, BellRing, ShieldAlert, FileText, Settings, Moon, Sun, Search, Plus, RefreshCw, Menu,
   Sparkles, CheckCircle2, AlertCircle, Bell, PanelLeftClose, PanelLeftOpen, Languages, Star, AtSign, Flag, Clock, CircleAlert, Ban, CalendarDays, Keyboard, PackageCheck, CalendarRange, Gauge, UserRound, LogOut,
-  Compass as CompassIcon, Repeat,
+  Binoculars, Repeat,
 } from 'lucide-react'
 import { useStore, clearSnaps } from '../lib/store'
 import { useI18n, L } from '../lib/i18n'
@@ -99,7 +99,7 @@ export function Layout({ children }: { children: ReactNode }) {
       label: L('کار من', 'My work'),
       links: [
         { to: '/my', label: L('خانه', 'Home'), icon: Sparkles, badge: myCount },
-        ...(leader ? [{ to: '/compass', label: L('قطب‌نما', 'Compass'), icon: CompassIcon, badge: radarLate }] : []),
+        ...(leader ? [{ to: '/lookout', label: L('دیده‌بان', 'Lookout'), icon: Binoculars, badge: radarLate }] : []),
         { to: '/calendar', label: L('تقویم', 'Calendar'), icon: CalendarDays },
         { to: '/meetings', label: L('جلسات', 'Meetings'), icon: CalendarRange },
         { to: '/tasks', label: L('کارها', 'Work'), icon: ListChecks, count: db.Tasks.filter((t) => t.status !== 'done').length, hub: 'work' },

@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
-import { ArrowLeft, ArrowRight, CheckCircle2, Clock, Link2 } from 'lucide-react'
+import { CheckCircle2, Clock, Link2 } from 'lucide-react'
 import { useStore } from '../lib/store'
 import { HubNav } from '../components/HubNav'
 import { useEditor } from '../components/Editor'
@@ -10,7 +10,7 @@ import { TRACK, TRACKS, trackOf, trackStats, handoffs, sideDot, sideSoft, sideCo
 import { pairStats } from '../lib/handoffs'
 import { HandoffBoard, Flow } from '../components/Handoffs'
 import { fa } from '../lib/jalali'
-import { L, lbl, locale } from '../lib/i18n'
+import { L, lbl } from '../lib/i18n'
 import type { Task, Track } from '../lib/types'
 import { TrackBadge } from '../components/ItemSheet'
 import { assigneesOf, isAssignee } from '../lib/assignees'
@@ -30,14 +30,13 @@ export default function Teams() {
   const waitingPasses = passes.filter((h) => h.status === 'sent').length
   const returned = passes.filter((h) => h.status === 'returned').length
   const answered = passes.filter((h) => h.status !== 'sent').length
-  const Arrow = locale.lang === 'fa' ? ArrowLeft : ArrowRight
   const pname = (id: string) => db.Projects.find((p) => p.id === id)?.name || ''
   const pairs = pairStats(db, pid)
 
   return (
     <>
       <Band nav={<HubNav hub="plan" />}
-        title={L('سایدها و تحویل‌ها', 'Sides & hand-offs')}
+        title={L('واحدها و تحویل‌ها', 'Units & hand-offs')}
         sub={TRACKS.map((t) => lbl(TRACK, t)).join(' · ')}
         actions={<Segmented dark value={view} onChange={setView} options={[{ value: 'handoffs', label: L('رفت و برگشت', 'Hand-offs') }, { value: 'side', label: L('کنار هم', 'Side by side') }, { value: 'deps', label: L('وابستگی‌ها', 'Dependencies') }, { value: 'projects', label: L('به تفکیک پروژه', 'By project') }]} />}
       >
@@ -58,7 +57,7 @@ export default function Teams() {
         <div className="card p-3">
           <Toolbar className="!mb-0">
             <FilterSelect value={project} onChange={setProject} placeholder={L('همه‌ی پروژه‌ها', 'All projects')} options={db.Projects.filter((p) => p.status !== 'cancelled').map((p) => ({ value: p.id, label: p.name }))} />
-            {view === 'handoffs' && <FilterSelect value={side} onChange={setSide} placeholder={L('همه‌ی سایدها', 'All sides')} options={TRACKS.map((t) => ({ value: t, label: lbl(TRACK, t) }))} />}
+            {view === 'handoffs' && <FilterSelect value={side} onChange={setSide} placeholder={L('همه‌ی واحدها', 'All units')} options={TRACKS.map((t) => ({ value: t, label: lbl(TRACK, t) }))} />}
             <span className="ms-auto flex items-center gap-4 text-xs text-sub">
               {TRACKS.map((t) => (
                 <span key={t} className="flex items-center gap-1.5">
@@ -72,7 +71,7 @@ export default function Teams() {
         {view === 'handoffs' && (
           <>
             {pairs.length > 0 && (
-              <Card pad={false} eyebrow={L('مسیرها', 'Lanes')} title={L('رفت و برگشت بین سایدها', 'Back and forth between sides')}>
+              <Card pad={false} eyebrow={L('مسیرها', 'Lanes')} title={L('رفت و برگشت بین واحدها', 'Back and forth between units')}>
                 <div className="overflow-x-auto">
                   <table className="w-full min-w-[40rem]">
                     <thead className="border-b border-line">
@@ -103,7 +102,7 @@ export default function Teams() {
             )}
             <HandoffBoard projectId={pid} side={side || undefined} />
             {!passes.length && (
-              <p className="text-center text-xs leading-6 text-sub">{L('در هر تسک «تحویل به ساید دیگر» را بزنید؛ گیرنده می‌پذیرد یا با توضیح برمی‌گرداند و هر رفت و برگشت این‌جا شمرده می‌شود.', 'In any task press “Hand off to another side”; the receiver accepts it or sends it back with a reason, and every round is counted here.')}</p>
+              <p className="text-center text-xs leading-6 text-sub">{L('در هر تسک «تحویل به واحد دیگر» را بزنید؛ گیرنده می‌پذیرد یا با توضیح برمی‌گرداند و هر رفت و برگشت این‌جا شمرده می‌شود.', 'In any task press “Hand off to another unit”; the receiver accepts it or sends it back with a reason, and every round is counted here.')}</p>
             )}
           </>
         )}
@@ -122,7 +121,7 @@ export default function Teams() {
               { title: L('منتظر پیش‌نیاز', 'Waiting on a dependency'), items: pending, tone: 'bad' as const },
               { title: L('آماده برای شروع', 'Ready to start'), items: ready, tone: 'good' as const },
             ].map((g) => (
-              <Card key={g.title} eyebrow={L('وابستگی بین سایدها', 'Cross-side dependencies')} title={`${g.title} · ${fa(g.items.length)}`}>
+              <Card key={g.title} eyebrow={L('وابستگی بین واحدها', 'Cross-unit dependencies')} title={`${g.title} · ${fa(g.items.length)}`}>
                 {g.items.length === 0 ? (
                   <Empty />
                 ) : (
@@ -139,8 +138,8 @@ export default function Teams() {
                         </div>
                         <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-2">
                           <HandoffNode t={h.from} onClick={() => open('Tasks', h.from as never)} />
-                          <span className={cx('grid h-8 w-8 place-items-center rounded-full', h.ready ? 'bg-good text-white' : 'bg-warn/15 text-warn')}>
-                            <Arrow size={15} />
+                          <span className={cx('grid h-8 min-w-8 place-items-center rounded-full px-2', h.ready ? 'bg-good text-white' : 'bg-warn/15 text-warn')}>
+                            <span className="text-[0.625rem] font-medium">{L('سپس', 'then')}</span>
                           </span>
                           <HandoffNode t={h.to} onClick={() => open('Tasks', h.to as never)} />
                         </div>
@@ -154,7 +153,7 @@ export default function Teams() {
         )}
 
         {view === 'projects' && (
-          <Card pad={false} eyebrow={L('مقایسه', 'Comparison')} title={L('پیشرفت هر ساید در هر پروژه', 'Each side’s progress per project')}>
+          <Card pad={false} eyebrow={L('مقایسه', 'Comparison')} title={L('پیشرفت هر واحد در هر پروژه', 'Each unit’s progress per project')}>
             <div className="divide-y divide-line">
               {db.Projects.filter((p) => p.status === 'active' || p.status === 'planning').map((p) => {
                 const open = db.Handoffs.filter((x) => x.project_id === p.id && x.status === 'sent').length
@@ -238,7 +237,7 @@ function TrackColumn({ track, projectId }: { track: Track; projectId?: string })
           <Ring value={st.pct} size={76} stroke={7} h={st.overdue ? 'amber' : 'green'} />
           <div className="min-w-0 flex-1">
             <div className="chip side-soft mb-1" style={sideSoft(track)}>{lbl(TRACK, track)}</div>
-            <div className="text-lg font-bold">{L(`ساید ${lbl(TRACK, track)}`, `${lbl(TRACK, track)} side`)}</div>
+            <div className="text-lg font-bold">{L(`واحد ${lbl(TRACK, track)}`, `${lbl(TRACK, track)} unit`)}</div>
             <div className="text-xs text-sub">{L(`${fa(st.done)} از ${fa(st.total)} کار انجام شده · ${fa(inbox)} تحویل منتظر پاسخ`, `${st.done} of ${st.total} done · ${inbox} hand-offs waiting`)}</div>
           </div>
         </div>
@@ -247,7 +246,7 @@ function TrackColumn({ track, projectId }: { track: Track; projectId?: string })
             [L('باز', 'Open'), st.open, ''],
             [L('معوق', 'Overdue'), st.overdue, st.overdue ? 'text-bad' : ''],
             [L('مسدود', 'Blocked'), st.blocked, st.blocked ? 'text-bad' : ''],
-            [L('منتظر ساید دیگر', 'Waiting'), st.waiting, st.waiting ? 'text-warn' : ''],
+            [L('منتظر واحد دیگر', 'Waiting'), st.waiting, st.waiting ? 'text-warn' : ''],
           ].map(([l, v, c]) => (
             <div key={l as string} className="px-3 py-3 text-center">
               <div className={cx('display text-2xl num', c as string)}>{fa(v as number)}</div>
@@ -271,7 +270,7 @@ function TrackColumn({ track, projectId }: { track: Track; projectId?: string })
         )}
       </section>
       {waiting.length > 0 && (
-        <Card eyebrow={L('گلوگاه', 'Bottleneck')} title={L('منتظر سایدهای دیگر', 'Waiting on other sides')}>
+        <Card eyebrow={L('گلوگاه', 'Bottleneck')} title={L('منتظر واحدهای دیگر', 'Waiting on other units')}>
           <div className="-mx-2">{waiting.map((t) => <TaskRow key={t.id} t={t} dense />)}</div>
         </Card>
       )}
@@ -279,7 +278,7 @@ function TrackColumn({ track, projectId }: { track: Track; projectId?: string })
         <div className="px-2 pb-2">{open.length ? open.slice(0, 12).map((t) => <TaskRow key={t.id} t={t} />) : <Empty />}</div>
         {open.length > 12 && (
           <Link to={`/tasks?track=${track}`} className="block border-t border-line py-3 text-center text-xs font-medium text-sub hover:text-ink">
-            {L(`همه‌ی ${fa(open.length)} کار`, `All ${open.length}`)} →
+            {L(`همه‌ی ${fa(open.length)} کار ←`, `All ${open.length} →`)}
           </Link>
         )}
       </Card>

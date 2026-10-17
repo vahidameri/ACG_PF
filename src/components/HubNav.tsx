@@ -18,7 +18,7 @@ export const HUBS = {
   plan: () => [
     { to: '/plan', label: L('برنامه‌ی تحویل', 'Delivery plan') },
     { to: '/roadmap', label: L('رودمپ', 'Roadmap') },
-    { to: '/teams', label: L('سایدها و تحویل‌ها', 'Sides & hand-offs') },
+    { to: '/teams', label: L('واحدها و تحویل‌ها', 'Units & hand-offs') },
   ],
 }
 export type Hub = keyof typeof HUBS

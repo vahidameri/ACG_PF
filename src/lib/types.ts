@@ -107,7 +107,7 @@ export interface Task {
   area?: string
   /** comma-separated names sharing the task (they see it like their own) */
   collaborators?: string
-  /** comma-separated names tracking the task (their Compass + notifications) */
+  /** comma-separated names tracking the task (their Lookout + notifications) */
   watchers?: string
   /** 'off' mutes the reminders for this task */
   notify?: string

@@ -1,7 +1,7 @@
 // Rich detail sheet for a task or follow-up: inline-editable properties, description, comments & activity.
 import { useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { Mail, ListChecks, Trash2, Send, Check, Clock, AlarmClockOff, Hash, Zap, MessageSquare, CircleDot, CheckCircle2, Sparkles, Bell, BellOff, Compass as CompassIcon } from 'lucide-react'
+import { Mail, ListChecks, Trash2, Send, Check, Clock, AlarmClockOff, Hash, Zap, MessageSquare, CircleDot, CheckCircle2, Sparkles, Bell, BellOff, Binoculars } from 'lucide-react'
 import { fieldOn, taskCfg } from '../lib/taskcfg'
 import type { FollowUp, Task, Comment, TaskStatus } from '../lib/types'
 
@@ -230,7 +230,7 @@ export function ItemSheet({ sheet, id, onClose }: { sheet: 'Tasks' | 'FollowUps'
               onClick={() => patch({ watchers: watching ? watchers.filter((x) => x !== me).join(',') : [...watchers, me].join(',') })}
               className={cx('mb-4 flex w-full items-center justify-center gap-2 rounded-2xl border px-3 py-2.5 text-xs font-medium transition', watching ? 'border-brand/30 bg-brand-soft/40 text-ink' : 'border-line bg-surface text-sub hover:text-ink')}
             >
-              <CompassIcon size={14} /> {watching ? L('در قطب‌نمای شماست ✓', 'On your Compass ✓') : L('پیگیری در قطب‌نما', 'Track on my Compass')}
+              <Binoculars size={14} /> {watching ? L('در دیده‌بان شماست ✓', 'On your Lookout ✓') : L('پیگیری در دیده‌بان', 'Track on my Lookout')}
             </button>
           )}
           <div className="eyebrow mb-2 px-2.5">{L('مشخصات', 'Properties')}</div>
@@ -324,7 +324,7 @@ export function ItemSheet({ sheet, id, onClose }: { sheet: 'Tasks' | 'FollowUps'
                   placeholder="—"
                 />
               </Prop>
-              <Prop label={L('ساید', 'Side')}>
+              <Prop label={L('واحد', 'Unit')}>
                 <TrackPicker task={item as unknown as Task} onChange={(v) => patch({ track: v })} />
               </Prop>
               <Prop label={L('برچسب', 'Tags')}>
@@ -565,7 +565,7 @@ function TrackPicker({ task, onChange }: { task: Task; onChange: (v: Track | '')
       {(close) => (
         <>
           <MenuItem active={!task.track} hint={memberTrack(db, task.assignee.split(',')[0]) ? lbl(TRACK, memberTrack(db, task.assignee.split(',')[0]) as Track) : ''} onClick={() => { onChange(''); close() }}>
-            {L('خودکار (ساید مسئول)', 'Auto (assignee’s side)')}
+            {L('خودکار (واحد مسئول)', 'Auto (assignee’s unit)')}
           </MenuItem>
           {TRACKS.map((t) => (
             <MenuItem key={t} active={task.track === t} onClick={() => { onChange(t); close() }}>

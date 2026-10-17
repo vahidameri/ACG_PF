@@ -82,7 +82,7 @@ export default function Plan() {
               ]}
             />
             <FilterSelect value={project} onChange={setProject} placeholder={L('همه‌ی پروژه‌ها', 'All projects')} options={db.Projects.map((p) => ({ value: p.id, label: p.name }))} />
-            <FilterSelect value={track} onChange={(v) => setTrack(v as Track | '')} placeholder={L('همه‌ی سایدها', 'All sides')} options={TRACKS.map((t) => ({ value: t, label: lbl(TRACK, t) }))} />
+            <FilterSelect value={track} onChange={(v) => setTrack(v as Track | '')} placeholder={L('همه‌ی واحدها', 'All units')} options={TRACKS.map((t) => ({ value: t, label: lbl(TRACK, t) }))} />
             <FilterSelect value={owner} onChange={setOwner} placeholder={L('همه‌ی مسئولان', 'All owners')} options={owners.map((o) => ({ value: o, label: o }))} />
             {view === 'timeline' && (
               <div className="ms-auto">

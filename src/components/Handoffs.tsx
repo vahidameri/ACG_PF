@@ -1,10 +1,10 @@
 // Hand-offs between sides: send a task to another side, accept it or send it back, send it again.
 import { useState } from 'react'
-import { ArrowLeft, ArrowRight, Check, CornerUpLeft, Send, Repeat } from 'lucide-react'
+import { Check, CornerUpLeft, Send, Repeat } from 'lucide-react'
 import type { Handoff, Task } from '../lib/types'
 import { useStore } from '../lib/store'
 import { uid } from '../lib/api'
-import { L, lbl, locale } from '../lib/i18n'
+import { L, lbl } from '../lib/i18n'
 import { TRACK, TRACKS, sideSoft, trackOf } from '../lib/tracks'
 import { ageDays, canRespond, forTask, isOpen, nextRound, resent } from '../lib/handoffs'
 import { fa, fmtDayMonth, nowStamp, relDays, todayISO } from '../lib/jalali'
@@ -27,13 +27,11 @@ export function SideChip({ side }: { side: string }) {
   )
 }
 
+/** "from product to design" — written out, so the direction reads the same in Persian and English. */
 export function Flow({ from, to }: { from: string; to: string }) {
-  const Arrow = locale.lang === 'fa' ? ArrowLeft : ArrowRight
   return (
-    <span className="inline-flex items-center gap-1">
-      <SideChip side={from} />
-      <Arrow size={12} className="text-sub" />
-      <SideChip side={to} />
+    <span className="inline-flex flex-wrap items-center gap-1 text-[0.6875rem] text-sub">
+      {L('از', 'From')} <SideChip side={from} /> {L('به', 'to')} <SideChip side={to} />
     </span>
   )
 }
@@ -96,7 +94,7 @@ export function HandoffSection({ task }: { task: Task }) {
   return (
     <div className="mt-8">
       <div className="eyebrow mb-3 flex items-center gap-2">
-        <Repeat size={13} /> {L('تحویل بین سایدها (رفت و برگشت)', 'Hand-offs between sides')}
+        <Repeat size={13} /> {L('تحویل بین واحدها (رفت و برگشت)', 'Hand-offs between units')}
       </div>
       {list.length > 0 && (
         <ol className="space-y-2">
@@ -105,7 +103,7 @@ export function HandoffSection({ task }: { task: Task }) {
               <div className="flex flex-wrap items-center gap-2 text-xs">
                 <span className="font-mono text-[0.625rem] text-sub">{L(`دور ${fa(h.round || 1)}`, `R${h.round || 1}`)}</span>
                 <Flow from={h.from_side} to={h.to_side} />
-                <span className="text-sub">{h.from_person}{h.to_person ? ` → ${h.to_person}` : ''}</span>
+                <span className="text-sub">{h.from_person}{h.to_person ? L(` به ${h.to_person}`, ` to ${h.to_person}`) : ''}</span>
                 <span className="ms-auto text-[0.6875rem] font-medium">{lbl(HANDOFF_STATUS, h.status)}</span>
               </div>
               <div className="mt-1 text-[0.6875rem] text-sub">
@@ -171,7 +169,7 @@ export function HandoffSection({ task }: { task: Task }) {
           </form>
         ) : (
           <button onClick={() => setOpen(true)} className="mt-2 flex w-full items-center gap-2 rounded-xl border border-dashed border-line-strong px-3 py-2 text-xs text-sub hover:border-ink/30 hover:text-ink">
-            <Send size={13} className="rtl:-scale-x-100" /> {L('تحویل به ساید دیگر', 'Hand off to another side')}
+            <Send size={13} className="rtl:-scale-x-100" /> {L('تحویل به واحد دیگر', 'Hand off to another unit')}
           </button>
         ))}
     </div>
@@ -195,7 +193,7 @@ export function HandoffCard({ h, onOpen }: { h: Handoff; onOpen: () => void }) {
       <div className="mt-2 flex items-center gap-1.5 text-[0.6875rem] text-sub">
         <Avatar name={h.from_person} size="xs" />
         <span className="truncate">{h.from_person}</span>
-        <span>→</span>
+        <span>{L('به', 'to')}</span>
         {h.to_person ? <Avatar name={h.to_person} size="xs" /> : null}
         <span className="truncate">{h.to_person || L('هر کسی', 'anyone')}</span>
         <span className="flex-1" />

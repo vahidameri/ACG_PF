@@ -7,12 +7,12 @@ import { L, tr, type T2 } from '../lib/i18n'
 import { ORG_KEYS, orgList, type OrgItem, type OrgKind } from '../lib/org'
 import { teamCodes } from '../lib/labels'
 
-const TITLE: Record<OrgKind, T2> = { series: ['جلسه‌ها (عنوان سری‌ها)', 'Meeting series'], titles: ['سمت‌ها', 'Job titles'], teams: ['تیم‌ها', 'Teams'], sides: ['سایدها (پروداکت، دیزاین، تک…)', 'Sides (product, design, tech…)'] }
+const TITLE: Record<OrgKind, T2> = { series: ['جلسه‌ها (عنوان سری‌ها)', 'Meeting series'], titles: ['سمت‌ها', 'Job titles'], teams: ['تیم‌ها', 'Teams'], sides: ['واحدها (پروداکت، دیزاین، تک…)', 'Units (product, design, tech…)'] }
 const HINT: Record<OrgKind, T2> = {
   series: ['نام سری‌های جلسه؛ همه به‌جز «یک‌به‌یک» و «سایر» هفتگی تکرار می‌شوند.', 'Series names; all but one-on-one and other repeat weekly.'],
   titles: ['کد کوتاه انگلیسی (مثل CEO) روی کارت هر نفر دیده می‌شود.', 'The short code (e.g. CEO) shows on each person.'],
   teams: ['هر نفر می‌تواند عضو چند تیم باشد.', 'A person can be in several teams.'],
-  sides: ['سایدها کار را به هم تحویل می‌دهند (رفت و برگشت)؛ هر تسک و هر نفر یک ساید دارد.', 'Sides hand work to each other (and back); every task and person has one.'],
+  sides: ['واحدها کار را به هم تحویل می‌دهند (رفت و برگشت)؛ هر تسک و هر نفر یک واحد دارد.', 'Units hand work to each other (and back); every task and person belongs to one.'],
 }
 
 function OrgList({ kind, admin }: { kind: OrgKind; admin: boolean }) {
@@ -85,7 +85,7 @@ function OrgList({ kind, admin }: { kind: OrgKind; admin: boolean }) {
 
 export function OrgCard({ admin }: { admin: boolean }) {
   return (
-    <Card eyebrow={<span className="flex items-center gap-1.5"><Building2 size={12} /> {L('سازمان', 'Organisation')}</span>} title={L('سمت‌ها، تیم‌ها، سایدها و جلسه‌ها', 'Titles, teams, sides & meetings')} className="@xl:row-span-2">
+    <Card eyebrow={<span className="flex items-center gap-1.5"><Building2 size={12} /> {L('سازمان', 'Organisation')}</span>} title={L('سمت‌ها، تیم‌ها، واحدها و جلسه‌ها', 'Titles, teams, units & meetings')} className="@xl:row-span-2">
       <div className="space-y-6">
         <OrgList kind="sides" admin={admin} />
         <OrgList kind="teams" admin={admin} />

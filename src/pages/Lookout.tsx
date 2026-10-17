@@ -1,8 +1,8 @@
-// Compass (قطب‌نما) — the leadership desk of the program manager, the CEO and the heads: where the
+// Lookout (دیده‌بان) — the leadership desk of the program manager, the CEO and the heads: where the
 // portfolio stands, this week's deliveries, the hand-offs between sides, and every task they follow.
 import { useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { Compass as CompassIcon, PackageCheck, Repeat, UserRound } from 'lucide-react'
+import { Binoculars, PackageCheck, Repeat, UserRound } from 'lucide-react'
 import { useStore } from '../lib/store'
 import { useEditor } from '../components/Editor'
 import { Avatar, AvatarStack, Band, Card, Due, Empty, HealthDot, Overlap, Segmented, StatStrip, StatusIcon, cx } from '../components/ui'
@@ -27,7 +27,7 @@ const BUCKETS: { id: Bucket; label: () => string; tone: string }[] = [
   { id: 'later', label: () => L('بعداً / بدون تاریخ', 'Later / undated'), tone: 'text-sub' },
 ]
 
-export default function Compass() {
+export default function Lookout() {
   const { db, me } = useStore()
   const { open } = useEditor()
   const [scope, setScope] = usePref<'mine' | 'all'>('acg.radar.scope', 'mine')
@@ -71,20 +71,20 @@ export default function Compass() {
       <Band
         eyebrow={
           <span className="flex items-center gap-1.5">
-            <CompassIcon size={12} /> {L('اطلس · جهت‌یابی', 'Atlas · bearings')}
+            <Binoculars size={12} /> {L('اطلس · دید از بالا', 'Atlas · the view from above')}
           </span>
         }
-        title={L('قطب‌نما', 'Compass')}
-        sub={L('وضعیت کل پورتفولیو، تحویل‌های این هفته، رفت و برگشت بین سایدها و هر کاری که پیگیرش هستید — یکجا.', 'The whole portfolio, this week’s deliveries, the hand-offs between sides and everything you follow — in one place.')}
+        title={L('دیده‌بان', 'Lookout')}
+        sub={L('وضعیت کل پورتفولیو، تحویل‌های این هفته، رفت و برگشت بین واحدها و هر کاری که پیگیرش هستید — یکجا.', 'The whole portfolio, this week’s deliveries, the hand-offs between units and everything you follow — in one place.')}
         actions={<Segmented dark value={scope} onChange={setScope} options={[{ value: 'mine', label: L('پیگیری‌های من', 'My tracking') }, { value: 'all', label: L('همه‌ی تیم', 'Whole team') }]} />}
       >
         <StatStrip
           items={[
             { label: L('پروژه‌ی در خطر', 'Projects off track'), value: fa(s.counts.red), tone: s.counts.red ? 'red' : 'green', sub: L(`${fa(s.counts.amber)} نیازمند توجه · ${fa(s.live.length)} جاری`, `${s.counts.amber} at risk · ${s.live.length} live`) },
             { label: L('تحویل هفتگی نیازمند توجه', 'Weekly deliveries to watch'), value: fa(deliveryAlerts.length), tone: deliveryAlerts.length ? 'amber' : 'green', sub: L(`${fa(deliveries.length)} پروژه با روز تحویل`, `${deliveries.length} with a delivery day`) },
-            { label: L('تحویل بین سایدها · منتظر', 'Hand-offs waiting'), value: fa(waiting.length), tone: waiting.length ? 'amber' : undefined },
+            { label: L('تحویل بین واحدها · منتظر', 'Hand-offs waiting'), value: fa(waiting.length), tone: waiting.length ? 'amber' : undefined },
             { label: L('برگشت‌خورده', 'Returned'), value: fa(returned.length), tone: returned.length ? 'red' : undefined },
-            { label: L('پیگیری‌ها · عقب افتاده', 'Tracked · late'), value: fa(pool.filter((t) => isLate(t, today)).length), tone: pool.some((t) => isLate(t, today)) ? 'red' : undefined, sub: L(`${fa(pool.length)} در قطب‌نما`, `${pool.length} on the compass`) },
+            { label: L('پیگیری‌ها · عقب افتاده', 'Tracked · late'), value: fa(pool.filter((t) => isLate(t, today)).length), tone: pool.some((t) => isLate(t, today)) ? 'red' : undefined, sub: L(`${fa(pool.length)} در دیده‌بان`, `${pool.length} on the Lookout`) },
             { label: L('امروز', 'Today'), value: fa(pool.filter((t) => bucketOf(t, today) === 'today').length), tone: 'amber' },
           ]}
         />
@@ -141,7 +141,7 @@ export default function Compass() {
         </div>
 
         <div className="grid gap-4 @3xl:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
-          <Card eyebrow={L('سایدها', 'Sides')} title={L('پروداکت، دیزاین، تک', 'Product, design, tech')} action={<Link to="/teams" className="text-xs text-sub hover:text-ink">{L('همه‌ی تحویل‌ها ←', 'All hand-offs →')}</Link>}>
+          <Card eyebrow={L('واحدها', 'Units')} title={L('پروداکت، دیزاین، تک', 'Product, design, tech')} action={<Link to="/teams" className="text-xs text-sub hover:text-ink">{L('همه‌ی تحویل‌ها ←', 'All hand-offs →')}</Link>}>
             <div className="grid gap-2" style={{ gridTemplateColumns: `repeat(${Math.min(TRACKS.length, 3)}, minmax(0,1fr))` }}>
               {TRACKS.map((t) => {
                 const st = trackStats(db, t)
@@ -154,8 +154,8 @@ export default function Compass() {
                     <div className="text-[0.625rem] text-sub">{L('کار باز', 'open')}</div>
                     <div className="mt-2 space-y-0.5 text-[0.6875rem]">
                       <div className={cx(st.overdue ? 'text-bad' : 'text-sub')}>{L(`${fa(st.overdue)} معوق`, `${st.overdue} overdue`)}</div>
-                      <div className={cx(inbox ? 'text-warn' : 'text-sub')}>{L(`${fa(inbox)} تحویل منتظر این ساید`, `${inbox} waiting on this side`)}</div>
-                      <div className={cx(back ? 'text-bad' : 'text-sub')}>{L(`${fa(back)} برگشت به این ساید`, `${back} sent back here`)}</div>
+                      <div className={cx(inbox ? 'text-warn' : 'text-sub')}>{L(`${fa(inbox)} تحویل منتظر این واحد`, `${inbox} waiting on this side`)}</div>
+                      <div className={cx(back ? 'text-bad' : 'text-sub')}>{L(`${fa(back)} برگشت به این واحد`, `${back} sent back here`)}</div>
                     </div>
                   </div>
                 )
@@ -191,7 +191,7 @@ export default function Compass() {
         )}
         {!list.length ? (
           <Card>
-            <Empty text={scope === 'mine' ? L('چیزی در قطب‌نمای شما نیست. در هر تسک «پیگیری در قطب‌نما» را بزنید، یا تسکی به کسی بسپارید.', 'Nothing on your compass. Press “Track on my Compass” on any task, or hand a task to someone.') : L('تسک بازی نیست', 'No open tasks')} />
+            <Empty text={scope === 'mine' ? L('چیزی در دیده‌بان شما نیست. در هر تسک «پیگیری در دیده‌بان» را بزنید، یا تسکی به کسی بسپارید.', 'Nothing on your Lookout. Press “Track on my Lookout” on any task, or hand a task to someone.') : L('تسک بازی نیست', 'No open tasks')} />
           </Card>
         ) : (
           BUCKETS.map((b) => {
@@ -201,7 +201,7 @@ export default function Compass() {
               <Card key={b.id} pad={false} title={<span className={b.tone}>{b.label()} · {fa(rows.length)}</span>}>
                 <ul className="divide-y divide-line">
                   {rows.map((t) => (
-                    <CompassRow key={t.id} t={t} onOpen={() => open('Tasks', t as never)} />
+                    <LookoutRow key={t.id} t={t} onOpen={() => open('Tasks', t as never)} />
                   ))}
                 </ul>
               </Card>
@@ -214,7 +214,7 @@ export default function Compass() {
   )
 }
 
-function CompassRow({ t, onOpen }: { t: Task; onOpen: () => void }) {
+function LookoutRow({ t, onOpen }: { t: Task; onOpen: () => void }) {
   const { db } = useStore()
   const n = nextDate(t)
   const code = db.Projects.find((p) => p.id === t.project_id)?.code
@@ -229,7 +229,7 @@ function CompassRow({ t, onOpen }: { t: Task; onOpen: () => void }) {
             {code && <span className="font-mono uppercase" dir="ltr">{code}</span>}
             {t.area && <span>{t.area}</span>}
             {n && <span className={cx(n.d < todayISO() && 'text-bad')}>{n.label} · {relDays(n.d)}</span>}
-            {pass && pass.status !== 'accepted' && <span className={pass.status === 'returned' ? 'text-bad' : 'text-warn'}>{lbl(TRACK, pass.from_side)} → {lbl(TRACK, pass.to_side)} · {pass.status === 'returned' ? L('برگشت', 'returned') : L('منتظر', 'waiting')}</span>}
+            {pass && pass.status !== 'accepted' && <span className={pass.status === 'returned' ? 'text-bad' : 'text-warn'}>{L(`از ${lbl(TRACK, pass.from_side)} به ${lbl(TRACK, pass.to_side)}`, `${lbl(TRACK, pass.from_side)} to ${lbl(TRACK, pass.to_side)}`)} · {pass.status === 'returned' ? L('برگشت', 'returned') : L('منتظر', 'waiting')}</span>}
           </div>
         </div>
         <span className="hidden items-center gap-1.5 text-xs text-sub sm:flex">
