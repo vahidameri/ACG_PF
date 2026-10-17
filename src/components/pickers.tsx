@@ -2,10 +2,11 @@
 import { useState } from 'react'
 import { UserRound, FolderKanban, Search } from 'lucide-react'
 import type { Priority, TaskStatus } from '../lib/types'
-import { PRIORITY, TASK_STATUS, TASK_STATUS_ORDER } from '../lib/labels'
+import { PRIORITY } from '../lib/labels'
+import { columns, statusLabel } from '../lib/columns'
 import { lbl, L } from '../lib/i18n'
 import { useStore } from '../lib/store'
-import { Avatar, MenuItem, Popover, PriorityIcon, StatusIcon, cx } from './ui'
+import { Avatar, AvatarStack, MenuItem, Popover, PriorityIcon, StatusIcon, cx } from './ui'
 
 const trig = 'inline-flex h-8 items-center gap-1.5 rounded-full px-2.5 text-xs transition hover:bg-muted disabled:pointer-events-none'
 
@@ -15,14 +16,14 @@ export function StatusPicker({ value, onChange, label = true }: { value: TaskSta
     <Popover
       width={200}
       trigger={({ toggle }) => (
-        <button className={trig} onClick={toggle} disabled={!canEdit} title={lbl(TASK_STATUS, value)}>
+        <button className={trig} onClick={toggle} disabled={!canEdit} title={statusLabel(value)}>
           <StatusIcon s={value} size={15} />
-          {label && <span>{lbl(TASK_STATUS, value)}</span>}
+          {label && <span>{statusLabel(value)}</span>}
         </button>
       )}
     >
       {(close) =>
-        TASK_STATUS_ORDER.map((s, i) => (
+        columns().map(({ id: s }, i) => (
           <MenuItem
             key={s}
             icon={<StatusIcon s={s} size={14} />}
@@ -33,7 +34,7 @@ export function StatusPicker({ value, onChange, label = true }: { value: TaskSta
               close()
             }}
           >
-            {lbl(TASK_STATUS, s)}
+            {statusLabel(s)}
           </MenuItem>
         ))
       }
@@ -183,6 +184,62 @@ export function ProjectPicker({ value, onChange, emptyLabel }: { value: string; 
               }}
             >
               {x.name}
+            </MenuItem>
+          ))}
+        </div>
+      )}
+    </Popover>
+  )
+}
+
+/** Several people at once (shared with / tracked by), stored comma-separated. */
+export function PeoplePicker({ value, onChange, exclude, empty }: { value: string; onChange: (v: string) => void; exclude?: string; empty?: string }) {
+  const { db, canEdit } = useStore()
+  const on = String(value || '').split(',').map((x) => x.trim()).filter(Boolean)
+  const team = db.Team.filter((m) => String(m.active) !== 'false' && m.name !== exclude).map((m) => m.name)
+  return (
+    <Popover
+      width={240}
+      trigger={({ toggle }) => (
+        <button className={trig} onClick={toggle} disabled={!canEdit}>
+          {on.length ? <AvatarStack names={on} max={4} /> : <UserRound size={15} className="text-sub" />}
+          {!on.length && <span className="text-sub">{empty || L('هیچ‌کس', 'Nobody')}</span>}
+        </button>
+      )}
+    >
+      {() => (
+        <div className="max-h-64 overflow-y-auto">
+          {team.map((p) => {
+            const sel = on.includes(p)
+            return (
+              <MenuItem key={p} icon={<Avatar name={p} size="xs" />} active={sel} hint={sel ? '✓' : undefined} onClick={() => onChange((sel ? on.filter((x) => x !== p) : [...on, p]).join(','))}>
+                {p}
+              </MenuItem>
+            )
+          })}
+        </div>
+      )}
+    </Popover>
+  )
+}
+
+/** A value from a short list (the task areas). */
+export function ListPicker({ value, options, onChange, empty }: { value: string; options: string[]; onChange: (v: string) => void; empty: string }) {
+  const { canEdit } = useStore()
+  return (
+    <Popover
+      width={200}
+      trigger={({ toggle }) => (
+        <button className={trig} onClick={toggle} disabled={!canEdit}>
+          <span className={cx('max-w-[10rem] truncate', !value && 'text-sub')}>{value || empty}</span>
+        </button>
+      )}
+    >
+      {(close) => (
+        <div className="max-h-64 overflow-y-auto">
+          {['', ...options].map((o) => (
+            <MenuItem key={o || '-'} active={o === value} onClick={() => (onChange(o), close())}>
+              {o || <span className="text-sub">{empty}</span>}
             </MenuItem>
           ))}
         </div>

@@ -2,7 +2,7 @@
 // of an editor); server rules run as Apps Script time triggers. Every rule has an on/off switch
 // stored in the Config tab, so the whole team shares the same behaviour.
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
-import { CalendarPlus, CalendarSync, Repeat, Mail, Unlock, Image, PauseCircle, BellRing, Sunrise, FileWarning } from 'lucide-react'
+import { CalendarPlus, CalendarSync, Repeat, Mail, Unlock, Image, PauseCircle, BellRing, Sunrise, FileWarning, UserPlus, Bell, PackageCheck } from 'lucide-react'
 import type { Meeting, Project, Task } from './types'
 import { useStore } from './store'
 import { useGoogle } from './google'
@@ -30,6 +30,9 @@ export const AUTOMATIONS: AutomationDef[] = [
   { id: 'google_photo', where: 'app', icon: Image, title: ['عکس پروفایل از حساب گوگل', 'Profile photo from Google'], desc: ['برای کسی که هنوز عکس آپلود نکرده.', 'For anyone who hasn’t uploaded one.'] },
   { id: 'update_reminder', where: 'server', icon: FileWarning, title: ['یادآوری گزارش هفتگی', 'Weekly update reminder'], desc: ['روز مهلت ساعت ۱۴ و صبح روز ویکلی به مدیر پروژه‌هایی که گزارش نداده‌اند.', 'Deadline day 14:00 and the weekly’s morning to leads who haven’t reported.'] },
   { id: 'action_reminder', where: 'server', icon: BellRing, title: ['یادآوری اکشن‌های معوق', 'Overdue action reminders'], desc: ['هر صبح به مسئول هر اکشن عقب‌افتاده.', 'Every morning, to the owner of each overdue action.'] },
+  { id: 'assign_mail', where: 'server', icon: UserPlus, title: ['ایمیل به مسئول، وقتی تسکی به او سپرده می‌شود', 'Email the assignee when a task is handed to them'], desc: ['همان لحظه، با سررسید و ددلاین.', 'Right away, with the due date and deadline.'] },
+  { id: 'task_alerts', where: 'server', icon: Bell, title: ['یادآوری تسک‌ها: پیگیری، تحویل، تست و ددلاین', 'Task alerts: follow-up, hand-off, testing and deadline'], desc: ['هر صبح ۸:۳۰ به همه‌ی افراد تسک.', 'Every morning 08:30, to everyone on the task.'] },
+  { id: 'delivery_alerts', where: 'server', icon: PackageCheck, title: ['یادآوری روز تحویل هفتگی پروژه‌ها', 'Weekly delivery-day reminders'], desc: ['صبح روز تحویل به مدیر پروژه؛ اگر ثبت نشد، فردا به مدیر برنامه هم.', 'On the day to the lead; if not recorded, the next morning to the program manager too.'] },
   { id: 'daily_digest', where: 'server', icon: Sunrise, title: ['خلاصه‌ی صبحگاهی', 'Morning digest'], desc: ['ساعت ۷:۳۰ برای مدیر برنامه.', '07:30, to the program manager.'] },
 ]
 

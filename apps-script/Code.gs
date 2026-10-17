@@ -18,14 +18,14 @@
  *   viewer — read only (leadership)
  */
 
-var ATLAS_VERSION = '1.7.3'; // shown on the login page and by diagnose()
+var ATLAS_VERSION = '1.8.0'; // shown on the login page and by diagnose()
 
 var SCHEMA = {
-  Projects: ['id', 'code', 'name', 'description', 'category', 'owner', 'client', 'liaison', 'liaison_contact', 'status', 'priority', 'phase', 'start_date', 'end_date', 'progress', 'health_override', 'objective', 'paused_at', 'pause_reason'],
+  Projects: ['id', 'code', 'name', 'description', 'category', 'owner', 'client', 'liaison', 'liaison_contact', 'status', 'priority', 'phase', 'start_date', 'end_date', 'progress', 'health_override', 'objective', 'paused_at', 'pause_reason', 'delivery_day', 'last_delivery', 'archived', 'archived_at'],
   Scope: ['id', 'project_id', 'item', 'type', 'status', 'change_note', 'date'],
   Milestones: ['id', 'project_id', 'title', 'planned_date', 'actual_date', 'status', 'owner', 'weight'],
   Sprints: ['id', 'project_id', 'name', 'start_date', 'end_date', 'goal', 'committed_points', 'completed_points', 'status'],
-  Tasks: ['id', 'project_id', 'sprint_id', 'title', 'description', 'assignee', 'reporter', 'status', 'priority', 'due_date', 'points', 'tags', 'created_at', 'completed_at', 'track', 'depends_on', 'meeting_id', 'private'],
+  Tasks: ['id', 'project_id', 'sprint_id', 'title', 'description', 'assignee', 'reporter', 'status', 'priority', 'due_date', 'points', 'tags', 'created_at', 'completed_at', 'track', 'depends_on', 'meeting_id', 'private', 'deadline', 'handoff_date', 'test_date', 'follow_date', 'area', 'collaborators', 'watchers', 'notify'],
   // owner = who is chasing; follow-ups are personal
   FollowUps: ['id', 'project_id', 'subject', 'person', 'channel', 'due_date', 'status', 'priority', 'notes', 'created_at', 'done_at', 'owner'],
   Risks: ['id', 'project_id', 'title', 'type', 'probability', 'impact', 'owner', 'mitigation', 'status', 'due_date'],
@@ -55,7 +55,7 @@ var SCHEMA = {
 var USERS_SHEET = 'Users';
 var USERS_HEADERS = ['key', 'name', 'email', 'role', 'active'];
 var LOG_SHEET = 'AuditLog';
-var DATE_COLS = ['start_date', 'end_date', 'planned_date', 'actual_date', 'due_date', 'created_at', 'completed_at', 'done_at', 'week_date', 'date', 'target_date', 'baseline_date', 'delivered_date', 'time'];
+var DATE_COLS = ['start_date', 'end_date', 'planned_date', 'actual_date', 'due_date', 'created_at', 'completed_at', 'done_at', 'week_date', 'date', 'target_date', 'baseline_date', 'delivered_date', 'time', 'deadline', 'handoff_date', 'test_date', 'follow_date', 'last_delivery', 'archived_at'];
 
 // --------------------------------------------------------------------------
 // HTTP entry points
@@ -107,7 +107,9 @@ function doPost(e) {
       if (!SCHEMA[body.sheet]) throw new Error('Unknown sheet: ' + body.sheet);
             guardPrivate_(body.sheet, body.action === 'delete' ? { id: body.id } : body.row, user);
       guardWrite_(body.sheet, body.action === 'delete' ? existingRow_(body.sheet, body.id) : body.row, user);
+      var before = body.action === 'upsert' && body.sheet === 'Tasks' ? existingRow_('Tasks', body.row.id) : null;
       if (body.action === 'upsert') result = upsert_(body.sheet, body.row, user);
+      if (body.action === 'upsert' && body.sheet === 'Tasks') { try { mailAssigned_(before, body.row, user); } catch (eMail) {} }
       else if (body.action === 'delete') result = delete_(body.sheet, body.id, user);
       else throw new Error('Unknown action: ' + body.action);
     }
@@ -440,10 +442,14 @@ function privateOwners_(team) {
 
 function canSeeTask_(t, user, owners) {
   var priv = String(t.private) === '1' || owners[t.assignee];
-  return !priv || t.assignee === user.name || t.reporter === user.name;
+  return !priv || t.assignee === user.name || t.reporter === user.name || listed_(t.collaborators, user.name);
 }
 
 var LEADERS = { super: 1, exec: 1, head: 1 };
+
+function listed_(s, me) { return String(s || '').split(',').map(function (x) { return x.trim(); }).indexOf(me) !== -1; }
+/** Mirrors isMine in src/lib/access.ts: doer, creator, sharer or tracker. */
+function isMine_(t, me) { return !!me && (t.assignee === me || t.reporter === me || listed_(t.collaborators, me) || listed_(t.watchers, me)); }
 
 function applyPrivacy_(data, user) {
   var owners = privateOwners_(data.Team || []);
@@ -480,7 +486,10 @@ function applyScope_(data, user, owners) {
   var myId = ((data.Team || []).filter(function (m) { return m.name === me; })[0] || {}).id;
   data.Allocations = (data.Allocations || []).filter(function (r) { return inP(r.project_id) || r.member_id === myId; });
   data.Projects = (data.Projects || []).filter(function (p) { return ok[p.id]; });
-  data.Tasks = data.Tasks.filter(function (t) { return inP(t.project_id) || t.assignee === me || t.reporter === me; });
+  // own + shared tasks, plus every task of a project this person leads
+  var led = {};
+  data.Projects.forEach(function (p) { if (p.owner === me) led[p.id] = 1; });
+  data.Tasks = data.Tasks.filter(function (t) { return isMine_(t, me) || !!led[t.project_id]; });
   data.Meetings = (data.Meetings || []).filter(function (m) { return listed(m.attendees) || m.facilitator === me || inP(m.project_id); });
   var vis = { Tasks: {}, Projects: ok, Meetings: {}, FollowUps: {}, Deliverables: {}, Risks: {}, Team: {} };
   data.Tasks.forEach(function (t) { vis.Tasks[t.id] = 1; });
@@ -517,12 +526,23 @@ function guardWrite_(sheet, row, user) {
     ['access', 'active', 'key', 'tasks_private', 'email', 'name'].forEach(function (k) { row[k] = cur[k]; });
   }
   if (LEADERS[a] || !row) return;
+  // a project lead may record the weekly delivery of their own project, nothing else
+  if (sheet === 'Projects') {
+    var curP = existingRow_('Projects', row.id);
+    if (curP && curP.owner === user.name) {
+      var delivered = row.last_delivery;
+      Object.keys(curP).forEach(function (k) { row[k] = curP[k]; });
+      row.last_delivery = delivered;
+      return;
+    }
+  }
   if (sheet === 'Projects' || sheet === 'Allocations') throw new Error('فقط لیدرشیپ می‌تواند پروژه و تخصیص را تغییر دهد');
   if (sheet === 'FollowUps' && row.owner && row.owner !== user.name) throw new Error('فالوآپ دیگران را نمی‌توانید تغییر دهید');
   if (sheet === 'FollowUps') row.owner = user.name;
   if (row.project_id) {
     var ok = allowedProjects_(rawAll_(), user.name);
-    var own = sheet === 'Tasks' && (row.assignee === user.name || row.reporter === user.name);
+    // an existing task is judged by what is stored, so nobody can claim a task by adding themselves
+    var own = sheet === 'Tasks' && isMine_(existingRow_('Tasks', row.id) || row, user.name);
     if (!ok[row.project_id] && !own) throw new Error('این پروژه در دسترس شما نیست');
   }
 }
@@ -844,6 +864,8 @@ function sendDailyDigest() {
   var all = readAll_();
   var pm = (all.Team || []).filter(function (m) { return m.access === 'super'; })[0] || {};
   var data = applyPrivacy_(all, { name: pm.name || '', access: 'super' });
+  var gone = archivedSet_(data);
+  ['Tasks', 'FollowUps', 'Milestones'].forEach(function (k) { data[k] = (data[k] || []).filter(function (r) { return !gone[r.project_id]; }); });
   var tz = Session.getScriptTimeZone();
   var today = Utilities.formatDate(new Date(), tz, 'yyyy-MM-dd');
   var pname = {};
@@ -927,7 +949,7 @@ function remindWeeklyUpdatesNow() {
   var email = {};
   data.Team.forEach(function (m) { if (m.email) email[m.name] = m.email; });
   var missing = data.Projects.filter(function (p) {
-    if (p.status !== 'active') return false;
+    if (p.status !== 'active' || String(p.archived) === '1') return false;
     return !data.Updates.some(function (u) { return u.project_id === p.id && String(u.week_date) >= ws; });
   });
   var byOwner = {};
@@ -1038,7 +1060,8 @@ function remindOverdueActions() {
   var email = {};
   data.Team.forEach(function (t) { if (t.email) email[t.name] = t.email; });
   var by = {};
-  data.Tasks.filter(function (t) { return t.meeting_id && t.status !== 'done' && t.due_date && t.due_date < today; })
+  var gone = archivedSet_(data);
+  data.Tasks.filter(function (t) { return t.meeting_id && t.status !== 'done' && t.due_date && t.due_date < today && !gone[t.project_id]; })
     .forEach(function (t) { (by[t.assignee] = by[t.assignee] || []).push(t); });
   Object.keys(by).forEach(function (who) {
     if (!email[who]) return;
@@ -1053,12 +1076,118 @@ function remindOverdueActions() {
 
 /** One click: installs every scheduled automation. Each one checks its on/off switch before running. */
 function installAutomations() {
-  var keep = { sendDailyDigest: 1, remindWeeklyUpdates: 1, remindOverdueActions: 1 };
+  var keep = { sendDailyDigest: 1, remindWeeklyUpdates: 1, remindOverdueActions: 1, sendTaskAlerts: 1 };
   ScriptApp.getProjectTriggers().forEach(function (t) { if (keep[t.getHandlerFunction()]) ScriptApp.deleteTrigger(t); });
   ScriptApp.newTrigger('sendDailyDigest').timeBased().everyDays(1).atHour(7).nearMinute(30).create();
   ScriptApp.newTrigger('remindOverdueActions').timeBased().everyDays(1).atHour(8).nearMinute(15).create();
+  ScriptApp.newTrigger('sendTaskAlerts').timeBased().everyDays(1).atHour(8).nearMinute(30).create();
   weeklyTriggers_();
-  safeAlert_('اتوماسیون‌ها نصب شدند: خلاصه‌ی صبح ۷:۳۰، یادآوری اقدام‌های معوق ۸:۱۵، یادآوری گزارش هفتگی (روز مهلت ۱۴ و صبح روز ویکلی ۸). روزها و روشن/خاموش از تنظیمات اپ.');
+  safeAlert_('اتوماسیون‌ها نصب شدند: خلاصه‌ی صبح ۷:۳۰، یادآوری اقدام‌های معوق ۸:۱۵، یادآوری تسک‌ها و روز تحویل ۸:۳۰، یادآوری گزارش هفتگی (روز مهلت ۱۴ و صبح روز ویکلی ۸). روزها و روشن/خاموش از تنظیمات اپ.');
+}
+
+// --------------------------------------------------------------------------
+// Task alerts & weekly delivery days
+//   assign_mail     — the moment a task is handed to someone, they get an email
+//   task_alerts     — every morning (08:30): follow-up dates, hand-off / testing days, deadlines (today and tomorrow)
+//                     to everyone on the task (assignee, creator, shared with, trackers); a task can mute itself (notify = off)
+//   delivery_alerts — every morning: projects whose weekly delivery day is today (to the lead), and yesterday's
+//                     deliveries that were not recorded (to the lead and the program manager)
+// Archived projects are skipped everywhere.
+// --------------------------------------------------------------------------
+
+function appLink_() { return PropertiesService.getScriptProperties().getProperty('API_URL') || ''; }
+function esc_(x) { return String(x || '').replace(/</g, '&lt;'); }
+function mailBox_(title, body) {
+  var link = appLink_();
+  return '<div dir="rtl" style="font-family:Tahoma,Vazirmatn,sans-serif;font-size:14px;line-height:1.9;color:#111">' + title + body +
+    (link ? '<p style="margin-top:18px"><a href="' + link + '" style="background:#16181d;color:#fff;padding:8px 18px;border-radius:999px;text-decoration:none">باز کردن اطلس</a></p>' : '') +
+    '<p style="color:#888;font-size:12px;margin-top:18px">ارسال خودکار از اطلس ACG</p></div>';
+}
+function archivedSet_(data) {
+  var gone = {};
+  (data.Projects || []).forEach(function (p) { if (String(p.archived) === '1') gone[p.id] = 1; });
+  return gone;
+}
+function emails_(data) {
+  var email = {};
+  (data.Team || []).forEach(function (m) { if (m.email && String(m.active) !== 'false') email[m.name] = m.email; });
+  return email;
+}
+function names_(s) { return String(s || '').split(',').map(function (x) { return x.trim(); }).filter(Boolean); }
+
+/** Email to the new assignee when a task is handed to them by someone else. */
+function mailAssigned_(before, row, user) {
+  if (!row || !row.assignee || row.assignee === user.name || String(row.notify) === 'off' || row.status === 'done') return;
+  if (before && before.assignee === row.assignee) return;
+  if (!automationOn_('assign_mail')) return;
+  var data = rawAll_();
+  if (row.project_id && archivedSet_(data)[row.project_id]) return;
+  var to = emails_(data)[row.assignee];
+  if (!to) return;
+  var pname = ((data.Projects || []).filter(function (p) { return String(p.id) === String(row.project_id); })[0] || {}).name || '';
+  var line = function (k, v) { return v ? '<div><span style="color:#666">' + k + ':</span> ' + esc_(v) + '</div>' : ''; };
+  MailApp.sendEmail({
+    to: to,
+    subject: 'اطلس ACG · تسک جدید برای شما: ' + row.title,
+    htmlBody: mailBox_('<h3 style="margin:0 0 8px">' + esc_(user.name) + ' این تسک را به شما سپرد</h3>',
+      '<div style="font-size:16px;font-weight:bold">' + esc_(row.title) + '</div>' + line('پروژه', pname) + line('حوزه', row.area) + line('سررسید', row.due_date) +
+      line('تحویل به پروداکت', row.handoff_date) + line('تست', row.test_date) + line('ددلاین', row.deadline) + (row.description ? '<p>' + esc_(row.description).replace(/\n/g, '<br>') + '</p>' : '')),
+  });
+}
+
+function sendTaskAlerts() {
+  var data = readAll_();
+  var tz = Session.getScriptTimeZone();
+  var today = Utilities.formatDate(new Date(), tz, 'yyyy-MM-dd');
+  var tomorrow = Utilities.formatDate(new Date(Date.now() + 86400000), tz, 'yyyy-MM-dd');
+  var email = emails_(data);
+  var gone = archivedSet_(data);
+  var owners = privateOwners_(data.Team || []);
+  var pname = {};
+  (data.Projects || []).forEach(function (p) { pname[p.id] = p.name; });
+  var box = {};
+  var add = function (who, t, why) {
+    if (!who || !email[who] || !canSeeTask_(t, { name: who }, owners)) return;
+    var k = who + '|' + t.id;
+    box[who] = box[who] || { seen: {}, items: [] };
+    if (box[who].seen[k + why]) return;
+    box[who].seen[k + why] = 1;
+    box[who].items.push('<li style="margin:4px 0"><b>' + esc_(t.title) + '</b> — ' + why + (t.project_id ? ' · ' + esc_(pname[t.project_id] || '') : '') + (t.assignee && t.assignee !== who ? ' · مسئول: ' + esc_(t.assignee) : '') + '</li>');
+  };
+  if (automationOn_('task_alerts')) {
+    (data.Tasks || []).forEach(function (t) {
+      if (t.status === 'done' || String(t.notify) === 'off' || (t.project_id && gone[t.project_id])) return;
+      var everyone = [t.assignee, t.reporter].concat(names_(t.collaborators), names_(t.watchers));
+      var doers = [t.assignee].concat(names_(t.collaborators), names_(t.watchers));
+      if (t.follow_date === today) everyone.forEach(function (w) { add(w, t, 'امروز تاریخ پیگیری است'); });
+      if (t.handoff_date === today) doers.forEach(function (w) { add(w, t, 'امروز تحویل به پروداکت'); });
+      if (t.test_date === today) doers.forEach(function (w) { add(w, t, 'امروز زمان تست'); });
+      if (t.deadline === tomorrow) doers.forEach(function (w) { add(w, t, 'ددلاین فردا'); });
+      if (t.deadline === today) everyone.forEach(function (w) { add(w, t, '<span style="color:#e13748">ددلاین امروز</span>'); });
+    });
+  }
+  if (automationOn_('delivery_alerts')) {
+    var ws = weekStartISO_(tz);
+    var start = weekDay_('week.start', 0);
+    var yesterday = Utilities.formatDate(new Date(Date.now() - 86400000), tz, 'yyyy-MM-dd');
+    var pm = PropertiesService.getScriptProperties().getProperty('DIGEST_TO') || Session.getEffectiveUser().getEmail();
+    var missed = [];
+    (data.Projects || []).forEach(function (p) {
+      if (gone[p.id] || (p.status !== 'active' && p.status !== 'planning') || p.delivery_day === '' || p.delivery_day === undefined) return;
+      var day = Number(p.delivery_day);
+      if (!(day >= 0 && day <= 6)) return;
+      var due = Utilities.formatDate(new Date(new Date(ws + 'T12:00:00').getTime() + ((day - start + 7) % 7) * 86400000), tz, 'yyyy-MM-dd');
+      var done = p.last_delivery && String(p.last_delivery) >= ws;
+      if (done) return;
+      var fake = { id: 'P' + p.id, title: 'تحویل هفتگی ' + p.name, assignee: p.owner, reporter: '', private: '' };
+      if (due === today) add(p.owner, fake, 'امروز روز تحویل هفتگی است — بعد از تحویل در اطلس «تحویل شد» را بزنید');
+      if (due === yesterday) { add(p.owner, fake, '<span style="color:#e13748">تحویل دیروز ثبت نشده</span>'); missed.push(esc_(p.name) + ' — ' + esc_(p.owner || '—')); }
+    });
+    if (missed.length && pm) MailApp.sendEmail({ to: pm, subject: 'اطلس ACG · ' + missed.length + ' تحویل هفتگی ثبت نشد', htmlBody: mailBox_('<h3 style="margin:0 0 8px">تحویل‌های دیروز که ثبت نشده‌اند</h3>', missed.join('<br>')) });
+  }
+  Object.keys(box).forEach(function (who) {
+    MailApp.sendEmail({ to: email[who], subject: 'اطلس ACG · یادآوری‌های امروز (' + box[who].items.length + ')', htmlBody: mailBox_('<h3 style="margin:0 0 8px">' + esc_(who) + ' عزیز، صبح بخیر</h3>', '<ul style="padding-right:18px;margin:0">' + box[who].items.join('') + '</ul>') });
+  });
 }
 
 // --------------------------------------------------------------------------

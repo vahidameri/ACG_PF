@@ -10,6 +10,10 @@ import { PROJECT_STATUS, RISK_STATUS, RISK_TYPE, SCOPE_STATUS, SPRINT_STATUS, PR
 import { L, lbl } from '../lib/i18n'
 import { TaskRow, FollowUpRow, PinButton } from '../components/shared'
 import { PauseButton } from '../components/PauseButton'
+import { ArchiveButton } from '../components/ArchiveButton'
+import { DeliveredButton, DeliveryBadge } from '../components/DeliveryDay'
+import type { Project } from '../lib/types'
+import { Archive } from 'lucide-react'
 import { ContractsList, NewContractButton } from '../components/Contracts'
 import { can } from '../lib/access'
 import { Attachments } from '../components/Files'
@@ -28,13 +32,15 @@ type Tab = 'overview' | 'scope' | 'milestones' | 'sprints' | 'tasks' | 'risks' |
 
 export default function ProjectDetail() {
   const { id } = useParams()
-  const { db, canEdit, upsert, me, access } = useStore()
+  const { db, archived, canEdit, upsert, me, access } = useStore()
   const { open } = useEditor()
   const [tab, setTab] = useState<Tab>('overview')
   const { openComposer } = useComposer()
   const [taskView, setTaskView] = useState<'board' | 'list'>('board')
   const [note, setNote] = useState('')
   const p = db.Projects.find((x) => x.id === id)
+  const gone = archived.find((x) => x.id === id)
+  if (gone) return <ArchivedProject p={gone} />
   if (!p) return <Empty text={L('پروژه پیدا نشد', 'Project not found')} />
 
   const m = projectMetrics(p, db)
@@ -106,7 +112,9 @@ export default function ProjectDetail() {
             <span className="rounded-full bg-white/10 p-0.5">
               <PinButton id={p.id} className="text-white/70 hover:bg-white/10" />
             </span>
+            <DeliveredButton p={p} dark />
             <PauseButton p={p} dark />
+            <ArchiveButton p={p} dark />
             {canEdit && (
               <button className="btn h-10 bg-white text-band" onClick={() => open('Projects', p as never)}>
                 <Pencil size={15} /> {L('ویرایش', 'Edit')}
@@ -137,6 +145,7 @@ export default function ProjectDetail() {
           <span className="num">
             {fmtDate(p.start_date)} → {fmtDate(p.end_date)}
           </span>
+          <DeliveryBadge p={p} dark />
         </div>
         <StatStrip
           items={[
@@ -586,5 +595,30 @@ function SetupPrompt({ p }: { p: import('../lib/types').Project }) {
         </div>
       )}
     </div>
+  )
+}
+
+/** An archived project: who led it and when it was archived, with the way back. */
+function ArchivedProject({ p }: { p: Project }) {
+  return (
+    <>
+      <Band
+        eyebrow={
+          <Link to="/projects" className="flex items-center gap-1 hover:text-white">
+            <ArrowRight size={12} className="ltr:rotate-180" /> {L('پروژه‌ها', 'Projects')}
+          </Link>
+        }
+        title={p.name}
+        sub={L(`این پروژه از ${fmtDate(p.archived_at || '')} آرشیو است؛ تسک‌ها و برنامه‌اش تا خروج از آرشیو پنهان‌اند.`, `Archived since ${fmtDate(p.archived_at || '')}; its tasks and plan stay hidden until it is restored.`)}
+        actions={<ArchiveButton p={p} dark />}
+      />
+      <Overlap>
+        <Card>
+          <div className="flex items-center gap-3 text-sm text-sub">
+            <Archive size={18} /> {L('مدیر پروژه', 'Lead')}: <b className="text-ink">{p.owner || '—'}</b> · <span dir="ltr">{p.code}</span> · {lbl(PROJECT_STATUS, p.status)}
+          </div>
+        </Card>
+      </Overlap>
+    </>
   )
 }

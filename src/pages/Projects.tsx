@@ -1,24 +1,26 @@
 import { useState } from 'react'
-import { Plus } from 'lucide-react'
+import { Plus, Archive } from 'lucide-react'
+import { Link } from 'react-router-dom'
+import { ArchiveButton } from '../components/ArchiveButton'
 import { useStore } from '../lib/store'
 import { can } from '../lib/access'
 import { useEditor } from '../components/Editor'
-import { Band, Overlap, Toolbar, FilterSelect, Empty, SearchInput, Segmented } from '../components/ui'
+import { Band, Card, Overlap, Toolbar, FilterSelect, Empty, SearchInput, Segmented } from '../components/ui'
 import { ProjectCard } from '../components/shared'
 import { PRIORITY, PROJECT_STATUS, HEALTH, options } from '../lib/labels'
 import { projectMetrics } from '../lib/metrics'
-import { fa } from '../lib/jalali'
+import { fa, fmtDate } from '../lib/jalali'
 import { L, useI18n } from '../lib/i18n'
 import { usePins } from '../lib/prefs'
 
 export default function Projects() {
-  const { db, canEdit: editor, access } = useStore()
+  const { db, archived, canEdit: editor, access } = useStore()
   const canEdit = editor && can.manage(access)
   const { lang } = useI18n()
   const { open } = useEditor()
   const { pins } = usePins()
   const [q, setQ] = useState('')
-  const [scope, setScope] = useState<'all' | 'pinned'>('all')
+  const [scope, setScope] = useState<'all' | 'pinned' | 'archived'>('all')
   const [status, setStatus] = useState('active')
   const [cat, setCat] = useState('')
   const [prio, setPrio] = useState('')
@@ -54,7 +56,7 @@ export default function Projects() {
       <Overlap>
         <div className="card mb-5 p-3">
           <Toolbar className="!mb-0">
-            <Segmented value={scope} onChange={setScope} options={[{ value: 'all', label: L('همه', 'All') }, { value: 'pinned', label: L(`پین‌شده · ${fa(pins.length)}`, `Pinned · ${pins.length}`) }]} />
+            <Segmented value={scope} onChange={setScope} options={[{ value: 'all', label: L('همه', 'All') }, { value: 'pinned', label: L(`پین‌شده · ${fa(pins.length)}`, `Pinned · ${pins.length}`) }, ...(archived.length ? [{ value: 'archived' as const, label: L(`آرشیو · ${fa(archived.length)}`, `Archive · ${archived.length}`) }] : [])]} />
             <SearchInput value={q} onChange={setQ} />
             <FilterSelect value={status} onChange={setStatus} placeholder={L('همه‌ی وضعیت‌ها', 'Any status')} options={options(PROJECT_STATUS, lang)} />
             <FilterSelect value={health} onChange={setHealth} placeholder={L('سلامت', 'Health')} options={options(HEALTH, lang)} />
@@ -63,7 +65,28 @@ export default function Projects() {
             <FilterSelect value={owner} onChange={setOwner} placeholder={L('مدیر پروژه', 'Lead')} options={owners.map((c) => ({ value: c, label: c }))} />
           </Toolbar>
         </div>
-        {list.length === 0 ? (
+        {scope === 'archived' ? (
+          <Card pad={false}>
+            {!archived.length ? (
+              <Empty text={L('پروژه‌ی آرشیوشده‌ای نیست', 'No archived projects')} />
+            ) : (
+              <ul className="divide-y divide-line">
+                {archived.filter((p) => !q || p.name.includes(q) || p.code.toLowerCase().includes(q.toLowerCase())).map((p) => (
+                  <li key={p.id} className="flex flex-wrap items-center gap-3 px-5 py-3.5">
+                    <Archive size={16} className="text-sub" />
+                    <Link to={`/projects/${p.id}`} className="min-w-0 flex-1">
+                      <div className="truncate font-medium">{p.name}</div>
+                      <div className="text-xs text-sub">
+                        <span dir="ltr">{p.code}</span> · {p.owner || '—'} · {L(`آرشیو از ${fmtDate(p.archived_at || '')}`, `archived ${fmtDate(p.archived_at || '')}`)}
+                      </div>
+                    </Link>
+                    <ArchiveButton p={p} />
+                  </li>
+                ))}
+              </ul>
+            )}
+          </Card>
+        ) : list.length === 0 ? (
           <div className="card">
             <Empty text={L('پروژه‌ای با این فیلترها پیدا نشد', 'No projects match these filters')} />
           </div>

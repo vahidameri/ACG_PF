@@ -3,7 +3,8 @@
 //   super  — program manager: everything, plus the back office
 //   exec   — CEO: everything except the back office; sees contracts
 //   head   — heads of product / tech: portfolio-wide views, no contracts
-//   member — product managers & designer: only the projects they work on, their own follow-ups
+//   member — product managers & designer: only the projects they work on, their own follow-ups,
+//            and their own + shared tasks (plus all tasks of the projects they lead)
 import type { Access, DB } from './types'
 
 export const isLeader = (a: Access) => a === 'super' || a === 'exec' || a === 'head'
@@ -22,6 +23,10 @@ export function accessOf(db: DB, name: string, demo: boolean): Access {
 }
 
 const names = (s: string) => String(s || '').split(',').map((x) => x.trim())
+
+/** A task is someone's when they do it, created it, or it is shared with them or tracked by them. */
+export const isMine = (t: { assignee: string; reporter: string; collaborators?: string; watchers?: string }, me: string) =>
+  !!me && (t.assignee === me || t.reporter === me || names(t.collaborators || '').includes(me) || names(t.watchers || '').includes(me))
 
 /** Projects a member is involved in. */
 export function relatedProjects(db: DB, me: string) {
@@ -46,7 +51,9 @@ export function scopeDB(db: DB, me: string, access: Access): DB {
   const ok = relatedProjects(db, me)
   const inP = (pid: string) => !!pid && ok.has(pid)
   const myId = db.Team.find((m) => m.name === me)?.id
-  const Tasks = out.Tasks.filter((t) => inP(t.project_id) || t.assignee === me || t.reporter === me)
+  // members see their own tasks, the ones shared with them, and every task of a project they lead
+  const led = new Set(db.Projects.filter((p) => p.owner === me).map((p) => p.id))
+  const Tasks = out.Tasks.filter((t) => isMine(t, me) || led.has(t.project_id))
   const Meetings = out.Meetings.filter((m) => names(m.attendees).includes(me) || m.facilitator === me || inP(m.project_id))
   const visible: Record<string, Set<string>> = {
     Tasks: new Set(Tasks.map((t) => t.id)),

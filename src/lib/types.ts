@@ -27,6 +27,13 @@ export interface Project {
   /** set while the project is paused (status on_hold) */
   paused_at: string
   pause_reason: string
+  /** weekly delivery day, Saturday = 0 … Friday = 6 ('' = none) */
+  delivery_day?: string
+  /** last date a weekly delivery was recorded */
+  last_delivery?: string
+  /** '1' = archived: hidden from every list until it is restored */
+  archived?: string
+  archived_at?: string
 }
 
 export interface ScopeItem {
@@ -62,7 +69,9 @@ export interface Sprint {
   status: 'planned' | 'active' | 'closed'
 }
 
-export type TaskStatus = 'todo' | 'in_progress' | 'review' | 'blocked' | 'done'
+export type BuiltinStatus = 'todo' | 'in_progress' | 'review' | 'blocked' | 'done'
+/** a built-in status or the id of a kanban column added in the settings */
+export type TaskStatus = BuiltinStatus | (string & {})
 
 export interface Task {
   id: string
@@ -87,6 +96,21 @@ export interface Task {
   meeting_id: string
   /** '1' = only the assignee and the reporter can see it */
   private: string
+  /** final delivery date (ددلاین / تحویل نهایی) */
+  deadline?: string
+  /** hand-over to product, and the test window */
+  handoff_date?: string
+  test_date?: string
+  /** follow-up / reminder date: everyone on the task is notified that morning */
+  follow_date?: string
+  /** area of work, from the list set in the task settings */
+  area?: string
+  /** comma-separated names sharing the task (they see it like their own) */
+  collaborators?: string
+  /** comma-separated names tracking the task (their Radar + notifications) */
+  watchers?: string
+  /** 'off' mutes the reminders for this task */
+  notify?: string
 }
 
 export type Track = 'product' | 'tech'

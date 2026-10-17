@@ -1,4 +1,4 @@
-import type { Deliverable, Meeting, MeetingSeries, Health, Priority, ProjectStatus, TaskStatus, FollowUpStatus, Risk, Milestone, Sprint, ScopeItem, FollowUp } from './types'
+import type { BuiltinStatus, Deliverable, Meeting, MeetingSeries, Health, Priority, ProjectStatus, FollowUpStatus, Risk, Milestone, Sprint, ScopeItem, FollowUp } from './types'
 import type { T2 } from './i18n'
 
 export const PROJECT_STATUS: Record<ProjectStatus, T2> = {
@@ -24,7 +24,7 @@ export const HEALTH: Record<Health, T2> = {
   red: ['در خطر', 'Off track'],
 }
 
-export const TASK_STATUS: Record<TaskStatus, T2> = {
+export const TASK_STATUS: Record<BuiltinStatus, T2> = {
   todo: ['برای انجام', 'To do'],
   in_progress: ['در حال انجام', 'In progress'],
   review: ['بازبینی', 'In review'],
@@ -32,7 +32,7 @@ export const TASK_STATUS: Record<TaskStatus, T2> = {
   done: ['انجام‌شده', 'Done'],
 }
 
-export const TASK_STATUS_ORDER: TaskStatus[] = ['todo', 'in_progress', 'review', 'blocked', 'done']
+export const TASK_STATUS_ORDER: BuiltinStatus[] = ['todo', 'in_progress', 'review', 'blocked', 'done']
 
 export const FOLLOWUP_STATUS: Record<FollowUpStatus, T2> = {
   open: ['باز', 'Open'],

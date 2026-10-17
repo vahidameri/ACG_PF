@@ -8,12 +8,20 @@ export const TASK_KEYS = {
   projectRequired: 'task.project_required', // '1' = a project is required (except the people below)
   noDue: 'task.no_due_people', // member ids who may leave the deadline empty
   personal: 'task.personal_people', // member ids who may log personal (no-project) tasks
+  areas: 'task.areas', // comma-separated list of areas (حوزه‌ها)
 } as const
 
-interface Person { id: string; access?: string }
-export interface TaskCfg { defaultDue: string; flexDefaultDue: string; dueRequired: boolean; projectRequired: boolean; noDue: string[]; personal: string[] }
+/** Optional task fields the program manager can switch off or make required (task.field.<key> = off | on | req). */
+export const TASK_FIELDS = ['deadline', 'handoff_date', 'test_date', 'follow_date', 'area', 'collaborators', 'watchers', 'sprint_id', 'points', 'tags', 'track'] as const
+export type TaskField = (typeof TASK_FIELDS)[number]
+export type FieldMode = 'off' | 'on' | 'req'
+const FIELD_DEFAULT: Record<TaskField, FieldMode> = { deadline: 'on', handoff_date: 'on', test_date: 'on', follow_date: 'on', area: 'on', collaborators: 'on', watchers: 'on', sprint_id: 'on', points: 'on', tags: 'on', track: 'on' }
+export const fieldKey = (f: TaskField) => `task.field.${f}`
 
-let cfg: TaskCfg = { defaultDue: '0', flexDefaultDue: '', dueRequired: true, projectRequired: false, noDue: [], personal: [] }
+interface Person { id: string; access?: string }
+export interface TaskCfg { defaultDue: string; flexDefaultDue: string; dueRequired: boolean; projectRequired: boolean; noDue: string[]; personal: string[]; areas: string[]; fields: Record<TaskField, FieldMode> }
+
+let cfg: TaskCfg = { defaultDue: '0', flexDefaultDue: '', dueRequired: true, projectRequired: false, noDue: [], personal: [], areas: [], fields: { ...FIELD_DEFAULT } }
 export const taskCfg = () => cfg
 
 /** Reads the rules; the people lists default to the CEO (exec). */
@@ -30,6 +38,11 @@ export function readTaskCfg(get: (k: string) => string | undefined, team: Person
     projectRequired: get(TASK_KEYS.projectRequired) === '1',
     noDue: list(TASK_KEYS.noDue),
     personal: list(TASK_KEYS.personal),
+    areas: (get(TASK_KEYS.areas) || '').split(/[,،\n]/).map((x) => x.trim()).filter(Boolean),
+    fields: Object.fromEntries(TASK_FIELDS.map((f) => {
+      const v = get(fieldKey(f))
+      return [f, v === 'off' || v === 'on' || v === 'req' ? v : FIELD_DEFAULT[f]]
+    })) as Record<TaskField, FieldMode>,
   }
 }
 export const setTaskCfg = (c: TaskCfg) => (cfg = c)
@@ -44,3 +57,7 @@ export const dueFor = (m?: Person) => {
   const d = dueDaysFor(m)
   return d === '' ? '' : addDays(todayISO(), Number(d) || 0)
 }
+
+/** Whether a field shows on the task form (area only once areas are defined). */
+export const fieldOn = (f: TaskField) => cfg.fields[f] !== 'off' && (f !== 'area' || cfg.areas.length > 0)
+export const fieldReq = (f: TaskField) => cfg.fields[f] === 'req' && fieldOn(f)

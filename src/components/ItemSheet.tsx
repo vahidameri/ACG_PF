@@ -1,20 +1,21 @@
 // Rich detail sheet for a task or follow-up: inline-editable properties, description, comments & activity.
 import { useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { Trash2, Send, Check, Clock, AlarmClockOff, Hash, Zap, MessageSquare, CircleDot, CheckCircle2, Sparkles } from 'lucide-react'
+import { Trash2, Send, Check, Clock, AlarmClockOff, Hash, Zap, MessageSquare, CircleDot, CheckCircle2, Sparkles, Bell, BellOff, Radar } from 'lucide-react'
+import { fieldOn, taskCfg } from '../lib/taskcfg'
 import type { FollowUp, Task, Comment, TaskStatus } from '../lib/types'
 
 type Item = Omit<Task, 'status'> & Omit<FollowUp, 'status'> & { status: Task['status'] | FollowUp['status'] }
 import { useStore } from '../lib/store'
 import { Attachments } from './Files'
 import { uid } from '../lib/api'
-import { addDays, fa, fmtDate, todayISO, timeAgo } from '../lib/jalali'
+import { addDays, fa, fmtDate, relDays, todayISO, timeAgo } from '../lib/jalali'
 import { L, lbl } from '../lib/i18n'
 import { CHANNEL, FOLLOWUP_STATUS } from '../lib/labels'
 import { Avatar, Sheet, cx, Chip, MenuItem, Popover } from './ui'
 import { DatePicker } from './DatePicker'
 import { useEditor } from './Editor'
-import { PersonPicker, PriorityPicker, ProjectPicker, StatusPicker } from './pickers'
+import { ListPicker, PeoplePicker, PersonPicker, PriorityPicker, ProjectPicker, StatusPicker } from './pickers'
 import { TRACK, trackOf, depsOf, dependentsOf, depIds, trackSoft, memberTrack } from '../lib/tracks'
 import type { Track } from '../lib/types'
 import { StatusIcon } from './ui'
@@ -59,6 +60,8 @@ export function ItemSheet({ sheet, id, onClose }: { sheet: 'Tasks' | 'FollowUps'
   }
 
   const title = isTask ? item.title : item.subject
+  const watchers = String(item.watchers || '').split(',').map((x) => x.trim()).filter(Boolean)
+  const watching = watchers.includes(me)
   const people = db.Team.map((m) => m.name)
 
   return (
@@ -143,6 +146,8 @@ export function ItemSheet({ sheet, id, onClose }: { sheet: 'Tasks' | 'FollowUps'
             </div>
           )}
 
+          {isTask && <Stages task={item as unknown as Task} />}
+
           {isTask && <Dependencies task={item as unknown as Task} onChange={(ids) => patch({ depends_on: ids.join(',') })} />}
 
           {isTask && (
@@ -204,6 +209,15 @@ export function ItemSheet({ sheet, id, onClose }: { sheet: 'Tasks' | 'FollowUps'
         </div>
 
         <aside className="space-y-1 bg-muted/30 px-4 py-6">
+          {isTask && me && (
+            <button
+              disabled={!canEdit}
+              onClick={() => patch({ watchers: watching ? watchers.filter((x) => x !== me).join(',') : [...watchers, me].join(',') })}
+              className={cx('mb-4 flex w-full items-center justify-center gap-2 rounded-2xl border px-3 py-2.5 text-xs font-medium transition', watching ? 'border-brand/30 bg-brand-soft/40 text-ink' : 'border-line bg-surface text-sub hover:text-ink')}
+            >
+              <Radar size={14} /> {watching ? L('در رادار شماست ✓', 'On your Radar ✓') : L('پیگیری در رادار من', 'Track on my Radar')}
+            </button>
+          )}
           <div className="eyebrow mb-2 px-2.5">{L('مشخصات', 'Properties')}</div>
           {isTask ? (
             <>
@@ -218,6 +232,47 @@ export function ItemSheet({ sheet, id, onClose }: { sheet: 'Tasks' | 'FollowUps'
               </Prop>
               <Prop label={L('سررسید', 'Due')}>
                 <DatePicker compact value={item.due_date} onChange={(v) => patch({ due_date: v })} />
+              </Prop>
+              {fieldOn('follow_date') && (
+                <Prop label={L('پیگیری', 'Follow-up')}>
+                  <DatePicker compact value={item.follow_date || ''} onChange={(v) => patch({ follow_date: v })} />
+                </Prop>
+              )}
+              {fieldOn('handoff_date') && (
+                <Prop label={L('تحویل پروداکت', 'To product')}>
+                  <DatePicker compact value={item.handoff_date || ''} onChange={(v) => patch({ handoff_date: v })} />
+                </Prop>
+              )}
+              {fieldOn('test_date') && (
+                <Prop label={L('تست', 'Testing')}>
+                  <DatePicker compact value={item.test_date || ''} onChange={(v) => patch({ test_date: v })} />
+                </Prop>
+              )}
+              {fieldOn('deadline') && (
+                <Prop label={L('ددلاین', 'Deadline')}>
+                  <DatePicker compact value={item.deadline || ''} onChange={(v) => patch({ deadline: v })} />
+                </Prop>
+              )}
+              {fieldOn('collaborators') && (
+                <Prop label={L('همکاران', 'Shared with')}>
+                  <PeoplePicker value={item.collaborators || ''} exclude={item.assignee} onChange={(v) => patch({ collaborators: v })} />
+                </Prop>
+              )}
+              {fieldOn('watchers') && (
+                <Prop label={L('پیگیرها', 'Tracked by')}>
+                  <PeoplePicker value={item.watchers || ''} onChange={(v) => patch({ watchers: v })} />
+                </Prop>
+              )}
+              {fieldOn('area') && (
+                <Prop label={L('حوزه', 'Area')}>
+                  <ListPicker value={item.area || ''} options={taskCfg().areas} empty={L('بدون حوزه', 'No area')} onChange={(v) => patch({ area: v })} />
+                </Prop>
+              )}
+              <Prop label={L('اعلان‌ها', 'Alerts')}>
+                <button disabled={!canEdit} onClick={() => patch({ notify: item.notify === 'off' ? '' : 'off' })} className="inline-flex h-8 items-center gap-1.5 rounded-full px-2.5 text-xs hover:bg-muted">
+                  {item.notify === 'off' ? <BellOff size={14} className="text-sub" /> : <Bell size={14} className="text-brand" />}
+                  {item.notify === 'off' ? L('خاموش', 'Off') : L('روشن', 'On')}
+                </button>
               </Prop>
               <Prop label={L('پروژه', 'Project')}>
                 <ProjectPicker value={item.project_id} onChange={(v) => patch({ project_id: v, sprint_id: '' })} />
@@ -580,4 +635,34 @@ function Dependencies({ task, onChange }: { task: Task; onChange: (ids: string[]
 function useEditorLite() {
   const { open } = useEditor()
   return { open: (t: Task) => open('Tasks', t as never) }
+}
+
+/** The road to final delivery: hand-off to product → testing → deadline, with today's position. */
+export function Stages({ task }: { task: Task }) {
+  const steps = [
+    { on: fieldOn('handoff_date'), d: task.handoff_date || '', label: L('تحویل به پروداکت', 'Hand-off to product') },
+    { on: fieldOn('test_date'), d: task.test_date || '', label: L('تست', 'Testing') },
+    { on: fieldOn('deadline'), d: task.deadline || '', label: L('تحویل نهایی', 'Final delivery') },
+  ].filter((x) => x.on && x.d)
+  if (!steps.length) return null
+  const today = todayISO()
+  const done = task.status === 'done'
+  return (
+    <div className="mt-6">
+      <div className="eyebrow mb-3">{L('مراحل تحویل', 'Delivery stages')}</div>
+      <ol className="grid gap-2" style={{ gridTemplateColumns: `repeat(${steps.length}, minmax(0, 1fr))` }}>
+        {steps.map((x) => {
+          const past = x.d < today
+          const now = x.d === today
+          return (
+            <li key={x.label} className={cx('rounded-2xl border px-3 py-2.5', done || past ? 'border-line bg-muted/50' : now ? 'border-warn/40 bg-warn/[0.08]' : 'border-line bg-surface')}>
+              <div className="text-[0.6875rem] text-sub">{x.label}</div>
+              <div className={cx('mt-0.5 text-sm font-medium num', !done && past && 'text-bad')}>{fmtDate(x.d)}</div>
+              <div className="text-[0.625rem] text-sub">{done ? L('انجام شد', 'Done') : now ? L('امروز', 'Today') : past ? L('گذشته', 'Passed') : relDays(x.d)}</div>
+            </li>
+          )
+        })}
+      </ol>
+    </div>
+  )
 }

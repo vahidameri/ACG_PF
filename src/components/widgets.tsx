@@ -8,7 +8,9 @@ import { useStore } from '../lib/store'
 import { useEditor } from './Editor'
 import { useComposer } from './UpdateComposer'
 import { Avatar, Due, cx, HealthBadge, Chip, StatusIcon, PriorityIcon } from './ui'
-import { TASK_STATUS, TASK_STATUS_ORDER, MILESTONE_STATUS, HEALTH } from '../lib/labels'
+import { MILESTONE_STATUS, HEALTH } from '../lib/labels'
+import { COLUMNS_KEY, columns, readColumns, statusLabel, withColumn } from '../lib/columns'
+import { can } from '../lib/access'
 import type { Activity } from '../lib/activity'
 import { DIM, DIMS, type Assessment } from '../lib/rag'
 import { burndown, riskLevel, riskScore, sprintCommitted, sprintDonePoints } from '../lib/metrics'
@@ -27,6 +29,18 @@ export function Kanban({ tasks, defaults, showProject = true }: { tasks: Task[];
   const pname = useProjectName()
   const [drag, setDrag] = useState<string | null>(null)
   const [over, setOver] = useState<TaskStatus | null>(null)
+  const { access, setting, setSetting, toast } = useStore()
+  const admin = canEdit && can.backoffice(access)
+  const [adding, setAdding] = useState(false)
+  const [name, setName] = useState('')
+  const addColumn = async () => {
+    const n = name.trim()
+    setAdding(false)
+    setName('')
+    if (!n) return
+    await setSetting(COLUMNS_KEY, JSON.stringify(withColumn(readColumns(setting(COLUMNS_KEY)), n)))
+    toast(L(`ستون «${n}» اضافه شد`, `Column “${n}” added`))
+  }
 
   const drop = async (s: TaskStatus) => {
     setOver(null)
@@ -38,7 +52,7 @@ export function Kanban({ tasks, defaults, showProject = true }: { tasks: Task[];
 
   return (
     <div className="grid auto-cols-[minmax(272px,1fr)] grid-flow-col gap-3 overflow-x-auto pb-3">
-      {TASK_STATUS_ORDER.map((s) => {
+      {columns().map(({ id: s }) => {
         const col = tasks.filter((t) => t.status === s)
         const pts = col.reduce((a, t) => a + (Number(t.points) || 0), 0)
         return (
@@ -54,7 +68,7 @@ export function Kanban({ tasks, defaults, showProject = true }: { tasks: Task[];
           >
             <div className="flex items-center gap-2 px-2.5 py-2">
               <StatusIcon s={s} size={15} />
-              <span className="text-sm font-semibold">{lbl(TASK_STATUS, s)}</span>
+              <span className="text-sm font-semibold">{statusLabel(s)}</span>
               <span className="text-xs text-sub num">{fa(col.length)}</span>
               {pts > 0 && <span className="ms-auto font-mono text-[0.625rem] text-sub">{fa(pts)} SP</span>}
             </div>
@@ -84,6 +98,11 @@ export function Kanban({ tasks, defaults, showProject = true }: { tasks: Task[];
                         </span>
                       )}
                       <span className="flex-1" />
+                      {t.deadline && s !== 'done' && (
+                        <span className={cx('inline-flex items-center gap-0.5 text-[0.625rem]', t.deadline < todayISO() ? 'text-bad' : 'text-sub')} title={L('ددلاین', 'Deadline')}>
+                          <Flag size={10} /> {fmtDayMonth(t.deadline)}
+                        </span>
+                      )}
                       <Due iso={t.due_date} done={s === 'done'} />
                       <Avatar name={t.assignee} size="xs" />
                     </div>
@@ -99,6 +118,22 @@ export function Kanban({ tasks, defaults, showProject = true }: { tasks: Task[];
           </div>
         )
       })}
+      {admin && (
+        <div className="flex min-h-[15rem] flex-col rounded-3xl border-2 border-dashed border-line p-2">
+          {adding ? (
+            <form onSubmit={(e) => (e.preventDefault(), addColumn())} className="space-y-2 p-1">
+              <input autoFocus className="input h-10" value={name} onChange={(e) => setName(e.target.value)} onBlur={() => !name.trim() && setAdding(false)} placeholder={L('نام ستون، مثلاً «آماده‌ی تست»', 'Column name, e.g. “Ready for QA”')} />
+              <button className="btn-primary btn-sm w-full" disabled={!name.trim()}>
+                {L('افزودن ستون', 'Add column')}
+              </button>
+            </form>
+          ) : (
+            <button onClick={() => setAdding(true)} className="flex h-11 items-center justify-center gap-1.5 rounded-2xl text-sm text-sub transition hover:bg-muted hover:text-ink">
+              <Plus size={15} /> {L('ستون جدید', 'New column')}
+            </button>
+          )}
+        </div>
+      )}
     </div>
   )
 }

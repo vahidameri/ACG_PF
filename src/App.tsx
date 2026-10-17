@@ -25,6 +25,7 @@ import Pulse from './pages/Pulse'
 import Plan from './pages/Plan'
 import Weekly from './pages/Weekly'
 import Profile from './pages/Profile'
+import Radar from './pages/Radar'
 import { ComposerProvider } from './components/UpdateComposer'
 import { Skeleton } from './components/ui'
 import { Login } from './components/Login'
@@ -121,6 +122,7 @@ export default function App() {
                 <Route path="/me" element={<Profile />} />
                 <Route path="/sprints" element={<Sprints />} />
                 <Route path="/tasks" element={<Tasks />} />
+                <Route path="/radar" element={<Only rule="portfolio"><Radar /></Only>} />
                 <Route path="/followups" element={<FollowUps />} />
                 <Route path="/risks" element={<Only rule="portfolio"><Risks /></Only>} />
                 <Route path="/team" element={<Only rule="portfolio"><Team /></Only>} />

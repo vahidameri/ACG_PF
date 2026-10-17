@@ -2,6 +2,9 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useRef, use
 import type { DB, Role, Row, SheetName } from './types'
 import { readWeekCfg, setWeekCfg } from './weeks'
 import { readTaskCfg, setTaskCfg } from './taskcfg'
+import { COLUMNS_KEY, readColumns, setColumns } from './columns'
+import { hideArchived, isArchived } from './archive'
+import type { Project } from './types'
 import { loadTr, pendingTexts, saveTr, translateDB, untranslateRow, type TrMap } from './translate'
 import { jobCode, teamCodes } from './labels'
 import { fetchAll, loadConfig, remoteAction, remoteDelete, remoteUpload, remoteUpsert, saveConfig, uid, type Config } from './api'
@@ -96,6 +99,8 @@ interface Toast {
 
 interface Store {
   db: DB
+  /** archived projects, kept out of db */
+  archived: Project[]
   mode: Mode
   role: Role
   me: string
@@ -184,6 +189,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   useMemo(() => {
     setWeekCfg(readWeekCfg((k) => db.Config.find((r) => r.id === k)?.value))
     setTaskCfg(readTaskCfg((k) => db.Config.find((r) => r.id === k)?.value, db.Team))
+    setColumns(readColumns(db.Config.find((r) => r.id === COLUMNS_KEY)?.value))
   }, [db.Config, db.Team])
   // English UI: Persian free text is shown translated (fetched from the server, cached locally)
   const [tr, setTr] = useState<TrMap>(() => loadTr(lang))
@@ -223,6 +229,9 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     const v = mapDB(scopeDB(visibleDB(db, canonMe), canonMe, access), maps.toEn)
     return translateDB(v, tr)
   }, [db, canonMe, access, maps, lang, tr])
+  // archived projects (and everything in them) leave the everyday views
+  const live = useMemo(() => hideArchived(shown), [shown])
+  const archived = useMemo(() => shown.Projects.filter(isArchived), [shown])
   setPhotos(db.Team)
 
   const dismissToast = useCallback((id: number) => setToasts((t) => t.filter((x) => x.id !== id)), [])
@@ -420,9 +429,9 @@ export function StoreProvider({ children }: { children: ReactNode }) {
 
 
   const value = useMemo<Store>(
-    () => ({ db: shown, mode, role, me, setMe, loading, error, lastSync, config, setConfig, refresh, upsert, remove, resetDemo, canEdit: role !== 'viewer', access, authed, email, upload, action, setting, setSetting, toasts, toast, dismissToast }),
+    () => ({ db: live, archived, mode, role, me, setMe, loading, error, lastSync, config, setConfig, refresh, upsert, remove, resetDemo, canEdit: role !== 'viewer', access, authed, email, upload, action, setting, setSetting, toasts, toast, dismissToast }),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [shown, access, mode, role, me, authed, email, upload, action, loading, error, lastSync, config, refresh, upsert, remove, toasts, toast, dismissToast],
+    [live, archived, access, mode, role, me, authed, email, upload, action, loading, error, lastSync, config, refresh, upsert, remove, toasts, toast, dismissToast],
   )
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>
 }

@@ -2,13 +2,15 @@ import { createContext, useCallback, useContext, useState, type ReactNode } from
 import { Trash2 } from 'lucide-react'
 import type { SheetName } from '../lib/types'
 import { weekCfg } from '../lib/weeks'
-import { canPersonal, dueFor, needsDue, needsProject } from '../lib/taskcfg'
+import { canPersonal, dueFor, fieldOn, fieldReq, needsDue, needsProject, taskCfg, TASK_FIELDS, type TaskField } from '../lib/taskcfg'
+import { DAY_OPTIONS } from '../lib/cadence'
+import { columns, statusLabel } from '../lib/columns'
 import { useStore } from '../lib/store'
 import { uid } from '../lib/api'
 import { todayISO } from '../lib/jalali'
 import { L, tr, type T2 } from '../lib/i18n'
 import {
-  CHANNEL, CONFIDENCE, CONTRACT_KIND, CONTRACT_STATUS, DELIVERABLE_STATUS, MEETING_SERIES, MEETING_STATUS, FOLLOWUP_STATUS, HEALTH, MILESTONE_STATUS, PRIORITY, PROJECT_STATUS, RISK_STATUS, RISK_TYPE, SCOPE_STATUS, SPRINT_STATUS, TASK_STATUS,
+  CHANNEL, CONFIDENCE, CONTRACT_KIND, CONTRACT_STATUS, DELIVERABLE_STATUS, MEETING_SERIES, MEETING_STATUS, FOLLOWUP_STATUS, HEALTH, MILESTONE_STATUS, PRIORITY, PROJECT_STATUS, RISK_STATUS, RISK_TYPE, SCOPE_STATUS, SPRINT_STATUS,
   ACCESS, JOB_TITLE_OPTIONS, TEAM_NAMES } from '../lib/labels'
 import { Sheet, cx } from './ui'
 import { DatePicker } from './DatePicker'
@@ -16,7 +18,7 @@ import { ItemSheet } from './ItemSheet'
 import { useAuto } from '../lib/automations'
 import { can } from '../lib/access'
 
-type FieldType = 'text' | 'textarea' | 'select' | 'multi' | 'date' | 'number' | 'project' | 'person' | 'sprint' | 'member' | 'scale'
+type FieldType = 'text' | 'textarea' | 'select' | 'multi' | 'date' | 'number' | 'project' | 'person' | 'people' | 'sprint' | 'member' | 'scale' | 'status' | 'area'
 export interface Field {
   key: string
   label: T2
@@ -37,17 +39,25 @@ export const SCHEMAS: Record<EditableSheet, { title: T2; prefix: string; fields:
       { key: 'title', label: ['عنوان تسک', 'Task title'], type: 'text', required: true },
       { key: 'description', label: ['توضیحات', 'Description'], type: 'textarea' },
       { key: 'project_id', label: ['پروژه', 'Project'], type: 'project', half: true },
+      { key: 'area', label: ['حوزه', 'Area'], type: 'area', half: true },
       { key: 'sprint_id', label: ['اسپرینت', 'Sprint'], type: 'sprint', half: true },
-      { key: 'assignee', label: ['مسئول', 'Assignee'], type: 'person', half: true },
-      { key: 'due_date', label: ['سررسید', 'Due date'], type: 'date', half: true },
-      { key: 'status', label: ['وضعیت', 'Status'], type: 'select', options: TASK_STATUS, half: true },
+      { key: 'assignee', label: ['مسئول انجام', 'Assignee'], type: 'person', half: true },
+      { key: 'collaborators', label: ['همکاران (تسک مشترک)', 'Shared with'], type: 'people' },
+      { key: 'watchers', label: ['پیگیرها (رادار و اعلان)', 'Tracked by (Radar & alerts)'], type: 'people' },
+      { key: 'status', label: ['وضعیت', 'Status'], type: 'status', half: true },
       { key: 'priority', label: ['اولویت', 'Priority'], type: 'select', options: PRIORITY, half: true },
+      { key: 'due_date', label: ['سررسید', 'Due date'], type: 'date', half: true },
+      { key: 'follow_date', label: ['تاریخ پیگیری (اعلان)', 'Follow-up date (alert)'], type: 'date', half: true },
+      { key: 'handoff_date', label: ['تحویل به پروداکت', 'Hand-off to product'], type: 'date', half: true },
+      { key: 'test_date', label: ['زمان تست', 'Testing'], type: 'date', half: true },
+      { key: 'deadline', label: ['ددلاین (تحویل نهایی)', 'Deadline (final delivery)'], type: 'date', half: true },
+      { key: 'notify', label: ['اعلان‌ها', 'Alerts'], type: 'select', options: { '': ['روشن', 'On'], off: ['خاموش', 'Off'] }, half: true },
       { key: 'points', label: ['استوری‌پوینت', 'Story points'], type: 'number', half: true },
       { key: 'tags', label: ['برچسب‌ها', 'Tags'], type: 'text', half: true, placeholder: ['با کاما جدا کنید', 'Comma separated'] },
       { key: 'track', label: ['تیم', 'Track'], type: 'select', options: { '': ['خودکار', 'Auto'], product: ['پروداکت', 'Product'], tech: ['تک', 'Tech'] }, half: true },
       { key: 'private', label: ['دیده‌شدن', 'Visibility'], type: 'select', options: { '': ['عمومی', 'Visible'], '1': ['خصوصی', 'Private'] }, half: true },
     ],
-    defaults: () => ({ private: '', status: 'todo', priority: 'medium', points: 0, created_at: todayISO(), track: '', depends_on: '', meeting_id: '' }),
+    defaults: () => ({ private: '', status: 'todo', priority: 'medium', points: 0, created_at: todayISO(), track: '', depends_on: '', meeting_id: '', deadline: '', handoff_date: '', test_date: '', follow_date: '', area: '', collaborators: '', watchers: '', notify: '' }),
   },
   FollowUps: {
     title: ['فالوآپ', 'Follow-up'],
@@ -83,9 +93,10 @@ export const SCHEMAS: Record<EditableSheet, { title: T2; prefix: string; fields:
       { key: 'progress', label: ['پیشرفت دستی', 'Manual progress'], type: 'number', half: true },
       { key: 'start_date', label: ['شروع', 'Start'], type: 'date', half: true },
       { key: 'end_date', label: ['ددلاین', 'Deadline'], type: 'date', half: true },
-      { key: 'health_override', label: ['سلامت دستی', 'Health override'], type: 'select', options: { '': ['خودکار', 'Automatic'], ...HEALTH } },
+      { key: 'delivery_day', label: ['روز تحویل هفتگی', 'Weekly delivery day'], type: 'select', options: DAY_OPTIONS, half: true },
+      { key: 'health_override', label: ['سلامت دستی', 'Health override'], type: 'select', options: { '': ['خودکار', 'Automatic'], ...HEALTH }, half: true },
     ],
-    defaults: () => ({ status: 'planning', priority: 'medium', start_date: todayISO(), progress: '', health_override: '', paused_at: '', pause_reason: '' }),
+    defaults: () => ({ status: 'planning', priority: 'medium', start_date: todayISO(), progress: '', health_override: '', paused_at: '', pause_reason: '', delivery_day: '', last_delivery: '', archived: '', archived_at: '' }),
   },
   Milestones: {
     title: ['مایلستون', 'Milestone'],
@@ -306,6 +317,43 @@ export function FieldInput({ f, value, set, form, disabled, autoFocus, onSubmit 
         </div>
       )
     }
+    case 'status':
+      return (
+        <select {...common} value={String(v)} onChange={(e) => set(e.target.value)}>
+          {columns().map((c) => (
+            <option key={c.id} value={c.id}>
+              {statusLabel(c.id)}
+            </option>
+          ))}
+        </select>
+      )
+    case 'area':
+      return (
+        <select {...common} value={String(v)} onChange={(e) => set(e.target.value)}>
+          <option value="">—</option>
+          {[...taskCfg().areas, ...(v && !taskCfg().areas.includes(String(v)) ? [String(v)] : [])].map((a) => (
+            <option key={a} value={a}>
+              {a}
+            </option>
+          ))}
+        </select>
+      )
+    case 'people': {
+      const on = String(v || '').split(',').map((x) => x.trim()).filter(Boolean)
+      const team = db.Team.filter((m) => String(m.active) !== 'false' && m.name !== form.assignee)
+      return (
+        <div className="flex flex-wrap gap-1.5">
+          {team.map((m) => {
+            const sel = on.includes(m.name)
+            return (
+              <button key={m.id} type="button" disabled={disabled} onClick={() => set((sel ? on.filter((x) => x !== m.name) : [...on, m.name]).join(','))} className={cx('h-8 rounded-full border px-3 text-xs transition disabled:opacity-60', sel ? 'border-ink bg-ink text-surface' : 'border-line text-sub hover:text-ink')}>
+                {m.name}
+              </button>
+            )
+          })}
+        </div>
+      )
+    }
     case 'date':
       return <DatePicker value={String(v)} onChange={(iso) => set(iso)} />
     case 'number':
@@ -398,7 +446,16 @@ function EditorModal({ sheet, row, isNew, onClose }: { sheet: EditableSheet; row
   const set = (k: string, v: unknown) => setForm((f) => ({ ...f, [k]: v }))
   // task rules from the back office: deadline / project may be required, except for listed people
   const owner = db.Team.find((m) => m.name === form.assignee)
-  const schema = sheet !== 'Tasks' ? base : { ...base, fields: base.fields.map((f) => ((f.key === 'due_date' && needsDue(owner)) || (f.key === 'project_id' && needsProject(owner)) ? { ...f, required: true } : f)) }
+  const optional = new Set<string>(TASK_FIELDS)
+  const schema =
+    sheet !== 'Tasks'
+      ? base
+      : {
+          ...base,
+          fields: base.fields
+            .filter((f) => !optional.has(f.key) || fieldOn(f.key as TaskField))
+            .map((f) => ((f.key === 'due_date' && needsDue(owner)) || (f.key === 'project_id' && needsProject(owner)) || (optional.has(f.key) && fieldReq(f.key as TaskField)) ? { ...f, required: true } : f)),
+        }
   const missing = schema.fields.filter((f) => f.required && !String(form[f.key] ?? '').trim())
   const title = tr(schema.title)
 
@@ -409,6 +466,7 @@ function EditorModal({ sheet, row, isNew, onClose }: { sheet: EditableSheet; row
     if (isNew) out.id = uid(schema.prefix)
     // Auto-stamp completion dates so burndown & history stay accurate.
     if (sheet === 'Tasks') out.completed_at = out.status === 'done' ? out.completed_at || todayISO() : ''
+    if (sheet === 'Tasks' && isNew && !out.reporter) out.reporter = me
     if (sheet === 'FollowUps' && !out.owner) out.owner = me
     if (sheet === 'FollowUps') out.done_at = out.status === 'done' ? out.done_at || todayISO() : ''
     // The first committed date becomes the baseline; later moves show up as slippage.

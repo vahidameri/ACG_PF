@@ -10,7 +10,7 @@ export function isPrivateTask(t: Task, db: DB) {
 }
 
 export function canSeeTask(t: Task, db: DB, viewer: string) {
-  return !isPrivateTask(t, db) || (!!viewer && (t.assignee === viewer || t.reporter === viewer))
+  return !isPrivateTask(t, db) || (!!viewer && (t.assignee === viewer || t.reporter === viewer || String(t.collaborators || '').split(',').map((x) => x.trim()).includes(viewer)))
 }
 
 export function visibleDB(db: DB, viewer: string): DB {

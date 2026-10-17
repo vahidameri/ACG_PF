@@ -3,6 +3,7 @@ import { NavLink, useLocation, useNavigate, Link } from 'react-router-dom'
 import {
   LayoutGrid, Briefcase, ListChecks, BellRing, ShieldAlert, FileText, Settings, Moon, Sun, Search, Plus, RefreshCw, Menu,
   Sparkles, CheckCircle2, AlertCircle, Bell, PanelLeftClose, PanelLeftOpen, Languages, Star, AtSign, Flag, Clock, CircleAlert, Ban, CalendarDays, Keyboard, PackageCheck, CalendarRange, Gauge, UserRound, LogOut,
+  Radar as RadarIcon,
 } from 'lucide-react'
 import { useStore, clearSnaps } from '../lib/store'
 import { useI18n, L } from '../lib/i18n'
@@ -14,6 +15,8 @@ import { cx, Avatar, HealthDot, Popover, MenuItem } from './ui'
 import { fa, fmtDayMonth, todayISO as todayISOStr } from '../lib/jalali'
 import { inWeek, updateDue, weekStart } from '../lib/weeks'
 import { overloaded } from '../lib/capacity'
+import { isLate, tracking } from '../lib/radar'
+import { deliveryState } from '../lib/cadence'
 import { useGoogle } from '../lib/google'
 import { APP_NAME } from '../lib/brand'
 import { hubOf, type Hub } from './HubNav'
@@ -82,19 +85,21 @@ export function Layout({ children }: { children: ReactNode }) {
   }
 
   const inbox = useMemo(() => buildInbox(db, me), [db, me])
-  const myCount = inbox.filter((i) => i.kind === 'overdue' || i.kind === 'followup' || i.kind === 'mention').length
+  const myCount = inbox.filter((i) => i.kind !== 'milestone' && i.kind !== 'risk' && i.kind !== 'blocked').length
 
   const ws = weekStart()
   const updatesMissing = todayISOStr() > updateDue(ws)
     ? db.Projects.filter((p) => p.status === 'active' && !db.Updates.some((u) => u.project_id === p.id && inWeek(u.week_date, ws))).length
     : 0
   const overCap = overloaded(db, ws).length
+  const radarLate = leader ? db.Tasks.filter((t) => tracking(t, me) && isLate(t)).length + db.Projects.filter((p) => deliveryState(p) === 'missed' || deliveryState(p) === 'today').length : 0
 
   const groups: { label: string; links: { to: string; label: string; icon: typeof LayoutGrid; badge?: number; count?: number; hub?: Hub }[] }[] = [
     {
       label: L('کار من', 'My work'),
       links: [
         { to: '/my', label: L('خانه', 'Home'), icon: Sparkles, badge: myCount },
+        ...(leader ? [{ to: '/radar', label: L('رادار', 'Radar'), icon: RadarIcon, badge: radarLate }] : []),
         { to: '/calendar', label: L('تقویم', 'Calendar'), icon: CalendarDays },
         { to: '/meetings', label: L('جلسات', 'Meetings'), icon: CalendarRange },
         { to: '/tasks', label: L('کارها', 'Work'), icon: ListChecks, count: db.Tasks.filter((t) => t.status !== 'done').length, hub: 'work' },
@@ -385,7 +390,7 @@ export function Layout({ children }: { children: ReactNode }) {
   )
 }
 
-const kindIcon = { mention: AtSign, overdue: Clock, followup: BellRing, milestone: Flag, risk: CircleAlert, blocked: Ban }
+const kindIcon = { mention: AtSign, overdue: Clock, followup: BellRing, milestone: Flag, risk: CircleAlert, blocked: Ban, assigned: UserRound, remind: Bell, deadline: Flag, delivery: PackageCheck }
 
 function InboxButton({ items }: { items: InboxItem[] }) {
   const [read, setRead] = usePref<string[]>('acg.inbox.read', [])

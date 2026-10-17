@@ -2,7 +2,8 @@ import { useEffect, useLayoutEffect, useRef, useState, type ReactNode, type CSSP
 import { createPortal } from 'react-dom'
 import { X, Inbox, ChevronDown, Check } from 'lucide-react'
 import type { Health, Priority, TaskStatus } from '../lib/types'
-import { HEALTH, PRIORITY, TASK_STATUS } from '../lib/labels'
+import { HEALTH, PRIORITY } from '../lib/labels'
+import { columnColor, statusLabel } from '../lib/columns'
 import { daysFromToday, fa, fmtDayMonth, relDays } from '../lib/jalali'
 import { lbl, L } from '../lib/i18n'
 
@@ -130,9 +131,9 @@ export function StatusIcon({ s, size = 16 }: { s: TaskStatus; size?: number }) {
   const r = size / 2 - 1.5
   const c = size / 2
   const circ = 2 * Math.PI * (r - 2.5)
-  const color = s === 'done' ? 'rgb(var(--good))' : s === 'blocked' ? 'rgb(var(--bad))' : s === 'review' ? '#8b5cf6' : s === 'in_progress' ? 'rgb(var(--warn))' : 'rgb(var(--sub))'
+  const color = s === 'done' ? 'rgb(var(--good))' : s === 'blocked' ? 'rgb(var(--bad))' : s === 'review' ? '#8b5cf6' : s === 'in_progress' ? 'rgb(var(--warn))' : s === 'todo' ? 'rgb(var(--sub))' : columnColor(s)
   return (
-    <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} className="shrink-0" aria-label={lbl(TASK_STATUS, s)}>
+    <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} className="shrink-0" aria-label={statusLabel(s)}>
       {s === 'done' ? (
         <>
           <circle cx={c} cy={c} r={r} fill={color} />
@@ -168,7 +169,7 @@ export function TaskStatusBadge({ s }: { s: TaskStatus }) {
   return (
     <span className="inline-flex items-center gap-1.5 text-xs">
       <StatusIcon s={s} size={14} />
-      {lbl(TASK_STATUS, s)}
+      {statusLabel(s)}
     </span>
   )
 }
