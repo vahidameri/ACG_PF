@@ -130,7 +130,7 @@ export function FollowUpRow({ f, compact }: { f: FollowUp; compact?: boolean }) 
         <Due iso={f.due_date} done={f.status === 'done'} />
         {canEdit && f.status !== 'done' && (
           <div className="flex gap-0.5 transition @sm:opacity-0 @sm:group-hover:opacity-100">
-            <button className="icon-btn h-7 w-7" title={L('انجام شد', 'Done')} onClick={(e) => act(e, { status: 'done', done_at: todayISO() }, L('فالوآپ بسته شد', 'Follow-up closed'))}>
+            <button className="icon-btn h-7 w-7" title={L('انجام شد', 'Done')} onClick={(e) => act(e, { status: 'done', done_at: todayISO() }, L('پیگیری بسته شد', 'Follow-up closed'))}>
               <Check size={14} />
             </button>
             <button className="icon-btn h-7 w-7" title={L('منتظر پاسخ', 'Waiting')} onClick={(e) => act(e, { status: 'waiting', due_date: addDays(todayISO(), 2) }, L('منتظر پاسخ — ۲ روز دیگر یادآوری می‌شود', 'Waiting — reminder in 2 days'))}>

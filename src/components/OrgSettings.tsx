@@ -1,27 +1,32 @@
 // The organisation in the back office: job titles, teams and sides are lists the program manager edits.
 import { useState } from 'react'
-import { ArrowDown, ArrowUp, Building2, Plus, Trash2 } from 'lucide-react'
+import { ArrowDown, ArrowUp, BookA, Building2, Plus, Trash2 } from 'lucide-react'
 import { useStore } from '../lib/store'
 import { Card, cx } from './ui'
-import { L, tr, type T2 } from '../lib/i18n'
+import { L, locale, tr, type T2 } from '../lib/i18n'
 import { ORG_KEYS, orgList, type OrgItem, type OrgKind } from '../lib/org'
 import { teamCodes } from '../lib/labels'
+import { TERMS, TERMS_KEY, termOverrides } from '../lib/terms'
 
-const TITLE: Record<OrgKind, T2> = { series: ['جلسه‌ها (عنوان سری‌ها)', 'Meeting series'], titles: ['سمت‌ها', 'Job titles'], teams: ['تیم‌ها', 'Teams'], sides: ['واحدها (پروداکت، دیزاین، تک…)', 'Units (product, design, tech…)'] }
+const TITLE: Record<OrgKind, T2> = { links: ['نوع لینک‌های پروژه', 'Project link types'], access: ['سطح دسترسی (فقط نام)', 'Access levels (names only)'], series: ['جلسه‌ها (عنوان سری‌ها)', 'Meeting series'], titles: ['سمت‌ها', 'Job titles'], teams: ['تیم‌ها', 'Teams'], sides: ['واحدها (پروداکت، دیزاین، تک…)', 'Units (product, design, tech…)'] }
 const HINT: Record<OrgKind, T2> = {
+  links: ['لینک‌هایی که هر پروژه دارد: استیج، پروداکشن، فیگما، …', 'The links each project keeps: staging, production, Figma, …'],
+  access: ['چهار سطح ثابت‌اند (همه‌چیز + بک‌آفیس، مدیرعامل، هد، عضو)؛ فقط اسمشان را عوض کنید.', 'The four levels are fixed (everything + back office, CEO, head, member); only rename them.'],
   series: ['نام سری‌های جلسه؛ همه به‌جز «یک‌به‌یک» و «سایر» هفتگی تکرار می‌شوند.', 'Series names; all but one-on-one and other repeat weekly.'],
   titles: ['کد کوتاه انگلیسی (مثل CEO) روی کارت هر نفر دیده می‌شود.', 'The short code (e.g. CEO) shows on each person.'],
   teams: ['هر نفر می‌تواند عضو چند تیم باشد.', 'A person can be in several teams.'],
   sides: ['واحدها کار را به هم تحویل می‌دهند (رفت و برگشت)؛ هر تسک و هر نفر یک واحد دارد.', 'Units hand work to each other (and back); every task and person belongs to one.'],
 }
 
-function OrgList({ kind, admin }: { kind: OrgKind; admin: boolean }) {
+function OrgList({ kind, admin: canEdit }: { kind: OrgKind; admin: boolean }) {
+  const admin = canEdit
+  const fixed = kind === 'access'
   const { db, setSetting, toast } = useStore()
   const list = orgList(kind)
   const [draft, setDraft] = useState<OrgItem>({ id: '', fa: '', en: '' })
   const save = (next: OrgItem[]) => setSetting(ORG_KEYS[kind], JSON.stringify(next))
   const used = (id: string) =>
-    kind === 'series' ? db.Meetings.filter((m) => m.series === id).length : kind === 'titles' ? db.Team.filter((m) => m.role === id).length : kind === 'teams' ? db.Team.filter((m) => teamCodes(m.team, m.role, m.track).includes(id)).length : db.Team.filter((m) => m.track === id).length + db.Tasks.filter((t) => t.track === id).length
+    kind === 'links' ? db.Projects.filter((p) => String(p.links || '').includes(`"${id}"`)).length : kind === 'access' ? db.Team.filter((m) => m.access === id).length : kind === 'series' ? db.Meetings.filter((m) => m.series === id).length : kind === 'titles' ? db.Team.filter((m) => m.role === id).length : kind === 'teams' ? db.Team.filter((m) => teamCodes(m.team, m.role, m.track).includes(id)).length : db.Team.filter((m) => m.track === id).length + db.Tasks.filter((t) => t.track === id).length
   const edit = (i: number, k: keyof OrgItem, v: string) => {
     if ((list[i][k] || '') === v) return
     save(list.map((x, j) => (j === i ? { ...x, [k]: v } : x)))
@@ -58,7 +63,7 @@ function OrgList({ kind, admin }: { kind: OrgKind; admin: boolean }) {
             <input key={'fa' + x.fa} className={cx(cell, 'flex-1')} disabled={!admin} defaultValue={x.fa} onBlur={(e) => e.target.value.trim() && edit(i, 'fa', e.target.value.trim())} />
             <input key={'en' + x.en} dir="ltr" className={cx(cell, 'w-28')} disabled={!admin} defaultValue={x.en} onBlur={(e) => e.target.value.trim() && edit(i, 'en', e.target.value.trim())} />
             <span className="w-6 text-center text-[0.625rem] text-sub num" title={L('در حال استفاده', 'In use')}>{used(x.id) || ''}</span>
-            {admin && (
+            {admin && !fixed && (
               <>
                 <button className="icon-btn h-7 w-7" disabled={i === 0} onClick={() => move(i, -1)} aria-label={L('بالا', 'Up')}><ArrowUp size={13} /></button>
                 <button className="icon-btn h-7 w-7" disabled={i === list.length - 1} onClick={() => move(i, 1)} aria-label={L('پایین', 'Down')}><ArrowDown size={13} /></button>
@@ -68,7 +73,7 @@ function OrgList({ kind, admin }: { kind: OrgKind; admin: boolean }) {
           </li>
         ))}
       </ul>
-      {admin && (
+      {admin && !fixed && (
         <form className="mt-2 flex flex-wrap gap-1.5" onSubmit={(e) => (e.preventDefault(), add())}>
           <input dir="ltr" className="input h-9 w-20 text-xs" placeholder={L('کد', 'Code')} value={draft.id} onChange={(e) => setDraft({ ...draft, id: e.target.value })} />
           <input className="input h-9 min-w-0 flex-1 text-xs" placeholder={L('نام فارسی', 'Persian name')} value={draft.fa} onChange={(e) => setDraft({ ...draft, fa: e.target.value })} />
@@ -91,7 +96,41 @@ export function OrgCard({ admin }: { admin: boolean }) {
         <OrgList kind="teams" admin={admin} />
         <OrgList kind="titles" admin={admin} />
         <OrgList kind="series" admin={admin} />
+        <OrgList kind="access" admin={admin} />
+        <OrgList kind="links" admin={admin} />
       </div>
+    </Card>
+  )
+}
+
+/** The glossary: rename Atlas's main words; every label follows. */
+export function TermsCard({ admin }: { admin: boolean }) {
+  const { setSetting } = useStore()
+  const o = termOverrides()
+  const save = (id: string, k: 'fa' | 'en', v: string) => {
+    const cur = { ...(o[id] || {}) }
+    if ((cur[k] || '') === v.trim()) return
+    cur[k] = v.trim()
+    const next = { ...o, [id]: cur }
+    if (!cur.fa && !cur.en) delete next[id]
+    setSetting(TERMS_KEY, JSON.stringify(next))
+  }
+  return (
+    <Card eyebrow={<span className="flex items-center gap-1.5"><BookA size={12} /> {L('فرهنگ اصطلاحات', 'Glossary')}</span>} title={L('اسم مفاهیم اصلی', 'The names of the main ideas')}>
+      <p className="mb-3 text-xs leading-6 text-sub">{L('هر کلمه را این‌جا عوض کنید، در کل اطلس (منوها، عنوان‌ها، دکمه‌ها) عوض می‌شود. خالی بگذارید تا پیش‌فرض بماند.', 'Rename a word here and it changes across Atlas (menus, titles, buttons). Leave blank to keep the default.')}</p>
+      <ul className="divide-y divide-line">
+        {TERMS.map((t) => (
+          <li key={t.id} className="grid items-center gap-2 py-2 sm:grid-cols-[9rem_1fr_1fr]">
+            <div className="min-w-0">
+              {/* the default word, shown as is (not through the glossary) */}
+              <div className="text-sm font-medium">{locale.lang === 'fa' ? <>{t.word[0]} <span className="text-sub">· {t.word[1]}</span></> : t.word[1]}</div>
+              <div className="truncate text-[0.625rem] text-sub" title={tr(t.hint)}>{tr(t.hint)}</div>
+            </div>
+            <input key={'fa' + (o[t.id]?.fa || '')} className="input h-9 text-xs" disabled={!admin} defaultValue={o[t.id]?.fa || ''} placeholder={t.word[0]} onBlur={(e) => save(t.id, 'fa', e.target.value)} />
+            <input key={'en' + (o[t.id]?.en || '')} dir="ltr" className="input h-9 text-xs" disabled={!admin} defaultValue={o[t.id]?.en || ''} placeholder={t.word[1]} onBlur={(e) => save(t.id, 'en', e.target.value)} />
+          </li>
+        ))}
+      </ul>
     </Card>
   )
 }

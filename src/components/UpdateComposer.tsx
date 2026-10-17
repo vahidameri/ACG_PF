@@ -247,7 +247,7 @@ function Composer({ projectId, update, onClose }: { projectId?: string; update?:
         {/* ---------------- structured updates */}
         <aside className="space-y-5 border-t border-line bg-muted/30 px-6 py-6 md:border-s md:border-t-0">
           <div>
-            <div className="eyebrow mb-1">{L('به‌روزرسانی تحویلی‌ها', 'Update deliverables')}</div>
+            <div className="eyebrow mb-1">{L('به‌روزرسانی خروجی‌ها', 'Update deliverables')}</div>
             {facts?.due.length ? (
               <div className="space-y-2">
                 {facts.due.map((d) => {
@@ -292,7 +292,7 @@ function Composer({ projectId, update, onClose }: { projectId?: string; update?:
                 })}
               </div>
             ) : (
-              <div className="rounded-xl border border-dashed border-line-strong px-3 py-4 text-center text-[0.6875rem] text-sub">{L('تحویلی برای دو هفته‌ی پیش رو ثبت نشده', 'No deliverables in the next two weeks')}</div>
+              <div className="rounded-xl border border-dashed border-line-strong px-3 py-4 text-center text-[0.6875rem] text-sub">{L('خروجی برای دو هفته‌ی پیش رو ثبت نشده', 'No deliverables in the next two weeks')}</div>
             )}
           </div>
 

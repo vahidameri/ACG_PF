@@ -66,7 +66,7 @@ export default function MyDesk() {
       await upsert('FollowUps', {
         id: uid('F'), project_id: proj, subject: t, person: who, channel: 'meeting', due_date: dueDate, status: 'open', priority: 'medium', notes: '', created_at: today, done_at: '', owner: me,
       })
-      toast(L('فالوآپ ثبت شد', 'Follow-up added'))
+      toast(L('پیگیری ثبت شد', 'Follow-up added'))
     }
     setText('')
   }
@@ -120,7 +120,7 @@ export default function MyDesk() {
         out.push({
           key: `esc-${p.id}`, tone: 'bad',
           text: L(`«${p.name}» در خطر است و با رابط کارفرما (${contact}) پیگیری ثبت نشده`, `“${p.name}” is off track with no follow-up logged with the client liaison (${contact})`),
-          action: L('فالوآپ با رابط', 'Follow up with liaison'),
+          action: L('پیگیری با رابط', 'Follow up with liaison'),
           run: () => open('FollowUps', { project_id: p.id, person: contact, subject: L(`بررسی وضعیت ${p.name} با کارفرما`, `Review ${p.name} with the client`), priority: 'high' }),
         })
     })
@@ -149,7 +149,7 @@ export default function MyDesk() {
     if (ds.overdue.length)
       out.unshift({
         key: 'dl-overdue', tone: 'bad',
-        text: L(`${fa(ds.overdue.length)} تحویلی از تاریخش گذشته و هنوز تحویل نشده`, `${ds.overdue.length} deliverable(s) are past their date`),
+        text: L(`${fa(ds.overdue.length)} خروجی از تاریخش گذشته و هنوز تحویل نشده`, `${ds.overdue.length} deliverable(s) are past their date`),
         action: L('برنامه‌ی تحویل', 'Delivery plan'), run: () => (window.location.hash = '#/plan'),
       })
     const over = overloaded(db, ws)
@@ -212,7 +212,7 @@ export default function MyDesk() {
         <StatStrip
           items={[
             { label: L('تسک امروز و معوق', 'Tasks today & overdue'), value: fa(myToday.length) },
-            { label: L('فالوآپ سررسیدشده', 'Follow-ups due'), value: fa(fuDue.length), tone: fuDue.length ? 'amber' : undefined },
+            { label: L('پیگیری سررسیدشده', 'Follow-ups due'), value: fa(fuDue.length), tone: fuDue.length ? 'amber' : undefined },
             { label: L('عقب‌افتاده', 'Overdue'), value: fa(overdue), tone: overdue ? 'red' : 'green' },
             { label: L('منتظر پاسخ دیگران', 'Waiting on others'), value: fa(fuWaiting.length) },
             { label: L('انجام‌شده امروز', 'Done today'), value: fa(doneToday.length), tone: doneToday.length ? 'green' : undefined },
@@ -224,7 +224,7 @@ export default function MyDesk() {
         {canEdit && (
           <div className="card p-2.5">
             <div className="flex flex-wrap items-center gap-2">
-              <Segmented value={kind} onChange={setKind} options={[{ value: 'task', label: L('تسک', 'Task') }, { value: 'followup', label: L('فالوآپ', 'Follow-up') }]} />
+              <Segmented value={kind} onChange={setKind} options={[{ value: 'task', label: L('تسک', 'Task') }, { value: 'followup', label: L('پیگیری', 'Follow-up') }]} />
               <input
                 value={text}
                 onChange={(e) => setText(e.target.value)}
@@ -319,7 +319,7 @@ export default function MyDesk() {
             </div>
             <div className="mt-3 flex flex-wrap items-center gap-4 text-[0.6875rem] text-sub">
               <span className="flex items-center gap-1.5"><span className="h-1.5 w-3 rounded-full bg-ink" /> {L('تسک', 'Tasks')}</span>
-              <span className="flex items-center gap-1.5"><span className="h-1.5 w-1.5 rounded-full bg-warn" /> {L('فالوآپ', 'Follow-ups')}</span>
+              <span className="flex items-center gap-1.5"><span className="h-1.5 w-1.5 rounded-full bg-warn" /> {L('پیگیری', 'Follow-ups')}</span>
               <span className="flex items-center gap-1.5"><span className="h-1.5 w-1.5 rotate-45 rounded-[1px] bg-bad" /> {L('مایلستون', 'Milestone')}</span>
             </div>
           </Card>
@@ -382,8 +382,8 @@ export default function MyDesk() {
               </div>
             </Card>
 
-            <Card pad={false} eyebrow={<span className="flex items-center gap-1.5"><BellRing size={12} /> {L('فالوآپ', 'Follow-ups')}</span>} title={L('امروز و معوق', 'Due today & overdue')} action={<Link to="/followups" className="text-xs font-medium text-sub hover:text-ink">{L('همه', 'All')} →</Link>}>
-              <div className="px-2 pb-2">{fuDue.length === 0 ? <Empty text={L('فالوآپ سررسیدشده‌ای ندارید', 'No follow-ups due')} /> : fuDue.map((f) => <FollowUpRow key={f.id} f={f} />)}</div>
+            <Card pad={false} eyebrow={<span className="flex items-center gap-1.5"><BellRing size={12} /> {L('پیگیری', 'Follow-ups')}</span>} title={L('امروز و معوق', 'Due today & overdue')} action={<Link to="/followups" className="text-xs font-medium text-sub hover:text-ink">{L('همه', 'All')} →</Link>}>
+              <div className="px-2 pb-2">{fuDue.length === 0 ? <Empty text={L('پیگیری سررسیدشده‌ای ندارید', 'No follow-ups due')} /> : fuDue.map((f) => <FollowUpRow key={f.id} f={f} />)}</div>
             </Card>
 
             <Card pad={false} eyebrow={<span className="flex items-center gap-1.5"><Hourglass size={12} /> {L('منتظر', 'Waiting')}</span>} title={L('منتظر پاسخ دیگران', 'Waiting on others')}>
@@ -419,7 +419,7 @@ export default function MyDesk() {
               </div>
             </section>
 
-            <Card eyebrow={<span className="flex items-center gap-1.5"><UserCheck size={12} /> {L('پیگیری تیم', 'Team nudges')}</span>} title={L('از چه کسی پیگیری کنم؟', 'Who should I nudge?')}>
+            <Card eyebrow={<span className="flex items-center gap-1.5"><UserCheck size={12} /> {L('یادآوری به تیم', 'Team nudges')}</span>} title={L('از چه کسی پیگیری کنم؟', 'Who should I nudge?')}>
               {nudge.length === 0 ? (
                 <Empty text={L('هیچ تسک معوق یا مسدودی در تیم نیست', 'No overdue or blocked work on the team')} />
               ) : (

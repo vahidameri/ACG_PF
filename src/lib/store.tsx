@@ -4,6 +4,7 @@ import { readWeekCfg, setWeekCfg } from './weeks'
 import { readTaskCfg, setTaskCfg } from './taskcfg'
 import { COLUMNS_KEY, readColumns, setColumns } from './columns'
 import { applyOrg } from './org'
+import { TERMS_KEY, applyTerms } from './terms'
 import { setDeliveryCfg } from './cadence'
 import { NOTIFY_KEY, setNotifyOff } from './inbox'
 import { hideArchived, isArchived } from './archive'
@@ -196,6 +197,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   const me = maps.toEn.get(canonMe) || canonMe
   // week settings are read synchronously so every page renders with the current cycle
   useMemo(() => {
+    applyTerms(db.Config.find((r) => r.id === TERMS_KEY)?.value)
     applyOrg((k) => db.Config.find((r) => r.id === k)?.value)
     setWeekCfg(readWeekCfg((k) => db.Config.find((r) => r.id === k)?.value))
     setDeliveryCfg((k) => db.Config.find((r) => r.id === k)?.value)

@@ -106,7 +106,7 @@ export function Layout({ children }: { children: ReactNode }) {
       ],
     },
     {
-      label: L('پورتفولیو', 'Portfolio'),
+      label: L('ACG', 'ACG'),
       links: [
         ...(leader ? [{ to: '/', label: L('نمای کلی', 'Overview'), icon: LayoutGrid, hub: 'overview' as Hub }] : []),
         { to: '/projects', label: leader ? L('پروژه‌ها', 'Projects') : L('پروژه‌های من', 'My projects'), icon: Briefcase, count: db.Projects.filter((p) => p.status === 'active').length },
@@ -331,7 +331,7 @@ export function Layout({ children }: { children: ReactNode }) {
                 (
                   [
                     ['Tasks', L('تسک', 'Task'), 'N', ListChecks],
-                    ['FollowUps', L('فالوآپ', 'Follow-up'), 'F', BellRing],
+                    ['FollowUps', L('پیگیری', 'Follow-up'), 'F', BellRing],
                     ['Updates', L('گزارش هفتگی', 'Weekly update'), '', FileText],
                     ['Risks', L('ریسک / تصمیم', 'Risk / decision'), '', ShieldAlert],
                     ['Milestones', L('مایلستون', 'Milestone'), '', Flag],
@@ -481,7 +481,7 @@ function Shortcuts({ onClose }: { onClose: () => void }) {
   const rows: [string, string][] = [
     ['Ctrl K', L('جستجو و فرمان‌ها', 'Search & commands')],
     ['N', L('تسک جدید', 'New task')],
-    ['F', L('فالوآپ جدید', 'New follow-up')],
+    ['F', L('پیگیری جدید', 'New follow-up')],
     ['[', L('جمع / باز کردن منو', 'Toggle sidebar')],
     ['Ctrl Enter', L('ارسال یادداشت / ذخیره فرم', 'Send note / save form')],
     ['Esc', L('بستن پنل', 'Close panel')],

@@ -86,7 +86,7 @@ export default function Profile() {
             { label: L('پروژه‌ها', 'Projects'), value: fa(w.projects.length) },
             { label: L('تسک باز', 'Open tasks'), value: hiddenCount ? '—' : fa(tasks.length), sub: hiddenCount ? L('خصوصی', 'private') : undefined },
             { label: L('معوق', 'Overdue'), value: hiddenCount ? '—' : fa(tasks.filter(isTaskOverdue).length), tone: tasks.some(isTaskOverdue) ? 'red' : undefined },
-            { label: L('تحویل‌های باز', 'Open deliverables'), value: fa(dels.length) },
+            { label: L('خروجی‌های باز', 'Open deliverables'), value: fa(dels.length) },
           ]}
         />
       </Band>
@@ -167,7 +167,7 @@ export default function Profile() {
               !hiddenCount && <Empty text={L('تسک بازی ندارد', 'No open tasks')} />
             )}
           </Card>
-          <Card pad={false} eyebrow={L('تحویل', 'Delivery')} title={L('تحویل‌هایی که مسئولش است', 'Deliverables owned')}>
+          <Card pad={false} eyebrow={L('تحویل', 'Delivery')} title={L('خروجی‌هایی که مسئولش است', 'Deliverables owned')}>
             {dels.length ? (
               <div className="divide-y divide-line border-t border-line">
                 {dels.slice(0, 8).map((d) => (
@@ -175,7 +175,7 @@ export default function Profile() {
                 ))}
               </div>
             ) : (
-              <Empty text={L('تحویلی ندارد', 'None')} />
+              <Empty text={L('خروجی ندارد', 'None')} />
             )}
           </Card>
         </div>

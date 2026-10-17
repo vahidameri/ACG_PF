@@ -69,7 +69,7 @@ export function ItemSheet({ sheet, id, onClose }: { sheet: 'Tasks' | 'FollowUps'
       onClose={onClose}
       header={
         <div className="flex min-w-0 items-center gap-2 text-sm">
-          <span className="eyebrow">{isTask ? L('تسک', 'Task') : L('فالوآپ', 'Follow-up')}</span>
+          <span className="eyebrow">{isTask ? L('تسک', 'Task') : L('پیگیری', 'Follow-up')}</span>
           {project && (
             <>
               <span className="text-line-strong">/</span>
@@ -230,7 +230,7 @@ export function ItemSheet({ sheet, id, onClose }: { sheet: 'Tasks' | 'FollowUps'
               onClick={() => patch({ watchers: watching ? watchers.filter((x) => x !== me).join(',') : [...watchers, me].join(',') })}
               className={cx('mb-4 flex w-full items-center justify-center gap-2 rounded-2xl border px-3 py-2.5 text-xs font-medium transition', watching ? 'border-brand/30 bg-brand-soft/40 text-ink' : 'border-line bg-surface text-sub hover:text-ink')}
             >
-              <Binoculars size={14} /> {watching ? L('در دیده‌بان شماست ✓', 'On your Lookout ✓') : L('پیگیری در دیده‌بان', 'Track on my Lookout')}
+              <Binoculars size={14} /> {watching ? L('در دیده‌بان شماست ✓', 'On your Lookout ✓') : L('زیر نظر در دیده‌بان', 'Track on my Lookout')}
             </button>
           )}
           <div className="eyebrow mb-2 px-2.5">{L('مشخصات', 'Properties')}</div>
@@ -268,7 +268,7 @@ export function ItemSheet({ sheet, id, onClose }: { sheet: 'Tasks' | 'FollowUps'
                 </Prop>
               )}
               {fieldOn('follow_date') && (
-                <Prop label={L('پیگیری', 'Follow-up')}>
+                <Prop label={L('یادآوری', 'Reminder')}>
                   <DatePicker compact value={item.follow_date || ''} onChange={(v) => patch({ follow_date: v })} />
                 </Prop>
               )}
@@ -293,7 +293,7 @@ export function ItemSheet({ sheet, id, onClose }: { sheet: 'Tasks' | 'FollowUps'
                 </Prop>
               )}
               {fieldOn('watchers') && (
-                <Prop label={L('پیگیرها', 'Tracked by')}>
+                <Prop label={L('ناظرها', 'Watchers')}>
                   <PeoplePicker value={item.watchers || ''} onChange={(v) => patch({ watchers: v })} />
                 </Prop>
               )}
@@ -314,7 +314,7 @@ export function ItemSheet({ sheet, id, onClose }: { sheet: 'Tasks' | 'FollowUps'
               <Prop label={L('اسپرینت', 'Sprint')}>
                 <SprintPicker projectId={item.project_id} value={item.sprint_id} onChange={(v) => patch({ sprint_id: v })} />
               </Prop>
-              <Prop label={L('پوینت', 'Points')}>
+              <Prop label={L('امتیاز', 'Points')}>
                 <input
                   type="number"
                   defaultValue={item.points || ''}
@@ -421,7 +421,7 @@ export function ItemSheet({ sheet, id, onClose }: { sheet: 'Tasks' | 'FollowUps'
               </div>
               <p className="mt-1 leading-6 text-sub">
                 {item.status === 'blocked'
-                  ? L('این تسک مسدود است. یک فالوآپ برای رفع مانع بسازید.', 'This task is blocked. Create a follow-up to clear it.')
+                  ? L('این تسک مسدود است. یک پیگیری برای رفع مانع بسازید.', 'This task is blocked. Create a follow-up to clear it.')
                   : L(`این تسک بخشی از ${project.name} است.`, `Part of ${project.name}.`)}
               </p>
               {item.status === 'blocked' && canEdit && (
@@ -431,10 +431,10 @@ export function ItemSheet({ sheet, id, onClose }: { sheet: 'Tasks' | 'FollowUps'
                     upsert('FollowUps', {
                       id: uid('F'), project_id: item.project_id, subject: L(`رفع مانع: ${item.title}`, `Unblock: ${item.title}`), person: item.assignee.split(',')[0] || '', channel: 'chat',
                       due_date: addDays(todayISO(), 1), status: 'open', priority: 'high', notes: item.description, created_at: todayISO(), done_at: '', owner: me,
-                    }).then(() => toast(L('فالوآپ ساخته شد', 'Follow-up created')))
+                    }).then(() => toast(L('پیگیری ساخته شد', 'Follow-up created')))
                   }
                 >
-                  <Zap size={13} /> {L('ساخت فالوآپ', 'Create follow-up')}
+                  <Zap size={13} /> {L('ساخت پیگیری', 'Create follow-up')}
                 </button>
               )}
             </div>

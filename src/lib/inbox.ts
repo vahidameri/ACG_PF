@@ -56,7 +56,7 @@ export function buildInbox(db: DB, me: string): InboxItem[] {
   )
   // follow-up dates and stage dates today, deadlines today or tomorrow — for everyone on the task
   db.Tasks.filter((t) => t.status !== 'done' && t.notify !== 'off' && isMine(t, me)).forEach((t) => {
-    if (t.follow_date === today) out.push({ id: `rm-${t.id}`, kind: 'remind', tone: 'warn', when: today, title: t.title, sub: L(`یادآوری پیگیری · ${t.assignee || '—'}`, `Follow-up reminder · ${t.assignee || '—'}`), target: { sheet: 'Tasks', id: t.id } })
+    if (t.follow_date === today) out.push({ id: `rm-${t.id}`, kind: 'remind', tone: 'warn', when: today, title: t.title, sub: L(`یادآوری · ${t.assignee || '—'}`, `Follow-up reminder · ${t.assignee || '—'}`), target: { sheet: 'Tasks', id: t.id } })
     if (t.handoff_date === today || t.test_date === today) out.push({ id: `st-${t.id}`, kind: 'remind', tone: 'warn', when: today, title: t.title, sub: t.handoff_date === today ? L('امروز: تحویل به پروداکت', 'Today: hand-off to product') : L('امروز: زمان تست', 'Today: testing'), target: { sheet: 'Tasks', id: t.id } })
     if (t.deadline && t.deadline >= today && t.deadline <= addDays(today, 1)) out.push({ id: `dl-${t.id}`, kind: 'deadline', tone: 'bad', when: t.deadline, title: t.title, sub: t.deadline === today ? L('ددلاین امروز است', 'Deadline is today') : L('ددلاین فردا است', 'Deadline is tomorrow'), target: { sheet: 'Tasks', id: t.id } })
   })
@@ -83,12 +83,12 @@ export function buildInbox(db: DB, me: string): InboxItem[] {
 export const NOTIFY_KINDS: { id: InboxItem['kind']; label: [string, string] }[] = [
   { id: 'assigned', label: ['تسک تازه برای من', 'New task for me'] },
   { id: 'handoff', label: ['تحویل بین واحدها (رسیده، برگشتی، بی‌پاسخ)', 'Hand-offs (new, returned, unanswered)'] },
-  { id: 'remind', label: ['تاریخ پیگیری، تحویل به پروداکت، تست', 'Follow-up, hand-off and testing dates'] },
+  { id: 'remind', label: ['تاریخ یادآوری، تحویل به پروداکت، تست', 'Follow-up, hand-off and testing dates'] },
   { id: 'deadline', label: ['ددلاین امروز و فردا', 'Deadline today or tomorrow'] },
   { id: 'overdue', label: ['تسک معوق', 'Overdue task'] },
   { id: 'delivery', label: ['روز تحویل هفتگی پروژه', 'Weekly delivery day'] },
   { id: 'mention', label: ['نام بردن (@)', 'Mentions (@)'] },
-  { id: 'followup', label: ['فالوآپ‌های امروز', 'Follow-ups due'] },
+  { id: 'followup', label: ['پیگیری‌های امروز', 'Follow-ups due'] },
   { id: 'milestone', label: ['مایلستون نزدیک', 'Milestone soon'] },
   { id: 'risk', label: ['ریسک بحرانی', 'Critical risk'] },
   { id: 'blocked', label: ['کار مسدود دیگران', 'Others’ blocked work'] },

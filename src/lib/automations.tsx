@@ -24,15 +24,15 @@ export interface AutomationDef {
 export const AUTOMATIONS: AutomationDef[] = [
   { id: 'gcal_import', where: 'app', icon: CalendarSync, title: ['آوردن ایونت‌های مرتبط تقویم گوگل', 'Bring in related Google Calendar events'], desc: ['ایونتی که نام پروژه را دارد یا دو نفر از تیم در آن هستند، خودکار به «جلسات» اضافه می‌شود.', 'Events that name a project or include two or more teammates are added to Meetings.'] },
   { id: 'gcal_create', where: 'app', icon: CalendarPlus, title: ['ساخت رویداد تقویم و لینک Meet برای جلسه‌ی جدید', 'Create a calendar event + Meet link for new meetings'], desc: ['حاضران از طرف گوگل دعوت‌نامه می‌گیرند.', 'Attendees get a Google invitation.'] },
-  { id: 'next_meeting', where: 'app', icon: Repeat, title: ['ساخت جلسه‌ی هفته‌ی بعد پس از بستن جلسه‌ی هفتگی', 'Schedule next week after a weekly is closed'], desc: ['برای همه‌ی جلسه‌های هفتگی (پورتفولیو، پروداکت، دیزاین، تک، پروژه).', 'For every weekly series (portfolio, product, design, tech, project).'] },
+  { id: 'next_meeting', where: 'app', icon: Repeat, title: ['ساخت جلسه‌ی هفته‌ی بعد پس از بستن جلسه‌ی هفتگی', 'Schedule next week after a weekly is closed'], desc: ['برای همه‌ی جلسه‌های هفتگی (ACG، پروداکت، دیزاین، تک، پروژه).', 'For every weekly series (ACG, product, design, tech, project).'] },
   { id: 'minutes_mail', where: 'server', icon: Mail, title: ['ایمیل صورت‌جلسه و اکشن‌پلن به حاضران', 'Email minutes & action plan to attendees'], desc: ['وقتی جلسه «برگزار شد» زده می‌شود.', 'When a meeting is marked held.'] },
-  { id: 'blocked_followup', where: 'app', icon: Unlock, title: ['فالوآپ برای تسکی که بیش از ۳ روز مسدود مانده', 'Follow-up for tasks blocked over 3 days'], desc: ['با مسئول تسک، در فالوآپ‌های مدیر برنامه.', 'With the assignee, on the program manager’s follow-ups.'] },
+  { id: 'blocked_followup', where: 'app', icon: Unlock, title: ['پیگیری برای تسکی که بیش از ۳ روز مسدود مانده', 'Follow-up for tasks blocked over 3 days'], desc: ['با مسئول تسک، در پیگیری‌های مدیر برنامه.', 'With the assignee, on the program manager’s follow-ups.'] },
   { id: 'pause_shift', where: 'app', icon: PauseCircle, title: ['جابجایی ددلاین بعد از ادامه‌ی پروژه‌ی متوقف', 'Shift dates when a paused project resumes'], desc: ['ددلاین، مایلستون‌ها و تحویل‌های باز به اندازه‌ی روزهای توقف جلو می‌روند.', 'Deadline, milestones and open deliverables move by the paused days.'] },
   { id: 'google_photo', where: 'app', icon: Image, title: ['عکس پروفایل از حساب گوگل', 'Profile photo from Google'], desc: ['برای کسی که هنوز عکس آپلود نکرده.', 'For anyone who hasn’t uploaded one.'] },
   { id: 'update_reminder', where: 'server', icon: FileWarning, title: ['یادآوری گزارش هفتگی', 'Weekly update reminder'], desc: ['روز مهلت ساعت ۱۴ و صبح روز جلسه‌ی هفتگی به مدیر پروژه‌هایی که گزارش نداده‌اند.', 'Deadline day 14:00 and the weekly’s morning to leads who haven’t reported.'] },
   { id: 'action_reminder', where: 'server', icon: BellRing, title: ['یادآوری اکشن‌های معوق', 'Overdue action reminders'], desc: ['هر صبح به مسئول هر اکشن عقب‌افتاده.', 'Every morning, to the owner of each overdue action.'] },
   { id: 'assign_mail', where: 'server', icon: UserPlus, title: ['ایمیل به مسئول، وقتی تسکی به او سپرده می‌شود', 'Email the assignee when a task is handed to them'], desc: ['همان لحظه، با سررسید و ددلاین.', 'Right away, with the due date and deadline.'] },
-  { id: 'task_alerts', where: 'server', icon: Bell, title: ['یادآوری تسک‌ها: پیگیری، تحویل، تست و ددلاین', 'Task alerts: follow-up, hand-off, testing and deadline'], desc: ['هر صبح ۸:۳۰ به همه‌ی افراد تسک.', 'Every morning 08:30, to everyone on the task.'] },
+  { id: 'task_alerts', where: 'server', icon: Bell, title: ['یادآوری تسک‌ها: یادآوری، تحویل، تست و ددلاین', 'Task alerts: follow-up, hand-off, testing and deadline'], desc: ['هر صبح ۸:۳۰ به همه‌ی افراد تسک.', 'Every morning 08:30, to everyone on the task.'] },
   { id: 'delivery_alerts', where: 'server', icon: PackageCheck, title: ['یادآوری روز تحویل هفتگی پروژه‌ها', 'Weekly delivery-day reminders'], desc: ['صبح روز تحویل به مدیر پروژه؛ اگر ثبت نشد، فردا به مدیر برنامه هم.', 'On the day to the lead; if not recorded, the next morning to the program manager too.'] },
   { id: 'daily_digest', where: 'server', icon: Sunrise, title: ['خلاصه‌ی صبحگاهی', 'Morning digest'], desc: ['ساعت ۷:۳۰ برای مدیر برنامه.', '07:30, to the program manager.'] },
 ]
@@ -144,7 +144,7 @@ export function AutomationProvider({ children }: { children: ReactNode }) {
           id: uid('F'), project_id: k.project_id, subject: subject(k), person: k.assignee, channel: 'chat', due_date: t, status: 'open', priority: 'high',
           notes: L('خودکار: این تسک بیش از ۳ روز مسدود مانده است.', 'Automatic: this task has been blocked for over 3 days.'), created_at: t, done_at: '', owner: me,
         })
-      fire(L(`${fa(fresh.length)} فالوآپ برای تسک‌های مسدود ساخته شد`, `${fresh.length} follow-up(s) created for blocked tasks`))
+      fire(L(`${fa(fresh.length)} پیگیری برای تسک‌های مسدود ساخته شد`, `${fresh.length} follow-up(s) created for blocked tasks`))
     })()
   }, [db, store.access, on, upsert, fire])
 

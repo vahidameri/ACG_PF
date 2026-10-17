@@ -58,7 +58,7 @@ export default function Sprints() {
                     {fa(pct)}
                     <span className="text-base text-sub">%</span>
                   </span>
-                  <span className="text-xs text-sub num">{fa(d)} / {fa(c)} SP</span>
+                  <span className="text-xs text-sub num">{fa(d)} / {fa(c)} {L('امتیاز', 'pts')}</span>
                 </div>
                 <Progress value={pct} marker={timePct} h={behind ? 'red' : pct >= timePct ? 'green' : 'amber'} className="mt-2" />
                 {blocked > 0 && <div className="mt-3 text-[0.6875rem] text-bad">{L(`${fa(blocked)} تسک مسدود`, `${blocked} blocked`)}</div>}

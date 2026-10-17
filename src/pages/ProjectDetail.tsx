@@ -12,6 +12,7 @@ import { L, lbl } from '../lib/i18n'
 import { TaskRow, FollowUpRow, PinButton } from '../components/shared'
 import { PauseButton } from '../components/PauseButton'
 import { ArchiveButton } from '../components/ArchiveButton'
+import { ProjectLinks } from '../components/ProjectLinks'
 import { DeliveredButton, DeliveryBadge } from '../components/DeliveryDay'
 import type { Project } from '../lib/types'
 import { Archive } from 'lucide-react'
@@ -148,12 +149,15 @@ export default function ProjectDetail() {
           </span>
           <DeliveryBadge p={p} dark />
         </div>
+        <div className="-mt-3 mb-6">
+          <ProjectLinks p={p} dark />
+        </div>
         <StatStrip
           items={[
             { label: L('پیشرفت', 'Progress'), value: `${fa(m.progress)}%`, tone: m.health },
             { label: L('زمان سپری‌شده', 'Time elapsed'), value: `${fa(m.elapsed)}%` },
             { label: m.daysLeft >= 0 ? L('تا ددلاین', 'To deadline') : L('از ددلاین گذشته', 'Past deadline'), value: p.end_date ? fa(Math.abs(m.daysLeft)) : '—', tone: m.daysLeft < 0 ? 'red' : undefined, sub: L('روز', 'days') },
-            { label: L('تحویل‌های باز', 'Open deliveries'), value: fa(deliverySummary(db, p.id).open.length), tone: deliverySummary(db, p.id).overdue.length ? 'red' : undefined, sub: L(`${fa(deliverySummary(db, p.id).overdue.length)} عقب‌افتاده`, `${deliverySummary(db, p.id).overdue.length} overdue`) },
+            { label: L('خروجی‌های باز', 'Open deliverables'), value: fa(deliverySummary(db, p.id).open.length), tone: deliverySummary(db, p.id).overdue.length ? 'red' : undefined, sub: L(`${fa(deliverySummary(db, p.id).overdue.length)} عقب‌افتاده`, `${deliverySummary(db, p.id).overdue.length} overdue`) },
             { label: L('تسک باز', 'Open tasks'), value: fa(m.openTasks), sub: L(`${fa(m.overdueTasks)} معوق · ${fa(m.blockedTasks)} مسدود`, `${m.overdueTasks} overdue · ${m.blockedTasks} blocked`) },
             { label: L('ریسک باز', 'Open risks'), value: fa(m.openRisks), tone: m.highRisks ? 'red' : undefined, sub: L(`${fa(m.highRisks)} بحرانی`, `${m.highRisks} critical`) },
           ]}
@@ -172,7 +176,7 @@ export default function ProjectDetail() {
                 { value: 'delivery', label: L('برنامه‌ی تحویل', 'Delivery plan'), count: db.Deliverables.filter((d) => d.project_id === p.id && !isClosed(d)).length },
                 { value: 'milestones', label: L('مایلستون‌ها', 'Milestones'), count: ms.length },
                 { value: 'sprints', label: L('اسپرینت‌ها', 'Sprints'), count: sprints.length },
-                { value: 'scope', label: L('اسکوپ', 'Scope'), count: scope.length },
+                { value: 'scope', label: L('محدوده‌ی کار', 'Scope'), count: scope.length },
                 { value: 'risks', label: L('ریسک‌ها', 'Risks'), count: m.openRisks },
                 { value: 'updates', label: L('گزارش‌ها', 'Updates'), count: updates.length },
                 { value: 'team', label: L('تیم', 'Team'), count: allocs.length },
@@ -190,7 +194,7 @@ export default function ProjectDetail() {
                 <div className="mb-4 flex items-end gap-3">
                   <div className={cx('display text-5xl num', healthText[m.health])}>{fa(m.score)}</div>
                   <div className="pb-1.5 text-xs leading-5 text-sub">
-                    {L('امتیاز سلامت از ۱۰۰', 'Health score / 100')}
+                    {L('نمره‌ی سلامت از ۱۰۰', 'Health score / 100')}
                     <br />
                     <HealthBadge h={m.health} />
                   </div>
@@ -215,7 +219,7 @@ export default function ProjectDetail() {
                     <BurndownChart sprint={m.activeSprint} db={db} height={180} />
                   </Card>
                 )}
-                <Card pad={false} eyebrow={L('پیگیری', 'Chasing')} title={L('فالوآپ‌های باز', 'Open follow-ups')} action={<AddBtn sheet="FollowUps" label={L('فالوآپ', 'Follow-up')} />}>
+                <Card pad={false} eyebrow={L('دنبال کردن', 'Chasing')} title={L('پیگیری‌های باز', 'Open follow-ups')} action={<AddBtn sheet="FollowUps" label={L('پیگیری', 'Follow-up')} />}>
                   <div className="px-2 pb-2">{fus.length ? fus.map((f) => <FollowUpRow key={f.id} f={f} compact />) : <Empty />}</div>
                 </Card>
               </div>
@@ -361,7 +365,7 @@ export default function ProjectDetail() {
           {tab === 'scope' && (
             <div className="grid gap-4 @lg:grid-cols-2">
               {(['in', 'out'] as const).map((type) => (
-                <Card key={type} eyebrow={L('اسکوپ', 'Scope')} title={type === 'in' ? L('داخل اسکوپ', 'In scope') : L('خارج از اسکوپ', 'Out of scope')} action={<AddBtn sheet="Scope" label={L('آیتم', 'Item')} extra={{ type }} />}>
+                <Card key={type} eyebrow={L('محدوده‌ی کار', 'Scope')} title={type === 'in' ? L('داخل محدوده‌ی کار', 'In scope') : L('خارج از محدوده‌ی کار', 'Out of scope')} action={<AddBtn sheet="Scope" label={L('آیتم', 'Item')} extra={{ type }} />}>
                   <div className="space-y-2">
                     {scope
                       .filter((s) => s.type === type)
@@ -382,9 +386,9 @@ export default function ProjectDetail() {
                   </div>
                 </Card>
               ))}
-              <Card className="@lg:col-span-2" eyebrow="Change log" title={L('تغییرات اسکوپ', 'Scope changes')}>
+              <Card className="@lg:col-span-2" eyebrow="Change log" title={L('تغییرات محدوده‌ی کار', 'Scope changes')}>
                 {scope.filter((s) => s.status === 'changed' || s.status === 'removed').length === 0 ? (
-                  <Empty text={L('تغییری در اسکوپ ثبت نشده', 'No scope changes logged')} />
+                  <Empty text={L('تغییری در محدوده‌ی کار ثبت نشده', 'No scope changes logged')} />
                 ) : (
                   <div className="divide-y divide-line">
                     {scope
@@ -523,7 +527,7 @@ function ProjectDelivery({ projectId }: { projectId: string }) {
         action={
           canEdit && (
             <button className="btn-outline btn-sm" onClick={() => open('Deliverables', { project_id: projectId })}>
-              <Plus size={14} /> {L('تحویلی', 'Deliverable')}
+              <Plus size={14} /> {L('خروجی', 'Deliverable')}
             </button>
           )
         }

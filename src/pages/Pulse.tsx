@@ -40,7 +40,7 @@ export default function Pulse() {
   return (
     <>
       <Band nav={<HubNav hub="overview" />}
-        title={L('برد وضعیت پورتفولیو', 'Portfolio status board')}
+        title={L('برد وضعیت ACG', 'ACG status board')}
         sub={
           worst.length
             ? L(

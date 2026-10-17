@@ -105,7 +105,7 @@ export const CONFIDENCE: Record<Deliverable['confidence'], T2> = {
 }
 /** Meeting series — names are editable in the back office (Config org.series). */
 export const MEETING_SERIES: Record<MeetingSeries, T2> = {
-  portfolio: ['جلسه‌ی هفتگی پورتفولیو', 'Portfolio weekly'],
+  portfolio: ['جلسه‌ی هفتگی ACG', 'ACG weekly'],
   product: ['جلسه‌ی هفتگی پروداکت', 'Product weekly'],
   design: ['جلسه‌ی هفتگی دیزاین', 'Design weekly'],
   tech: ['جلسه‌ی هفتگی تک', 'Tech weekly'],
@@ -128,11 +128,12 @@ export const JOB_TITLE: Record<string, T2> = {
   cto: ['مدیر ارشد فناوری', 'CTO'],
   pgm: ['مدیر برنامه', 'Program Manager'],
   pm: ['مدیر محصول', 'Product Manager'],
+  apm: ['دستیار مدیر محصول', 'Assistant Product Manager'],
   pd: ['طراح محصول', 'Product Designer'],
   gd: ['گرافیست', 'Graphic Designer'],
 }
 const LEGACY_TITLE: Record<string, string> = {
-  'مدیرعامل': 'ceo', 'هد پروداکت': 'cpo', 'هد تک': 'cto', 'مدیر برنامه': 'pgm', 'پروداکت منیجر': 'pm', 'پروداکت دیزاینر': 'pd', 'گرافیست': 'gd',
+  'مدیرعامل': 'ceo', 'هد پروداکت': 'cpo', 'هد تک': 'cto', 'مدیر برنامه': 'pgm', 'پروداکت منیجر': 'pm', 'پروداکت دیزاینر': 'pd', 'گرافیست': 'gd', 'دستیار مدیر محصول': 'apm',
   'head of product': 'cpo', 'head of tech': 'cto', 'program manager': 'pgm', 'product manager': 'pm', 'product designer': 'pd', 'graphic designer': 'gd',
 }
 /** Title options with their code visible, e.g. "مدیرعامل · CEO". */
@@ -161,7 +162,7 @@ export function teamCodes(team: string, role = '', track = ''): string[] {
   const out: string[] = []
   if (r === 'ceo' || r === 'cpo' || r === 'cto') out.push('leadership')
   if (r === 'pgm') out.push('pmo')
-  if (r === 'cpo' || r === 'pm' || r === 'pd' || r === 'gd' || track === 'product') out.push('product')
+  if (r === 'cpo' || r === 'pm' || r === 'apm' || r === 'pd' || r === 'gd' || track === 'product') out.push('product')
   if (r === 'cto' || track === 'tech') out.push('tech')
   return [...new Set(out)]
 }
@@ -175,10 +176,10 @@ export function usernameOf(m: { username?: string; name_en?: string; email?: str
 }
 
 export const ACCESS: Record<string, T2> = {
-  super: ['سوپر ادمین', 'Super admin'],
-  exec: ['مدیرعامل', 'CEO'],
-  head: ['هد', 'Head'],
-  member: ['عضو تیم', 'Team member'],
+  super: ['دسترسی کامل + بک‌آفیس', 'Full access + back office'],
+  exec: ['مدیرعامل · همه‌چیز', 'CEO · everything'],
+  head: ['هد · نمای کل', 'Head · company-wide view'],
+  member: ['عضو · پروژه‌های خودش', 'Member · own projects'],
 }
 export const CONTRACT_KIND: Record<string, T2> = {
   client: ['کارفرما', 'Client'],

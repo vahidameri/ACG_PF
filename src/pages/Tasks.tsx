@@ -151,7 +151,7 @@ export default function Tasks() {
               <Segmented
                 value={(whose || 'all') as 'all' | 'mine' | 'shared'}
                 onChange={(v) => set('whose', v === 'all' ? '' : v)}
-                options={[{ value: 'all', label: leader ? L('همه', 'All') : L('همه‌ی من', 'All mine') }, { value: 'mine', label: L('مسئولش منم', 'Assigned to me') }, { value: 'shared', label: L('مشترک و پیگیری', 'Shared & tracked') }]}
+                options={[{ value: 'all', label: leader ? L('همه', 'All') : L('همه‌ی من', 'All mine') }, { value: 'mine', label: L('مسئولش منم', 'Assigned to me') }, { value: 'shared', label: L('مشترک و زیر نظر', 'Shared & tracked') }]}
               />
             )}
           </Toolbar>

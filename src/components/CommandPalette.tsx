@@ -43,15 +43,15 @@ export function CommandPalette({ open, onClose }: { open: boolean; onClose: () =
 
   const items = useMemo<Item[]>(() => {
     const pname = (id: string) => db.Projects.find((p) => p.id === id)?.name || ''
-    const G = { act: L('فرمان‌ها', 'Commands'), nav: L('رفتن به', 'Go to'), proj: L('پروژه‌ها', 'Projects'), task: L('تسک‌ها', 'Tasks'), fu: L('فالوآپ‌ها', 'Follow-ups'), risk: L('ریسک‌ها', 'Risks'), ppl: L('افراد', 'People') }
+    const G = { act: L('فرمان‌ها', 'Commands'), nav: L('رفتن به', 'Go to'), proj: L('پروژه‌ها', 'Projects'), task: L('تسک‌ها', 'Tasks'), fu: L('پیگیری‌ها', 'Follow-ups'), risk: L('ریسک‌ها', 'Risks'), ppl: L('افراد', 'People') }
     const ico = (I: typeof Briefcase) => <I size={16} />
     const actions: Item[] = [
       ...(canEdit
         ? [
             { key: 'new-task', group: G.act, label: L('تسک جدید', 'New task'), icon: ico(Plus), run: () => editor.open('Tasks', { assignee: me }) },
-            { key: 'new-fu', group: G.act, label: L('فالوآپ جدید', 'New follow-up'), icon: ico(Plus), run: () => editor.open('FollowUps') },
+            { key: 'new-fu', group: G.act, label: L('پیگیری جدید', 'New follow-up'), icon: ico(Plus), run: () => editor.open('FollowUps') },
             { key: 'new-upd', group: G.act, label: L('گزارش هفتگی جدید', 'New weekly update'), icon: ico(Plus), run: () => composer.openComposer() },
-            { key: 'new-del', group: G.act, label: L('تحویلی جدید', 'New deliverable'), icon: ico(Plus), run: () => editor.open('Deliverables') },
+            { key: 'new-del', group: G.act, label: L('خروجی جدید', 'New deliverable'), icon: ico(Plus), run: () => editor.open('Deliverables') },
             { key: 'new-mt', group: G.act, label: L('جلسه‌ی جدید', 'New meeting'), icon: ico(Plus), run: () => editor.open('Meetings') },
           ]
         : []),
@@ -61,13 +61,13 @@ export function CommandPalette({ open, onClose }: { open: boolean; onClose: () =
       [
         ['/my', L('میز کار من', 'My desk')],
         ['/calendar', L('تقویم', 'Calendar')],
-        ['/', L('نمای کلی پورتفولیو', 'Portfolio overview')],
-        ['/pulse', L('برد وضعیت پورتفولیو', 'Status board')],
+        ['/', L('نمای کلی ACG', 'ACG overview')],
+        ['/pulse', L('برد وضعیت ACG', 'Status board')],
         ['/teams', L('واحدها و تحویل‌ها', 'Units & hand-offs')],
         ['/projects', L('پروژه‌ها', 'Projects')],
         ['/roadmap', L('رودمپ', 'Roadmap')],
         ['/tasks', L('تسک‌ها', 'Tasks')],
-        ['/followups', L('فالوآپ‌ها', 'Follow-ups')],
+        ['/followups', L('پیگیری‌ها', 'Follow-ups')],
         ['/sprints', L('اسپرینت‌ها', 'Sprints')],
         ['/risks', L('ریسک‌ها', 'Risks')],
         ['/team', L('ظرفیت تیم و افراد', 'Team capacity')],
@@ -162,7 +162,7 @@ export function CommandPalette({ open, onClose }: { open: boolean; onClose: () =
             <span className="kbd">↵</span> {L('انتخاب', 'Open')}
           </span>
           <span className="ms-auto flex items-center gap-1.5">
-            <ListChecks size={12} /> <span className="kbd">N</span> {L('تسک', 'Task')} <span className="kbd">F</span> {L('فالوآپ', 'Follow-up')}
+            <ListChecks size={12} /> <span className="kbd">N</span> {L('تسک', 'Task')} <span className="kbd">F</span> {L('پیگیری', 'Follow-up')}
           </span>
         </div>
       </div>

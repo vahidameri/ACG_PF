@@ -47,7 +47,7 @@ export default function Updates() {
       id: uid('F'), project_id: r.p.id, subject, person: r.p.owner, channel: 'chat', due_date: today, status: 'open', priority: 'high',
       notes: L(`مهلت ارسال: ${fmtWeekday(due)} ${fmtDayMonth(due)}`, `Due: ${fmtWeekday(due)} ${fmtDayMonth(due)}`), created_at: today, done_at: '', owner: me,
     })
-    toast(L(`یادآوری برای ${r.p.owner} در فالوآپ‌ها ثبت شد`, `Reminder for ${r.p.owner} added to follow-ups`))
+    toast(L(`یادآوری برای ${r.p.owner} در پیگیری‌ها ثبت شد`, `Reminder for ${r.p.owner} added to follow-ups`))
   }
   const remindAll = async () => {
     for (const r of [...missing, ...pending]) await remind(r)

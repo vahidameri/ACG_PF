@@ -7,13 +7,14 @@ import { Band, Card, Overlap, Segmented, StatStrip, Avatar, cx } from '../compon
 import { ContractsList } from '../components/Contracts'
 import { PauseButton } from '../components/PauseButton'
 import Settings from './Settings'
+import { TelegramImport } from '../components/TelegramImport'
 import { L, lbl } from '../lib/i18n'
 import { ACCESS, PROJECT_STATUS, JOB_TITLE, TEAM_NAMES, teamCodes, usernameOf } from '../lib/labels'
 import { capOf, memberWeek } from '../lib/capacity'
 import { fa } from '../lib/jalali'
 import type { Access } from '../lib/types'
 
-type Tab = 'people' | 'projects' | 'contracts' | 'settings'
+type Tab = 'people' | 'projects' | 'contracts' | 'telegram' | 'settings'
 
 /** Back office — the program manager's control room: people & access, projects, contracts, settings. */
 export default function Admin({ initial = 'people' }: { initial?: Tab }) {
@@ -35,13 +36,19 @@ export default function Admin({ initial = 'people' }: { initial?: Tab }) {
                 { value: 'people', label: L('افراد و دسترسی', 'People & access') },
                 { value: 'projects', label: L('پروژه‌ها', 'Projects') },
                 { value: 'contracts', label: L('قراردادها', 'Contracts') },
+                { value: 'telegram', label: L('تلگرام', 'Telegram') },
                 { value: 'settings', label: L('تنظیمات', 'Settings') },
               ]}
             />
             {tab === 'people' && (
-              <button className="btn h-10 bg-white text-band" onClick={() => open('Team')}>
-                <Plus size={16} /> {L('نفر جدید', 'New person')}
-              </button>
+              <>
+                <button className="btn h-10 border border-white/15 text-white hover:bg-white/10" onClick={() => setTab('settings')}>
+                  {L('سمت‌ها، تیم‌ها و واحدها', 'Titles, teams & units')}
+                </button>
+                <button className="btn h-10 bg-white text-band" onClick={() => open('Team')}>
+                  <Plus size={16} /> {L('نفر جدید', 'New person')}
+                </button>
+              </>
             )}
             {tab === 'projects' && (
               <button className="btn h-10 bg-white text-band" onClick={() => open('Projects')}>
@@ -73,6 +80,7 @@ export default function Admin({ initial = 'people' }: { initial?: Tab }) {
             <ContractsList />
           </Card>
         )}
+        {tab === 'telegram' && <TelegramImport />}
         {tab === 'settings' && <Settings embedded />}
       </Overlap>
     </>

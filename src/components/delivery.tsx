@@ -154,7 +154,7 @@ export function DeliveryEmpty() {
   return (
     <div className="grid place-items-center gap-2 py-10 text-center text-sm text-sub">
       <Package size={22} className="opacity-50" />
-      {L('تحویلی برای این بازه ثبت نشده', 'Nothing planned in this window')}
+      {L('خروجی برای این بازه ثبت نشده', 'Nothing planned in this window')}
     </div>
   )
 }

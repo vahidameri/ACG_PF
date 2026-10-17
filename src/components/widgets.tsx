@@ -71,7 +71,7 @@ export function Kanban({ tasks, defaults, showProject = true }: { tasks: Task[];
               <StatusIcon s={s} size={15} />
               <span className="text-sm font-semibold">{statusLabel(s)}</span>
               <span className="text-xs text-sub num">{fa(col.length)}</span>
-              {pts > 0 && <span className="ms-auto font-mono text-[0.625rem] text-sub">{fa(pts)} SP</span>}
+              {pts > 0 && <span className="ms-auto font-mono text-[0.625rem] text-sub">{fa(pts)} {L('امتیاز', 'pts')}</span>}
             </div>
             <div className="mt-1 flex flex-col gap-2">
               {col.map((t) => {

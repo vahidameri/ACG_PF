@@ -12,7 +12,7 @@ export type Dim = 'schedule' | 'scope' | 'risk' | 'resourcing' | 'delivery'
 export const DIMS: Dim[] = ['schedule', 'scope', 'risk', 'resourcing', 'delivery']
 export const DIM: Record<Dim, T2> = {
   schedule: ['زمان‌بندی', 'Schedule'],
-  scope: ['اسکوپ', 'Scope'],
+  scope: ['محدوده‌ی کار', 'Scope'],
   risk: ['ریسک', 'Risk'],
   resourcing: ['منابع', 'Resourcing'],
   delivery: ['تحویل', 'Delivery'],
@@ -51,10 +51,10 @@ export function assess(p: Project, db: DB): Assessment {
   const pendingCR = db.Scope.filter((s) => s.project_id === p.id && s.status === 'changed' && s.type === 'in')
   const scope: DimRating =
     changes.length >= 3
-      ? { h: 'red', why: L(`${fa(changes.length)} تغییر اسکوپ در ۴۵ روز`, `${changes.length} scope changes in 45d`) }
+      ? { h: 'red', why: L(`${fa(changes.length)} تغییر محدوده‌ی کار در ۴۵ روز`, `${changes.length} scope changes in 45d`) }
       : pendingCR.length || changes.length
-        ? { h: 'amber', why: pendingCR.length ? L(`${fa(pendingCR.length)} درخواست تغییر باز`, `${pendingCR.length} open change request(s)`) : L('تغییر اخیر در اسکوپ', 'Recent scope change') }
-        : { h: 'green', why: L('اسکوپ پایدار', 'Scope stable') }
+        ? { h: 'amber', why: pendingCR.length ? L(`${fa(pendingCR.length)} درخواست تغییر باز`, `${pendingCR.length} open change request(s)`) : L('تغییر اخیر در محدوده‌ی کار', 'Recent scope change') }
+        : { h: 'green', why: L('محدوده‌ی کار پایدار', 'Scope stable') }
 
   // Risk
   const open = db.Risks.filter((r) => r.project_id === p.id && r.status !== 'closed' && r.type !== 'decision')

@@ -1,5 +1,6 @@
 import { createContext, useCallback, useContext, useState, type ReactNode } from 'react'
-import { Trash2 } from 'lucide-react'
+import { Plus, Trash2 } from 'lucide-react'
+import { ORG_KEYS, orgList } from '../lib/org'
 import type { SheetName } from '../lib/types'
 import { weekCfg } from '../lib/weeks'
 import { canPersonal, dueFor, fieldOn, fieldReq, needsDue, needsProject, taskCfg, TASK_FIELDS, type TaskField } from '../lib/taskcfg'
@@ -44,18 +45,18 @@ export const SCHEMAS: Record<EditableSheet, { title: T2; prefix: string; fields:
       { key: 'sprint_id', label: ['اسپرینت', 'Sprint'], type: 'sprint', half: true },
       { key: 'assignee', label: ['مسئول انجام (یک یا چند نفر)', 'Assignees (one or more)'], type: 'assignees' },
       { key: 'collaborators', label: ['همکاران (تسک مشترک)', 'Shared with'], type: 'people' },
-      { key: 'watchers', label: ['پیگیرها (دیده‌بان و اعلان)', 'Tracked by (Lookout & alerts)'], type: 'people' },
+      { key: 'watchers', label: ['ناظرها (دیده‌بان و اعلان)', 'Watchers (Lookout & alerts)'], type: 'people' },
       { key: 'status', label: ['وضعیت', 'Status'], type: 'status', half: true },
       { key: 'priority', label: ['اولویت', 'Priority'], type: 'select', options: PRIORITY, half: true },
       { key: 'start_date', label: ['تاریخ شروع', 'Start date'], type: 'date', half: true },
       { key: 'due_date', label: ['سررسید', 'Due date'], type: 'date', half: true },
-      { key: 'follow_date', label: ['تاریخ پیگیری (اعلان)', 'Follow-up date (alert)'], type: 'date', half: true },
+      { key: 'follow_date', label: ['تاریخ یادآوری', 'Reminder date'], type: 'date', half: true },
       { key: 'handoff_date', label: ['تحویل به پروداکت', 'Hand-off to product'], type: 'date', half: true },
       { key: 'test_date', label: ['زمان تست', 'Testing'], type: 'date', half: true },
       { key: 'deadline', label: ['ددلاین (تحویل نهایی)', 'Deadline (final delivery)'], type: 'date', half: true },
       { key: 'notify', label: ['اعلان‌ها', 'Alerts'], type: 'select', options: { '': ['روشن', 'On'], off: ['خاموش', 'Off'] }, half: true },
       { key: 'estimate', label: ['تخمین (ساعت)', 'Estimate (hours)'], type: 'number', half: true },
-      { key: 'points', label: ['استوری‌پوینت', 'Story points'], type: 'number', half: true },
+      { key: 'points', label: ['امتیاز', 'Story points'], type: 'number', half: true },
       { key: 'tags', label: ['برچسب‌ها', 'Tags'], type: 'text', half: true, placeholder: ['با کاما جدا کنید', 'Comma separated'] },
       { key: 'track', label: ['واحد', 'Unit'], type: 'side', half: true },
       { key: 'private', label: ['دیده‌شدن', 'Visibility'], type: 'select', options: { '': ['عمومی', 'Visible'], '1': ['خصوصی', 'Private'] }, half: true },
@@ -63,7 +64,7 @@ export const SCHEMAS: Record<EditableSheet, { title: T2; prefix: string; fields:
     defaults: () => ({ private: '', status: 'todo', priority: 'medium', points: 0, created_at: todayISO(), track: '', depends_on: '', meeting_id: '', deadline: '', handoff_date: '', test_date: '', follow_date: '', area: '', collaborators: '', watchers: '', notify: '', start_date: '', estimate: '', checklist: '' }),
   },
   FollowUps: {
-    title: ['فالوآپ', 'Follow-up'],
+    title: ['پیگیری', 'Follow-up'],
     prefix: 'F',
     fields: [
       { key: 'subject', label: ['موضوع پیگیری', 'Follow-up subject'], type: 'text', required: true },
@@ -124,8 +125,8 @@ export const SCHEMAS: Record<EditableSheet, { title: T2; prefix: string; fields:
       { key: 'goal', label: ['هدف اسپرینت', 'Sprint goal'], type: 'text' },
       { key: 'start_date', label: ['شروع', 'Start'], type: 'date', half: true },
       { key: 'end_date', label: ['پایان', 'End'], type: 'date', half: true },
-      { key: 'committed_points', label: ['پوینت تعهدشده', 'Committed points'], type: 'number', half: true },
-      { key: 'completed_points', label: ['پوینت انجام‌شده', 'Completed points'], type: 'number', half: true },
+      { key: 'committed_points', label: ['امتیاز تعهدشده', 'Committed points'], type: 'number', half: true },
+      { key: 'completed_points', label: ['امتیاز انجام‌شده', 'Completed points'], type: 'number', half: true },
       { key: 'status', label: ['وضعیت', 'Status'], type: 'select', options: SPRINT_STATUS },
     ],
     defaults: () => ({ status: 'planned', committed_points: 0, completed_points: 0 }),
@@ -147,12 +148,12 @@ export const SCHEMAS: Record<EditableSheet, { title: T2; prefix: string; fields:
     defaults: () => ({ type: 'risk', probability: 3, impact: 3, status: 'open' }),
   },
   Scope: {
-    title: ['آیتم اسکوپ', 'Scope item'],
+    title: ['آیتم محدوده‌ی کار', 'Scope item'],
     prefix: 'SC',
     fields: [
       { key: 'item', label: ['آیتم', 'Item'], type: 'text', required: true },
       { key: 'project_id', label: ['پروژه', 'Project'], type: 'project', half: true, required: true },
-      { key: 'type', label: ['داخل / خارج اسکوپ', 'In / out of scope'], type: 'select', options: { in: ['داخل اسکوپ', 'In scope'], out: ['خارج از اسکوپ', 'Out of scope'] }, half: true },
+      { key: 'type', label: ['داخل / خارج محدوده‌ی کار', 'In / out of scope'], type: 'select', options: { in: ['داخل محدوده‌ی کار', 'In scope'], out: ['خارج از محدوده‌ی کار', 'Out of scope'] }, half: true },
       { key: 'status', label: ['وضعیت', 'Status'], type: 'select', options: SCOPE_STATUS, half: true },
       { key: 'date', label: ['تاریخ', 'Date'], type: 'date', half: true },
       { key: 'change_note', label: ['یادداشت تغییر', 'Change note'], type: 'textarea' },
@@ -206,7 +207,7 @@ export const SCHEMAS: Record<EditableSheet, { title: T2; prefix: string; fields:
     defaults: () => ({ percent: 50, start_date: '', end_date: '' }),
   },
   Deliverables: {
-    title: ['تحویلی', 'Deliverable'],
+    title: ['خروجی', 'Deliverable'],
     prefix: 'D',
     fields: [
       { key: 'title', label: ['چه چیزی تحویل می‌شود؟', 'What gets delivered?'], type: 'text', required: true },
@@ -342,16 +343,7 @@ export function FieldInput({ f, value, set, form, disabled, autoFocus, onSubmit 
         </select>
       )
     case 'title':
-      return (
-        <select {...common} value={String(v)} onChange={(e) => set(e.target.value)}>
-          <option value="">—</option>
-          {[...Object.keys(JOB_TITLE_OPTIONS), ...(v && !JOB_TITLE_OPTIONS[String(v)] ? [String(v)] : [])].map((k) => (
-            <option key={k} value={k}>
-              {JOB_TITLE_OPTIONS[k] ? tr(JOB_TITLE_OPTIONS[k]) : k}
-            </option>
-          ))}
-        </select>
-      )
+      return <TitleField value={String(v)} set={set} disabled={disabled} />
     case 'area':
       return (
         <select {...common} value={String(v)} onChange={(e) => set(e.target.value)}>
@@ -582,5 +574,52 @@ function EditorModal({ sheet, row, isNew, onClose }: { sheet: EditableSheet; row
         ))}
       </div>
     </Sheet>
+  )
+}
+
+/** Job title: pick from the list, or (program manager) add a new one right here — e.g. APM. */
+function TitleField({ value, set, disabled }: { value: string; set: (v: unknown) => void; disabled?: boolean }) {
+  const { access, setSetting } = useStore()
+  const [adding, setAdding] = useState(false)
+  const [d, setD] = useState({ id: '', fa: '', en: '' })
+  const add = async () => {
+    const id = (d.id || d.en).trim().toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_|_$/g, '')
+    if (!id || !d.fa.trim()) return
+    const list = orgList('titles')
+    // a code that already exists is renamed; a new code is added
+    const item = { id, fa: d.fa.trim(), en: (d.en || d.fa).trim() }
+    await setSetting(ORG_KEYS.titles, JSON.stringify(list.some((x) => x.id === id) ? list.map((x) => (x.id === id ? item : x)) : [...list, item]))
+    set(id)
+    setAdding(false)
+    setD({ id: '', fa: '', en: '' })
+  }
+  return (
+    <div className="space-y-1.5">
+      <div className="flex gap-1.5">
+        <select className="input flex-1" disabled={disabled} value={value} onChange={(e) => set(e.target.value)}>
+          <option value="">—</option>
+          {[...Object.keys(JOB_TITLE_OPTIONS), ...(value && !JOB_TITLE_OPTIONS[value] ? [value] : [])].map((k) => (
+            <option key={k} value={k}>
+              {JOB_TITLE_OPTIONS[k] ? tr(JOB_TITLE_OPTIONS[k]) : k}
+            </option>
+          ))}
+        </select>
+        {access === 'super' && !disabled && (
+          <button type="button" className="btn-outline btn-sm h-11 shrink-0" onClick={() => setAdding((x) => !x)} title={L('سمت جدید', 'New title')}>
+            <Plus size={14} />
+          </button>
+        )}
+      </div>
+      {adding && (
+        <div className="flex flex-wrap gap-1.5 rounded-2xl border border-line p-2">
+          <input dir="ltr" className="input h-9 w-20 text-xs" placeholder="APM" value={d.id} onChange={(e) => setD({ ...d, id: e.target.value })} />
+          <input autoFocus className="input h-9 min-w-0 flex-1 text-xs" placeholder={L('دستیار مدیر محصول', 'Persian name')} value={d.fa} onChange={(e) => setD({ ...d, fa: e.target.value })} />
+          <input dir="ltr" className="input h-9 w-36 text-xs" placeholder="Assistant PM" value={d.en} onChange={(e) => setD({ ...d, en: e.target.value })} />
+          <button type="button" className="btn-primary btn-sm h-9" disabled={!d.fa.trim() || !(d.id || d.en).trim()} onClick={add}>
+            {L('افزودن سمت', 'Add title')}
+          </button>
+        </div>
+      )}
+    </div>
   )
 }

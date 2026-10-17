@@ -75,8 +75,8 @@ export default function Lookout() {
           </span>
         }
         title={L('دیده‌بان', 'Lookout')}
-        sub={L('وضعیت کل پورتفولیو، تحویل‌های این هفته، رفت و برگشت بین واحدها و هر کاری که پیگیرش هستید — یکجا.', 'The whole portfolio, this week’s deliveries, the hand-offs between units and everything you follow — in one place.')}
-        actions={<Segmented dark value={scope} onChange={setScope} options={[{ value: 'mine', label: L('پیگیری‌های من', 'My tracking') }, { value: 'all', label: L('همه‌ی تیم', 'Whole team') }]} />}
+        sub={L('وضعیت کل ACG، تحویل‌های این هفته، رفت و برگشت بین واحدها و هر کاری که زیر نظر دارید — یکجا.', 'All of ACG, this week’s deliveries, the hand-offs between units and everything you watch — in one place.')}
+        actions={<Segmented dark value={scope} onChange={setScope} options={[{ value: 'mine', label: L('زیر نظرِ من', 'My tracking') }, { value: 'all', label: L('همه‌ی تیم', 'Whole team') }]} />}
       >
         <StatStrip
           items={[
@@ -84,7 +84,7 @@ export default function Lookout() {
             { label: L('تحویل هفتگی نیازمند توجه', 'Weekly deliveries to watch'), value: fa(deliveryAlerts.length), tone: deliveryAlerts.length ? 'amber' : 'green', sub: L(`${fa(deliveries.length)} پروژه با روز تحویل`, `${deliveries.length} with a delivery day`) },
             { label: L('تحویل بین واحدها · منتظر', 'Hand-offs waiting'), value: fa(waiting.length), tone: waiting.length ? 'amber' : undefined },
             { label: L('برگشت‌خورده', 'Returned'), value: fa(returned.length), tone: returned.length ? 'red' : undefined },
-            { label: L('پیگیری‌ها · عقب افتاده', 'Tracked · late'), value: fa(pool.filter((t) => isLate(t, today)).length), tone: pool.some((t) => isLate(t, today)) ? 'red' : undefined, sub: L(`${fa(pool.length)} در دیده‌بان`, `${pool.length} on the Lookout`) },
+            { label: L('زیر نظر · عقب افتاده', 'Tracked · late'), value: fa(pool.filter((t) => isLate(t, today)).length), tone: pool.some((t) => isLate(t, today)) ? 'red' : undefined, sub: L(`${fa(pool.length)} در دیده‌بان`, `${pool.length} on the Lookout`) },
             { label: L('امروز', 'Today'), value: fa(pool.filter((t) => bucketOf(t, today) === 'today').length), tone: 'amber' },
           ]}
         />
@@ -113,7 +113,7 @@ export default function Lookout() {
             )}
           </Card>
 
-          <Card eyebrow={L('پورتفولیو', 'Portfolio')} title={L('پروژه‌های نیازمند توجه', 'Projects needing attention')} action={<Link to="/" className="text-xs text-sub hover:text-ink">{L('نمای کلی ←', 'Overview →')}</Link>}>
+          <Card eyebrow={L('ACG', 'ACG')} title={L('پروژه‌های نیازمند توجه', 'Projects needing attention')} action={<Link to="/" className="text-xs text-sub hover:text-ink">{L('نمای کلی ←', 'Overview →')}</Link>}>
             <div className="mb-3 flex h-2 overflow-hidden rounded-full bg-muted">
               {(['green', 'amber', 'red'] as const).map((h) => (
                 <span key={h} className={h === 'green' ? 'bg-good' : h === 'amber' ? 'bg-warn' : 'bg-bad'} style={{ width: `${s.live.length ? (s.counts[h] / s.live.length) * 100 : 0}%` }} />
@@ -191,7 +191,7 @@ export default function Lookout() {
         )}
         {!list.length ? (
           <Card>
-            <Empty text={scope === 'mine' ? L('چیزی در دیده‌بان شما نیست. در هر تسک «پیگیری در دیده‌بان» را بزنید، یا تسکی به کسی بسپارید.', 'Nothing on your Lookout. Press “Track on my Lookout” on any task, or hand a task to someone.') : L('تسک بازی نیست', 'No open tasks')} />
+            <Empty text={scope === 'mine' ? L('چیزی در دیده‌بان شما نیست. در هر تسک «زیر نظر در دیده‌بان» را بزنید، یا تسکی به کسی بسپارید.', 'Nothing on your Lookout. Press “Track on my Lookout” on any task, or hand a task to someone.') : L('تسک بازی نیست', 'No open tasks')} />
           </Card>
         ) : (
           BUCKETS.map((b) => {

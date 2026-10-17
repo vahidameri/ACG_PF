@@ -92,7 +92,7 @@ export default function CalendarPage() {
   return (
     <>
       <Band
-        title={L('تقویم پورتفولیو', 'Portfolio calendar')}
+        title={L('تقویم ACG', 'ACG calendar')}
         actions={
           <div className="flex items-center gap-1 rounded-full border border-white/10 bg-white/[0.04] p-1">
             <button className="icon-btn text-white/80 hover:bg-white/10 hover:text-white" onClick={() => move(-1)}>
@@ -111,7 +111,7 @@ export default function CalendarPage() {
       <Overlap>
         <div className="card mb-4 p-3">
           <Toolbar className="!mb-0">
-            <Segmented value={kind} onChange={setKind} options={[{ value: 'all', label: L('همه', 'All') }, { value: 'tasks', label: L('تسک', 'Tasks') }, { value: 'followups', label: L('فالوآپ', 'Follow-ups') }, { value: 'milestones', label: L('مایلستون', 'Milestones') }, { value: 'plan', label: L('جلسه و تحویل', 'Meetings & deliveries') }]} />
+            <Segmented value={kind} onChange={setKind} options={[{ value: 'all', label: L('همه', 'All') }, { value: 'tasks', label: L('تسک', 'Tasks') }, { value: 'followups', label: L('پیگیری', 'Follow-ups') }, { value: 'milestones', label: L('مایلستون', 'Milestones') }, { value: 'plan', label: L('جلسه و تحویل', 'Meetings & deliveries') }]} />
             <FilterSelect value={project} onChange={setProject} placeholder={L('همه‌ی پروژه‌ها', 'All projects')} options={db.Projects.map((p) => ({ value: p.id, label: p.name }))} />
             <FilterSelect value={who} onChange={setWho} placeholder={L('همه‌ی افراد', 'Everyone')} options={people.map((p) => ({ value: p, label: p === me ? `${p} (${L('من', 'me')})` : p }))} />
           </Toolbar>
@@ -229,7 +229,7 @@ export default function CalendarPage() {
                   </Group>
                 )}
                 {selItems.fus.length > 0 && (
-                  <Group title={L('فالوآپ', 'Follow-ups')}>
+                  <Group title={L('پیگیری', 'Follow-ups')}>
                     {selItems.fus.map((f) => (
                       <Row key={f.id} onClick={() => open('FollowUps', f as never)} icon={<BellRing size={14} className="text-warn" />} title={f.subject} sub={f.person} />
                     ))}

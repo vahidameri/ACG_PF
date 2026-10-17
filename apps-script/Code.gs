@@ -18,10 +18,10 @@
  *   viewer — read only (leadership)
  */
 
-var ATLAS_VERSION = '1.9.0'; // shown on the login page and by diagnose()
+var ATLAS_VERSION = '1.10.0'; // shown on the login page and by diagnose()
 
 var SCHEMA = {
-  Projects: ['id', 'code', 'name', 'description', 'category', 'owner', 'client', 'liaison', 'liaison_contact', 'status', 'priority', 'phase', 'start_date', 'end_date', 'progress', 'health_override', 'objective', 'paused_at', 'pause_reason', 'delivery_day', 'last_delivery', 'archived', 'archived_at'],
+  Projects: ['id', 'code', 'name', 'description', 'category', 'owner', 'client', 'liaison', 'liaison_contact', 'status', 'priority', 'phase', 'start_date', 'end_date', 'progress', 'health_override', 'objective', 'paused_at', 'pause_reason', 'delivery_day', 'last_delivery', 'archived', 'archived_at', 'links'],
   Scope: ['id', 'project_id', 'item', 'type', 'status', 'change_note', 'date'],
   Milestones: ['id', 'project_id', 'title', 'planned_date', 'actual_date', 'status', 'owner', 'weight'],
   Sprints: ['id', 'project_id', 'name', 'start_date', 'end_date', 'goal', 'committed_points', 'completed_points', 'status'],
@@ -528,8 +528,18 @@ function guardWrite_(sheet, row, user) {
     if (curH.from_person !== user.name && !receiver) throw new Error('این تحویل مربوط به شما نیست');
     return;
   }
+  // a project lead keeps their project's links (stage, Figma…) up to date, nothing else
+  if (sheet === 'Projects') {
+    var curP = existingRow_('Projects', row.id);
+    if (curP && curP.owner === user.name) {
+      var links = row.links;
+      Object.keys(curP).forEach(function (k) { row[k] = curP[k]; });
+      row.links = links;
+      return;
+    }
+  }
   if (sheet === 'Projects' || sheet === 'Allocations') throw new Error('فقط لیدرشیپ می‌تواند پروژه و تخصیص را تغییر دهد');
-  if (sheet === 'FollowUps' && row.owner && row.owner !== user.name) throw new Error('فالوآپ دیگران را نمی‌توانید تغییر دهید');
+  if (sheet === 'FollowUps' && row.owner && row.owner !== user.name) throw new Error('پیگیری دیگران را نمی‌توانید تغییر دهید');
   if (sheet === 'FollowUps') row.owner = user.name;
   if (row.project_id) {
     var ok = allowedProjects_(rawAll_(), user.name);
@@ -879,12 +889,12 @@ function sendDailyDigest() {
 
   var html = '<div dir="rtl" style="font-family:Tahoma,Vazirmatn,sans-serif;font-size:14px;line-height:1.8;color:#111">' +
     '<h2 style="margin:0 0 8px">خلاصه‌ی امروز — اطلس ACG</h2>' +
-    sec('فالوآپ‌های امروز و معوق', '#e13748', fus.map(function (f) { return li('<b>' + f.subject + '</b> — ' + f.person + (f.project_id ? ' · ' + (pname[f.project_id] || '') : '') + ' · ' + f.due_date); })) +
+    sec('پیگیری‌های امروز و معوق', '#e13748', fus.map(function (f) { return li('<b>' + f.subject + '</b> — ' + f.person + (f.project_id ? ' · ' + (pname[f.project_id] || '') : '') + ' · ' + f.due_date); })) +
     sec('تسک‌های امروز', '#4f46e5', todayTasks.map(function (t) { return li(t.title + ' — ' + t.assignee + (t.project_id ? ' · ' + (pname[t.project_id] || '') : '')); })) +
     sec('تسک‌های معوق', '#d98d06', overdueTasks.map(function (t) { return li(t.title + ' — ' + t.assignee + ' · سررسید ' + t.due_date); })) +
     sec('تسک‌های مسدود', '#e13748', blocked.map(function (t) { return li(t.title + ' — ' + t.assignee + (t.description ? ' · ' + t.description : '')); })) +
     sec('مایلستون‌های عقب‌افتاده', '#e13748', ms.map(function (m) { return li(m.title + ' · ' + (pname[m.project_id] || '') + ' · ' + m.planned_date); })) +
-    '<p style="color:#666;margin-top:24px;font-size:12px">این ایمیل به‌صورت خودکار از Google Sheet پورتفولیو ارسال شده است.</p></div>';
+    '<p style="color:#666;margin-top:24px;font-size:12px">این ایمیل به‌صورت خودکار از Google Sheet ACG ارسال شده است.</p></div>';
 
   var to = PropertiesService.getScriptProperties().getProperty('DIGEST_TO') || Session.getEffectiveUser().getEmail();
   MailApp.sendEmail({ to: to, subject: 'ACG Atlas · خلاصه‌ی ' + today, htmlBody: html });
@@ -954,7 +964,7 @@ function remindWeeklyUpdatesNow() {
       to: email[owner],
       subject: 'یادآوری گزارش هفتگی · ' + byOwner[owner].join('، '),
       htmlBody: '<div dir="rtl" style="font-family:Tahoma,sans-serif;line-height:1.9">' + owner + ' عزیز، سلام<br>گزارش هفتگی این پروژه‌ها هنوز ثبت نشده است: <b>' + byOwner[owner].join('، ') +
-        '</b><br>لطفاً پیش از جلسه‌ی هفتگی پورتفولیو از صفحه‌ی «گزارش هفتگی» ثبت کنید. ممنون 🙏</div>',
+        '</b><br>لطفاً پیش از جلسه‌ی هفتگی ACG از صفحه‌ی «گزارش هفتگی» ثبت کنید. ممنون 🙏</div>',
     });
   });
   if (missing.length) {

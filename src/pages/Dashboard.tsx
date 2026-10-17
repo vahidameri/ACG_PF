@@ -37,14 +37,14 @@ export default function Dashboard() {
       <Band nav={<HubNav hub="overview" />}
         eyebrow={
           <>
-            <span>{L('پورتفولیو', 'Portfolio')}</span>
+            <span>{L('ACG', 'ACG')}</span>
             <span className="opacity-40">/</span>
             <span>{L('نمای کلی', 'Overview')}</span>
             <span className="opacity-40">/</span>
             <span className="num">{fmtDate(today, 'long')}</span>
           </>
         }
-        title={L('نمای کلی پورتفولیو', 'Portfolio overview')}
+        title={L('نمای کلی ACG', 'ACG overview')}
         actions={
           <>
             <Link to="/pulse" className="btn h-10 bg-white text-band">
@@ -127,7 +127,7 @@ export default function Dashboard() {
 
         <Card
           pad={false}
-          eyebrow={L('پورتفولیو', 'Portfolio')}
+          eyebrow={L('ACG', 'ACG')}
           title={L('همه‌ی پروژه‌های جاری', 'All live projects')}
           action={<Segmented value={view} onChange={setView} options={[{ value: 'table', label: L('جدول', 'Table') }, { value: 'cards', label: L('کارت', 'Cards') }]} />}
         >
@@ -242,7 +242,7 @@ export default function Dashboard() {
             )}
           </Card>
 
-          <Card eyebrow={L('ریسک', 'Risk')} title={L('ریسک‌های برتر پورتفولیو', 'Top portfolio risks')} action={<Link to="/risks" className="text-xs font-medium text-sub hover:text-ink">{L('همه', 'All')} →</Link>}>
+          <Card eyebrow={L('ریسک', 'Risk')} title={L('ریسک‌های برتر ACG', 'Top ACG risks')} action={<Link to="/risks" className="text-xs font-medium text-sub hover:text-ink">{L('همه', 'All')} →</Link>}>
             <div className="-mx-2 space-y-0.5">
               {topRisks.map((r) => {
                 const sc = riskScore(r)
@@ -263,7 +263,7 @@ export default function Dashboard() {
             </div>
           </Card>
 
-          <Card eyebrow={L('نبض پورتفولیو', 'Portfolio pulse')} title={L('فعالیت اخیر', 'Recent activity')} className="@lg:col-span-2 @xl:col-span-1">
+          <Card eyebrow={L('نبض ACG', 'ACG pulse')} title={L('فعالیت اخیر', 'Recent activity')} className="@lg:col-span-2 @xl:col-span-1">
             <ActivityFeed items={buildActivity(db, undefined, 6)} />
           </Card>
         </div>

@@ -38,7 +38,7 @@ export function ArchiveButton({ p, dark }: { p: Project; dark?: boolean }) {
         <div className="space-y-3 p-2.5" onClick={(e) => e.stopPropagation()}>
           <div className="text-sm font-semibold">{L(`آرشیو ${p.name}`, `Archive ${p.name}`)}</div>
           <p className="text-xs leading-5 text-sub">
-            {L('پروژه با همه‌ی تسک‌ها، مایلستون‌ها و تحویلی‌هایش از لیست‌ها، بوردها و یادآوری‌ها بیرون می‌رود. هر وقت بخواهید از «پروژه‌ها ← آرشیو» برمی‌گردد.', 'The project and all its tasks, milestones and deliverables leave every list, board and reminder. Bring it back any time from Projects → Archive.')}
+            {L('پروژه با همه‌ی تسک‌ها، مایلستون‌ها و خروجی‌هایش از لیست‌ها، بوردها و یادآوری‌ها بیرون می‌رود. هر وقت بخواهید از «پروژه‌ها ← آرشیو» برمی‌گردد.', 'The project and all its tasks, milestones and deliverables leave every list, board and reminder. Bring it back any time from Projects → Archive.')}
             {open > 0 && <b className={cx('mt-1 block text-warn')}>{L(`${fa(open)} تسک باز دارد.`, `It has ${open} open task(s).`)}</b>}
           </p>
           <button

@@ -43,11 +43,11 @@ export default function FollowUps() {
   return (
     <>
       <Band nav={<HubNav hub="work" />}
-        title={L('فالوآپ‌ها', 'Follow-ups')}
+        title={L('پیگیری‌ها', 'Follow-ups')}
         actions={
           canEdit && (
             <button className="btn h-10 bg-white text-band" onClick={() => open('FollowUps', { project_id: project, person })}>
-              <Plus size={16} /> {L('فالوآپ جدید', 'New follow-up')}
+              <Plus size={16} /> {L('پیگیری جدید', 'New follow-up')}
             </button>
           )
         }
@@ -94,7 +94,7 @@ export default function FollowUps() {
             ))}
           {groups.every((g) => !g.items.length) && (
             <div className="card @lg:col-span-2">
-              <Empty text={L('فالوآپ بازی وجود ندارد', 'No open follow-ups')} />
+              <Empty text={L('پیگیری بازی وجود ندارد', 'No open follow-ups')} />
             </div>
           )}
         </div>

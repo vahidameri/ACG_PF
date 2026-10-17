@@ -3,7 +3,7 @@
 //   org.teams  — teams a person can belong to
 //   org.sides  — the working sides that hand work to each other (default: product, design, tech)
 // The label maps used across the app are updated in place, so every page follows the settings.
-import { JOB_TITLE, JOB_TITLE_OPTIONS, MEETING_SERIES, TEAM_NAMES } from './labels'
+import { ACCESS, JOB_TITLE, JOB_TITLE_OPTIONS, MEETING_SERIES, TEAM_NAMES } from './labels'
 import { TRACK, TRACKS, SIDE_COLOR } from './tracks'
 import type { T2 } from './i18n'
 
@@ -13,14 +13,25 @@ export interface OrgItem {
   en: string
   color?: string
 }
-export type OrgKind = 'titles' | 'teams' | 'sides' | 'series'
-export const ORG_KEYS: Record<OrgKind, string> = { titles: 'org.titles', teams: 'org.teams', sides: 'org.sides', series: 'org.series' }
+export type OrgKind = 'titles' | 'teams' | 'sides' | 'series' | 'access' | 'links'
+export const ORG_KEYS: Record<OrgKind, string> = { titles: 'org.titles', teams: 'org.teams', sides: 'org.sides', series: 'org.series', access: 'org.access', links: 'org.links' }
 
 const fromMap = (m: Record<string, T2>): OrgItem[] => Object.entries(m).map(([id, [fa, en]]) => ({ id, fa, en }))
 export const ORG_DEFAULT: Record<OrgKind, OrgItem[]> = {
   titles: fromMap(JOB_TITLE),
   teams: fromMap(TEAM_NAMES),
   series: fromMap(MEETING_SERIES),
+  access: fromMap(ACCESS),
+  links: [
+    { id: 'stage', fa: 'محیط استیج', en: 'Staging' },
+    { id: 'prod', fa: 'محیط اصلی (پروداکشن)', en: 'Production' },
+    { id: 'figma', fa: 'فیگما', en: 'Figma' },
+    { id: 'repo', fa: 'کد (گیت)', en: 'Code repository' },
+    { id: 'docs', fa: 'مستندات / درایو', en: 'Docs / Drive' },
+    { id: 'prd', fa: 'PRD', en: 'PRD' },
+    { id: 'board', fa: 'بورد کار', en: 'Work board' },
+    { id: 'chat', fa: 'گروه تلگرام', en: 'Telegram group' },
+  ],
   sides: [
     { id: 'product', fa: 'پروداکت', en: 'Product', color: '#8a1c3c' },
     { id: 'design', fa: 'دیزاین', en: 'Design', color: '#7c3aed' },
@@ -55,7 +66,11 @@ export function applyOrg(get: (k: string) => string | undefined) {
     teams: parse(get(ORG_KEYS.teams), ORG_DEFAULT.teams),
     sides: parse(get(ORG_KEYS.sides), ORG_DEFAULT.sides),
     series: parse(get(ORG_KEYS.series), ORG_DEFAULT.series),
+    links: parse(get(ORG_KEYS.links), ORG_DEFAULT.links),
+    // access levels are fixed (they decide what each person sees); only their names change
+    access: ORG_DEFAULT.access.map((d) => parse(get(ORG_KEYS.access), ORG_DEFAULT.access).find((x) => x.id === d.id) || d),
   }
+  refill(ACCESS, cur.access)
   refill(MEETING_SERIES as Record<string, T2>, cur.series)
   refill(JOB_TITLE, cur.titles)
   refill(JOB_TITLE_OPTIONS, cur.titles.map((t) => ({ ...t, fa: `${t.fa} · ${t.id.toUpperCase()}`, en: t.en.toUpperCase() === t.id.toUpperCase() ? t.en : `${t.en} · ${t.id.toUpperCase()}` })))

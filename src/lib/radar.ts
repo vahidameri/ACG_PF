@@ -14,7 +14,7 @@ export interface TaskDate {
 export function taskDates(t: Task): TaskDate[] {
   const all: TaskDate[] = [
     { key: 'due_date', d: t.due_date, label: L('سررسید', 'Due') },
-    { key: 'follow_date', d: t.follow_date || '', label: L('پیگیری', 'Follow-up') },
+    { key: 'follow_date', d: t.follow_date || '', label: L('یادآوری', 'Reminder') },
     { key: 'handoff_date', d: t.handoff_date || '', label: L('تحویل به پروداکت', 'Hand-off') },
     { key: 'test_date', d: t.test_date || '', label: L('تست', 'Testing') },
     { key: 'deadline', d: t.deadline || '', label: L('ددلاین', 'Deadline') },

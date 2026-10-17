@@ -48,7 +48,7 @@ export default function Plan() {
         actions={
           canEdit && (
             <button className="btn h-10 bg-white text-band" onClick={() => open('Deliverables', { project_id: project })}>
-              <Plus size={16} /> {L('تحویلی جدید', 'New deliverable')}
+              <Plus size={16} /> {L('خروجی جدید', 'New deliverable')}
             </button>
           )
         }

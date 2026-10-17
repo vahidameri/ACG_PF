@@ -388,7 +388,7 @@ function buildAgenda(m: Meeting, db: DB, open: ReturnType<typeof useEditor>['ope
       tone: isOverdue(d) ? 'red' : d.status === 'at_risk' || slipDays(d) ? 'amber' : 'green',
       onClick: () => open('Deliverables', d as never),
     })),
-    empty: L('تحویلی در این بازه نیست', 'Nothing due'),
+    empty: L('خروجی در این بازه نیست', 'Nothing due'),
   }
 
   const capSection = (t: Track | ''): AgendaSection => {

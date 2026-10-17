@@ -24,7 +24,7 @@ export default function Report() {
 
   const copyText = () => {
     const lines = [
-      `${L('گزارش وضعیت پورتفولیو', 'Portfolio status report')} — ${fmtDate(today, 'long')}`,
+      `${L('گزارش وضعیت ACG', 'ACG status report')} — ${fmtDate(today, 'long')}`,
       L(
         `پروژه‌های جاری: ${fa(s.live.length)} | سالم: ${fa(s.counts.green)} | نیازمند توجه: ${fa(s.counts.amber)} | در خطر: ${fa(s.counts.red)}`,
         `Live: ${s.live.length} | On track: ${s.counts.green} | At risk: ${s.counts.amber} | Off track: ${s.counts.red}`,
@@ -43,7 +43,7 @@ export default function Report() {
   return (
     <>
       <Band nav={<HubNav hub="overview" />}
-        title={L('گزارش مدیریتی پورتفولیو', 'Executive portfolio report')}
+        title={L('گزارش مدیریتی ACG', 'ACG executive report')}
         actions={
           <>
             <button className="btn h-10 border border-white/15 text-white" onClick={copyText}>
@@ -65,7 +65,7 @@ export default function Report() {
                 <div className="mt-1 num">{fmtDate(today, 'long')}</div>
               </div>
             </div>
-            <h2 className="display mt-10 text-4xl leading-tight">{L('وضعیت پورتفولیو پروژه‌ها', 'Portfolio status')}</h2>
+            <h2 className="display mt-10 text-4xl leading-tight">{L('وضعیت پروژه‌های ACG', 'ACG status')}</h2>
             <div className="mt-8 grid grid-cols-2 border-t border-band-line @sm:grid-cols-5">
               {[
                 [L('پروژه‌های جاری', 'Live'), fa(s.live.length), ''],

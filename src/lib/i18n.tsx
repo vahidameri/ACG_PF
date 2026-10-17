@@ -17,9 +17,26 @@ export const locale: { lang: Lang; cal: Calendar } = (() => {
   }
 })()
 
-export const tr = (pair: T2 | string) => (typeof pair === 'string' ? pair : locale.lang === 'fa' ? pair[0] : pair[1])
+// Glossary overrides (back office → glossary): a term renamed once is renamed in every label.
+// Only interface text passes through here, never what people type.
+let swaps: { fa: [string, string][]; en: [RegExp, string][] } = { fa: [], en: [] }
+export function setTermSwaps(fa: [string, string][], en: [string, string][]) {
+  const esc = (x: string) => x.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+  swaps = { fa: fa.filter(([a, b]) => a && b && a !== b), en: en.filter(([a, b]) => a && b && a.toLowerCase() !== b.toLowerCase()).map(([a, b]) => [new RegExp(`\\b${esc(a)}`, 'gi'), b]) }
+}
+const swapFa = (s: string) => {
+  for (const [a, b] of swaps.fa) if (s.includes(a)) s = s.split(a).join(b)
+  return s
+}
+const swapEn = (s: string) => {
+  for (const [re, b] of swaps.en) s = s.replace(re, (m) => (m[0] === m[0].toUpperCase() ? b[0].toUpperCase() + b.slice(1) : b[0].toLowerCase() + b.slice(1)))
+  return s
+}
+const out = (fa: string, en: string) => (locale.lang === 'fa' ? (swaps.fa.length ? swapFa(fa) : fa) : swaps.en.length ? swapEn(en) : en)
+
+export const tr = (pair: T2 | string) => (typeof pair === 'string' ? pair : out(pair[0], pair[1]))
 /** Inline bilingual text: L('پروژه‌ها', 'Projects') */
-export const L = (fa: string, en: string) => (locale.lang === 'fa' ? fa : en)
+export const L = (fa: string, en: string) => out(fa, en)
 /** Lookup in a bilingual label map. */
 export function lbl<K extends string>(map: Record<K, T2>, k: K | string): string {
   const v = (map as Record<string, T2>)[k]

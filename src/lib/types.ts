@@ -34,6 +34,8 @@ export interface Project {
   /** '1' = archived: hidden from every list until it is restored */
   archived?: string
   archived_at?: string
+  /** links (stage, production, Figma…) as JSON: [{ type, url, label }] */
+  links?: string
 }
 
 export interface ScopeItem {

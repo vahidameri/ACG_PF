@@ -12,7 +12,7 @@ export const HUBS = {
   ],
   work: () => [
     { to: '/tasks', label: L('تسک‌ها', 'Tasks') },
-    { to: '/followups', label: L('فالوآپ‌ها', 'Follow-ups') },
+    { to: '/followups', label: L('پیگیری‌ها', 'Follow-ups') },
     { to: '/sprints', label: L('اسپرینت‌ها', 'Sprints') },
   ],
   plan: () => [
