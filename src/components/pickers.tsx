@@ -247,3 +247,36 @@ export function ListPicker({ value, options, onChange, empty }: { value: string;
     </Popover>
   )
 }
+
+/** The task's assignees — one or more people (the first leads). */
+export function AssigneesPicker({ value, onChange }: { value: string; onChange: (v: string) => void }) {
+  const { db, canEdit, me } = useStore()
+  const on = String(value || '').split(',').map((x) => x.trim()).filter(Boolean)
+  const people = Array.from(new Set([me, ...db.Team.filter((m) => String(m.active) !== 'false').map((m) => m.name), ...on].filter(Boolean)))
+  const toggle = (p: string) => onChange((on.includes(p) ? on.filter((x) => x !== p) : [...on, p]).join(','))
+  return (
+    <Popover
+      width={250}
+      trigger={({ toggle: t }) => (
+        <button className={trig} onClick={t} disabled={!canEdit}>
+          {on.length ? <AvatarStack names={on} max={3} /> : <UserRound size={15} className="text-sub" />}
+          <span className={cx('max-w-[9rem] truncate', !on.length && 'text-sub')}>{on.length ? (on.length === 1 ? on[0] : L(`${on[0]} +${on.length - 1}`, `${on[0]} +${on.length - 1}`)) : L('بدون مسئول', 'Unassigned')}</span>
+        </button>
+      )}
+    >
+      {() => (
+        <div className="max-h-64 overflow-y-auto">
+          <div className="px-2.5 pb-1 text-[0.625rem] text-sub">{L('یک یا چند نفر — اولی مسئول اصلی است', 'One or more — the first one leads')}</div>
+          {people.map((p) => {
+            const i = on.indexOf(p)
+            return (
+              <MenuItem key={p} icon={<Avatar name={p} size="xs" />} active={i >= 0} hint={i === 0 ? L('اصلی', 'lead') : i > 0 ? '✓' : p === me ? L('من', 'me') : undefined} onClick={() => toggle(p)}>
+                {p}
+              </MenuItem>
+            )
+          })}
+        </div>
+      )}
+    </Popover>
+  )
+}

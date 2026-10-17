@@ -3,6 +3,7 @@ import type { Task } from './types'
 import { addDays, todayISO } from './jalali'
 import { L } from './i18n'
 import { fieldOn } from './taskcfg'
+import { isAssignee } from './assignees'
 
 export interface TaskDate {
   key: 'due_date' | 'follow_date' | 'handoff_date' | 'test_date' | 'deadline'
@@ -42,4 +43,4 @@ export function bucketOf(t: Task, today = todayISO()): Bucket {
 
 /** Tracked by me: I follow it, or I gave it to someone else. */
 export const tracking = (t: Task, me: string) =>
-  !!me && (String(t.watchers || '').split(',').map((x) => x.trim()).includes(me) || (t.reporter === me && !!t.assignee && t.assignee !== me))
+  !!me && (String(t.watchers || '').split(',').map((x) => x.trim()).includes(me) || (t.reporter === me && !!t.assignee && !isAssignee(t, me)))

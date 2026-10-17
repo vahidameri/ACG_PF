@@ -103,14 +103,18 @@ export const CONFIDENCE: Record<Deliverable['confidence'], T2> = {
   medium: ['اطمینان متوسط', 'Medium confidence'],
   low: ['اطمینان پایین', 'Low confidence'],
 }
+/** Meeting series — names are editable in the back office (Config org.series). */
 export const MEETING_SERIES: Record<MeetingSeries, T2> = {
-  portfolio: ['ویکلی پورتفولیو', 'Portfolio weekly'],
-  product: ['ویکلی پروداکت', 'Product weekly'],
-  tech: ['ویکلی تک', 'Tech weekly'],
-  project: ['ویکلی پروژه', 'Project weekly'],
-  one_on_one: ['جلسه‌ی ۱:۱', 'One-on-one'],
-  other: ['سایر جلسات', 'Other'],
+  portfolio: ['جلسه‌ی هفتگی پورتفولیو', 'Portfolio weekly'],
+  product: ['جلسه‌ی هفتگی پروداکت', 'Product weekly'],
+  design: ['جلسه‌ی هفتگی دیزاین', 'Design weekly'],
+  tech: ['جلسه‌ی هفتگی تک', 'Tech weekly'],
+  project: ['جلسه‌ی هفتگی پروژه', 'Project weekly'],
+  one_on_one: ['جلسه‌ی یک‌به‌یک', 'One-on-one'],
+  other: ['سایر جلسات', 'Other meetings'],
 }
+/** Series that repeat every week (everything except one-on-ones and other meetings). */
+export const isWeeklySeries = (s: string) => !!s && s !== 'one_on_one' && s !== 'other'
 export const MEETING_STATUS: Record<Meeting['status'], T2> = {
   scheduled: ['برنامه‌ریزی‌شده', 'Scheduled'],
   held: ['برگزار شد', 'Held'],

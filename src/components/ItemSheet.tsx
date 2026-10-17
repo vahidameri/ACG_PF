@@ -1,35 +1,33 @@
 // Rich detail sheet for a task or follow-up: inline-editable properties, description, comments & activity.
 import { useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { Trash2, Send, Check, Clock, AlarmClockOff, Hash, Zap, MessageSquare, CircleDot, CheckCircle2, Sparkles, Bell, BellOff, Radar } from 'lucide-react'
+import { Mail, ListChecks, Trash2, Send, Check, Clock, AlarmClockOff, Hash, Zap, MessageSquare, CircleDot, CheckCircle2, Sparkles, Bell, BellOff, Compass as CompassIcon } from 'lucide-react'
 import { fieldOn, taskCfg } from '../lib/taskcfg'
 import type { FollowUp, Task, Comment, TaskStatus } from '../lib/types'
 
 type Item = Omit<Task, 'status'> & Omit<FollowUp, 'status'> & { status: Task['status'] | FollowUp['status'] }
 import { useStore } from '../lib/store'
 import { Attachments } from './Files'
+import { HandoffSection } from './Handoffs'
+import { assigneesOf } from '../lib/assignees'
+import { can } from '../lib/access'
 import { uid } from '../lib/api'
-import { addDays, fa, fmtDate, relDays, todayISO, timeAgo } from '../lib/jalali'
+import { addDays, fa, fmtDate, nowStamp, relDays, todayISO, timeAgo } from '../lib/jalali'
 import { L, lbl } from '../lib/i18n'
 import { CHANNEL, FOLLOWUP_STATUS } from '../lib/labels'
-import { Avatar, Sheet, cx, Chip, MenuItem, Popover } from './ui'
+import { Avatar, AvatarStack, Sheet, cx, Chip, MenuItem, Popover } from './ui'
 import { DatePicker } from './DatePicker'
 import { useEditor } from './Editor'
-import { ListPicker, PeoplePicker, PersonPicker, PriorityPicker, ProjectPicker, StatusPicker } from './pickers'
-import { TRACK, trackOf, depsOf, dependentsOf, depIds, trackSoft, memberTrack } from '../lib/tracks'
+import { AssigneesPicker, ListPicker, PeoplePicker, PersonPicker, PriorityPicker, ProjectPicker, StatusPicker } from './pickers'
+import { TRACK, TRACKS, trackOf, depsOf, dependentsOf, depIds, sideSoft, memberTrack } from '../lib/tracks'
 import type { Track } from '../lib/types'
 import { StatusIcon } from './ui'
 import { Link2, X, Plus, ArrowLeftRight } from 'lucide-react'
 
-function nowStamp() {
-  const d = new Date()
-  const p = (n: number) => String(n).padStart(2, '0')
-  return `${todayISO()} ${p(d.getHours())}:${p(d.getMinutes())}`
-}
 export const stampToDate = (s: string) => new Date(String(s).replace(' ', 'T'))
 
 export function ItemSheet({ sheet, id, onClose }: { sheet: 'Tasks' | 'FollowUps'; id: string; onClose: () => void }) {
-  const { db, upsert, remove, toast, canEdit, me } = useStore()
+  const { db, upsert, remove, toast, canEdit, me, access, action, mode } = useStore()
   const item = (sheet === 'Tasks' ? db.Tasks : db.FollowUps).find((x) => x.id === id) as unknown as Item | undefined
   const [confirmDel, setConfirmDel] = useState(false)
   const [draft, setDraft] = useState('')
@@ -90,6 +88,19 @@ export function ItemSheet({ sheet, id, onClose }: { sheet: 'Tasks' | 'FollowUps'
               {item.reporter && ` · ${item.reporter}`}
             </span>
             <div className="flex-1" />
+            {isTask && can.portfolio(access) && mode === 'live' && (
+              <button
+                className="btn-ghost btn-sm text-sub"
+                onClick={() =>
+                  action('mailTask', { id })
+                    .then(() => toast(L('ایمیل برای افراد تسک ارسال شد', 'Emailed to everyone on the task')))
+                    .catch((e) => toast(String(e instanceof Error ? e.message : e), 'err'))
+                }
+                title={L('فقط وقتی لازم است — اعلان‌ها خودشان داخل اطلس می‌آیند', 'Only when needed — notifications already arrive in Atlas')}
+              >
+                <Mail size={14} /> {L('ارسال ایمیل', 'Send email')}
+              </button>
+            )}
             {confirmDel ? (
               <button className="btn-danger btn-sm" onClick={del}>
                 {L('تأیید حذف', 'Confirm delete')}
@@ -146,7 +157,11 @@ export function ItemSheet({ sheet, id, onClose }: { sheet: 'Tasks' | 'FollowUps'
             </div>
           )}
 
+          {isTask && fieldOn('checklist') && <Checklist value={item.checklist || ''} onChange={(v) => patch({ checklist: v })} />}
+
           {isTask && <Stages task={item as unknown as Task} />}
+
+          {isTask && <HandoffSection task={item as unknown as Task} />}
 
           {isTask && <Dependencies task={item as unknown as Task} onChange={(ids) => patch({ depends_on: ids.join(',') })} />}
 
@@ -215,7 +230,7 @@ export function ItemSheet({ sheet, id, onClose }: { sheet: 'Tasks' | 'FollowUps'
               onClick={() => patch({ watchers: watching ? watchers.filter((x) => x !== me).join(',') : [...watchers, me].join(',') })}
               className={cx('mb-4 flex w-full items-center justify-center gap-2 rounded-2xl border px-3 py-2.5 text-xs font-medium transition', watching ? 'border-brand/30 bg-brand-soft/40 text-ink' : 'border-line bg-surface text-sub hover:text-ink')}
             >
-              <Radar size={14} /> {watching ? L('در رادار شماست ✓', 'On your Radar ✓') : L('پیگیری در رادار من', 'Track on my Radar')}
+              <CompassIcon size={14} /> {watching ? L('در قطب‌نمای شماست ✓', 'On your Compass ✓') : L('پیگیری در قطب‌نما', 'Track on my Compass')}
             </button>
           )}
           <div className="eyebrow mb-2 px-2.5">{L('مشخصات', 'Properties')}</div>
@@ -228,11 +243,30 @@ export function ItemSheet({ sheet, id, onClose }: { sheet: 'Tasks' | 'FollowUps'
                 <PriorityPicker value={item.priority} onChange={(v) => patch({ priority: v })} />
               </Prop>
               <Prop label={L('مسئول', 'Assignee')}>
-                <PersonPicker value={item.assignee} onChange={(v) => patch({ assignee: v })} />
+                <AssigneesPicker value={item.assignee} onChange={(v) => patch({ assignee: v })} />
               </Prop>
+              {fieldOn('start_date') && (
+                <Prop label={L('شروع', 'Start')}>
+                  <DatePicker compact value={item.start_date || ''} onChange={(v) => patch({ start_date: v })} />
+                </Prop>
+              )}
               <Prop label={L('سررسید', 'Due')}>
                 <DatePicker compact value={item.due_date} onChange={(v) => patch({ due_date: v })} />
               </Prop>
+              {fieldOn('estimate') && (
+                <Prop label={L('تخمین', 'Estimate')}>
+                  <input
+                    type="number"
+                    min={0}
+                    step={0.5}
+                    defaultValue={item.estimate || ''}
+                    disabled={!canEdit}
+                    onBlur={(e) => String(e.target.value) !== String(item.estimate || '') && patch({ estimate: e.target.value === '' ? '' : Number(e.target.value) })}
+                    className="h-8 w-20 rounded-full bg-transparent px-2.5 text-xs outline-none hover:bg-muted focus:bg-surface focus:ring-1 focus:ring-line-strong num"
+                    placeholder={L('ساعت', 'hours')}
+                  />
+                </Prop>
+              )}
               {fieldOn('follow_date') && (
                 <Prop label={L('پیگیری', 'Follow-up')}>
                   <DatePicker compact value={item.follow_date || ''} onChange={(v) => patch({ follow_date: v })} />
@@ -255,7 +289,7 @@ export function ItemSheet({ sheet, id, onClose }: { sheet: 'Tasks' | 'FollowUps'
               )}
               {fieldOn('collaborators') && (
                 <Prop label={L('همکاران', 'Shared with')}>
-                  <PeoplePicker value={item.collaborators || ''} exclude={item.assignee} onChange={(v) => patch({ collaborators: v })} />
+                  <PeoplePicker value={item.collaborators || ''} exclude={item.assignee.split(',')[0]} onChange={(v) => patch({ collaborators: v })} />
                 </Prop>
               )}
               {fieldOn('watchers') && (
@@ -290,7 +324,7 @@ export function ItemSheet({ sheet, id, onClose }: { sheet: 'Tasks' | 'FollowUps'
                   placeholder="—"
                 />
               </Prop>
-              <Prop label={L('ترک', 'Track')}>
+              <Prop label={L('ساید', 'Side')}>
                 <TrackPicker task={item as unknown as Task} onChange={(v) => patch({ track: v })} />
               </Prop>
               <Prop label={L('برچسب', 'Tags')}>
@@ -395,7 +429,7 @@ export function ItemSheet({ sheet, id, onClose }: { sheet: 'Tasks' | 'FollowUps'
                   className="btn-tonal btn-sm mt-2"
                   onClick={() =>
                     upsert('FollowUps', {
-                      id: uid('F'), project_id: item.project_id, subject: L(`رفع مانع: ${item.title}`, `Unblock: ${item.title}`), person: item.assignee, channel: 'chat',
+                      id: uid('F'), project_id: item.project_id, subject: L(`رفع مانع: ${item.title}`, `Unblock: ${item.title}`), person: item.assignee.split(',')[0] || '', channel: 'chat',
                       due_date: addDays(todayISO(), 1), status: 'open', priority: 'high', notes: item.description, created_at: todayISO(), done_at: '', owner: me,
                     }).then(() => toast(L('فالوآپ ساخته شد', 'Follow-up created')))
                   }
@@ -509,7 +543,7 @@ export function renderMentions(text: string, people: string[]) {
 export function TrackBadge({ track, inferred }: { track: Track | ''; inferred?: boolean }) {
   if (!track) return <span className="text-[0.6875rem] text-sub/60">—</span>
   return (
-    <span className={cx('chip', trackSoft[track])} title={inferred ? L('از روی تیم مسئول', 'Inferred from assignee') : undefined}>
+    <span className="chip side-soft" style={sideSoft(track)} title={inferred ? L('از روی تیم مسئول', 'Inferred from assignee') : undefined}>
       {lbl(TRACK, track)}
       {inferred && <span className="opacity-60">·{L('خودکار', 'auto')}</span>}
     </span>
@@ -530,10 +564,10 @@ function TrackPicker({ task, onChange }: { task: Task; onChange: (v: Track | '')
     >
       {(close) => (
         <>
-          <MenuItem active={!task.track} hint={memberTrack(db, task.assignee) ? lbl(TRACK, memberTrack(db, task.assignee) as Track) : ''} onClick={() => { onChange(''); close() }}>
-            {L('خودکار (تیم مسئول)', 'Auto (assignee’s team)')}
+          <MenuItem active={!task.track} hint={memberTrack(db, task.assignee.split(',')[0]) ? lbl(TRACK, memberTrack(db, task.assignee.split(',')[0]) as Track) : ''} onClick={() => { onChange(''); close() }}>
+            {L('خودکار (ساید مسئول)', 'Auto (assignee’s side)')}
           </MenuItem>
-          {(['product', 'tech'] as Track[]).map((t) => (
+          {TRACKS.map((t) => (
             <MenuItem key={t} active={task.track === t} onClick={() => { onChange(t); close() }}>
               {lbl(TRACK, t)}
             </MenuItem>
@@ -563,7 +597,7 @@ function Dependencies({ task, onChange }: { task: Task; onChange: (ids: string[]
           {t.title}
         </button>
         <TrackBadge track={tr} />
-        <Avatar name={t.assignee} size="xs" />
+        <AvatarStack names={assigneesOf(t)} max={2} />
         {onRemove && canEdit && (
           <button className="icon-btn h-6 w-6 opacity-0 group-hover:opacity-100" onClick={onRemove} title={L('حذف وابستگی', 'Remove link')}>
             <X size={12} />
@@ -575,7 +609,7 @@ function Dependencies({ task, onChange }: { task: Task; onChange: (ids: string[]
   return (
     <div className="mt-8">
       <div className="eyebrow mb-3 flex items-center gap-2">
-        <ArrowLeftRight size={13} /> {L('وابستگی‌ها و تحویل بین تیم‌ها', 'Dependencies & handoffs')}
+        <ArrowLeftRight size={13} /> {L('وابستگی‌ها (پیش‌نیازها)', 'Dependencies')}
       </div>
       {waiting.length > 0 && (
         <div className="mb-3 flex items-center gap-2 rounded-xl bg-warn/[0.09] px-3 py-2 text-xs text-warn">
@@ -663,6 +697,50 @@ export function Stages({ task }: { task: Task }) {
           )
         })}
       </ol>
+    </div>
+  )
+}
+
+/** ClickUp-style checklist kept as text lines: "[ ] item" / "[x] item". */
+export function parseChecklist(v: string) {
+  return String(v || '').split('\n').map((l) => l.trim()).filter(Boolean).map((l) => ({ done: /^\[x\]/i.test(l), text: l.replace(/^\[( |x)\]\s*/i, '') }))
+}
+const serialize = (items: { done: boolean; text: string }[]) => items.map((i) => `[${i.done ? 'x' : ' '}] ${i.text}`).join('\n')
+
+function Checklist({ value, onChange }: { value: string; onChange: (v: string) => void }) {
+  const { canEdit } = useStore()
+  const items = parseChecklist(value)
+  const [draft, setDraft] = useState('')
+  const done = items.filter((i) => i.done).length
+  return (
+    <div className="mt-6">
+      <div className="eyebrow mb-2 flex items-center gap-2">
+        <ListChecks size={13} /> {L('چک‌لیست', 'Checklist')}
+        {items.length > 0 && <span className="num">{fa(done)}/{fa(items.length)}</span>}
+      </div>
+      {items.length > 0 && (
+        <div className="mb-2 h-1 overflow-hidden rounded-full bg-muted">
+          <div className="h-full rounded-full bg-good transition-[width]" style={{ width: `${(done / items.length) * 100}%` }} />
+        </div>
+      )}
+      <ul className="space-y-0.5">
+        {items.map((it, i) => (
+          <li key={i} className="group flex items-center gap-2 rounded-lg px-1 py-1 hover:bg-muted/50">
+            <input type="checkbox" disabled={!canEdit} checked={it.done} onChange={() => onChange(serialize(items.map((x, j) => (j === i ? { ...x, done: !x.done } : x))))} />
+            <span className={cx('flex-1 text-sm', it.done && 'text-sub line-through')}>{it.text}</span>
+            {canEdit && (
+              <button className="icon-btn h-6 w-6 opacity-0 group-hover:opacity-100" onClick={() => onChange(serialize(items.filter((_, j) => j !== i)))} aria-label={L('حذف', 'Remove')}>
+                <X size={12} />
+              </button>
+            )}
+          </li>
+        ))}
+      </ul>
+      {canEdit && (
+        <form className="mt-1" onSubmit={(e) => (e.preventDefault(), draft.trim() && (onChange(serialize([...items, { done: false, text: draft.trim() }])), setDraft('')))}>
+          <input value={draft} onChange={(e) => setDraft(e.target.value)} placeholder={L('+ افزودن مورد', '+ Add an item')} className="h-8 w-full rounded-lg bg-transparent px-2 text-sm outline-none placeholder:text-sub/70 focus:bg-muted/50" />
+        </form>
+      )}
     </div>
   )
 }

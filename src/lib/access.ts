@@ -26,7 +26,7 @@ const names = (s: string) => String(s || '').split(',').map((x) => x.trim())
 
 /** A task is someone's when they do it, created it, or it is shared with them or tracked by them. */
 export const isMine = (t: { assignee: string; reporter: string; collaborators?: string; watchers?: string }, me: string) =>
-  !!me && (t.assignee === me || t.reporter === me || names(t.collaborators || '').includes(me) || names(t.watchers || '').includes(me))
+  !!me && (names(t.assignee).includes(me) || t.reporter === me || names(t.collaborators || '').includes(me) || names(t.watchers || '').includes(me))
 
 /** Projects a member is involved in. */
 export function relatedProjects(db: DB, me: string) {
@@ -34,7 +34,7 @@ export function relatedProjects(db: DB, me: string) {
   const set = new Set<string>()
   db.Projects.forEach((p) => p.owner === me && set.add(p.id))
   db.Allocations.forEach((a) => a.member_id === id && set.add(a.project_id))
-  db.Tasks.forEach((t) => t.project_id && t.assignee === me && set.add(t.project_id))
+  db.Tasks.forEach((t) => t.project_id && names(t.assignee).includes(me) && set.add(t.project_id))
   db.Deliverables.forEach((d) => d.owner === me && set.add(d.project_id))
   return set
 }
@@ -64,8 +64,12 @@ export function scopeDB(db: DB, me: string, access: Access): DB {
     Team: new Set(out.Team.map((m) => m.id)),
     Risks: new Set(out.Risks.filter((r) => inP(r.project_id)).map((r) => r.id)),
   }
+  // hand-offs: the ones I sent or received, and those on tasks I can see
+  const Handoffs = out.Handoffs.filter((h) => h.from_person === me || h.to_person === me || visible.Tasks.has(h.task_id) || (!h.task_id && inP(h.project_id)))
   return {
     ...out,
+    Handoffs,
+    Deliveries: out.Deliveries.filter((x) => inP(x.project_id)),
     Projects: out.Projects.filter((p) => ok.has(p.id)),
     Milestones: out.Milestones.filter((x) => inP(x.project_id)),
     Sprints: out.Sprints.filter((x) => inP(x.project_id)),

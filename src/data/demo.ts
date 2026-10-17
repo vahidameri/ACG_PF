@@ -47,6 +47,6 @@ export function buildDemo(): DB {
   }))
   return {
     Projects, Team, Scope: [], Milestones: [], Sprints: [], Tasks: [], FollowUps: [], Risks: [], Allocations: [], Updates: [], Comments: [],
-    Deliverables: [], Meetings: [], Files: [], Config: [], Contracts: [],
+    Deliverables: [], Meetings: [], Files: [], Config: [], Contracts: [], Handoffs: [], Deliveries: [],
   }
 }

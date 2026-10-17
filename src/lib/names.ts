@@ -5,7 +5,9 @@ import type { DB, SheetName } from './types'
 const FIELDS: Partial<Record<SheetName, string[]>> = {
   Projects: ['owner'],
   Milestones: ['owner'],
-  Tasks: ['assignee', 'reporter'],
+  Tasks: ['assignee', 'reporter', 'collaborators', 'watchers'],
+  Handoffs: ['from_person', 'to_person'],
+  Deliveries: ['by'],
   FollowUps: ['person', 'owner'],
   Risks: ['owner'],
   Team: ['name'],
@@ -25,8 +27,10 @@ export function nameMaps(db: DB) {
   return { toEn, toCanon }
 }
 
+const LISTS = new Set(['assignee', 'collaborators', 'watchers'])
 const mapVal = (v: unknown, map: NameMap, key: string) => {
   if (typeof v !== 'string' || !v) return v
+  if (LISTS.has(key)) return v.split(',').map((n) => map.get(n.trim()) ?? n.trim()).filter(Boolean).join(',')
   if (key === 'attendees') return v.split(',').map((n) => map.get(n.trim()) ?? n.trim()).join(', ')
   return map.get(v) ?? v
 }

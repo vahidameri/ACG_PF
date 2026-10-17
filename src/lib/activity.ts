@@ -25,7 +25,7 @@ export function buildActivity(db: DB, projectId?: string, limit = 30): Activity[
     out.push({ id: `c-${c.id}`, who: c.author, verb: L('نظر داد روی', 'commented on'), what: what || '', when: c.created_at, kind: 'comment', project_id: pid, target: c.entity === 'Tasks' || c.entity === 'FollowUps' ? { sheet: c.entity, id: c.entity_id } : undefined })
   })
   db.Tasks.filter((t) => t.status === 'done' && t.completed_at && inProj(t.project_id)).forEach((t) =>
-    out.push({ id: `d-${t.id}`, who: t.assignee, verb: L('انجام داد', 'completed'), what: t.title, when: t.completed_at, kind: 'done', project_id: t.project_id, target: { sheet: 'Tasks', id: t.id } }),
+    out.push({ id: `d-${t.id}`, who: t.assignee.split(',')[0] || '', verb: L('انجام داد', 'completed'), what: t.title, when: t.completed_at, kind: 'done', project_id: t.project_id, target: { sheet: 'Tasks', id: t.id } }),
   )
   db.Updates.filter((u) => inProj(u.project_id)).forEach((u) =>
     out.push({ id: `u-${u.id}`, who: u.author, verb: L('گزارش هفتگی ثبت کرد برای', 'posted a weekly update on'), what: db.Projects.find((p) => p.id === u.project_id)?.name || '', when: u.week_date, kind: 'update', project_id: u.project_id, target: { sheet: 'Updates', id: u.id } }),

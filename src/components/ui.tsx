@@ -3,7 +3,7 @@ import { createPortal } from 'react-dom'
 import { X, Inbox, ChevronDown, Check } from 'lucide-react'
 import type { Health, Priority, TaskStatus } from '../lib/types'
 import { HEALTH, PRIORITY } from '../lib/labels'
-import { columnColor, statusLabel } from '../lib/columns'
+import { columnColor, columns, statusLabel } from '../lib/columns'
 import { daysFromToday, fa, fmtDayMonth, relDays } from '../lib/jalali'
 import { lbl, L } from '../lib/i18n'
 
@@ -131,7 +131,8 @@ export function StatusIcon({ s, size = 16 }: { s: TaskStatus; size?: number }) {
   const r = size / 2 - 1.5
   const c = size / 2
   const circ = 2 * Math.PI * (r - 2.5)
-  const color = s === 'done' ? 'rgb(var(--good))' : s === 'blocked' ? 'rgb(var(--bad))' : s === 'review' ? '#8b5cf6' : s === 'in_progress' ? 'rgb(var(--warn))' : s === 'todo' ? 'rgb(var(--sub))' : columnColor(s)
+  const custom = columns().find((c) => c.id === s)?.color
+  const color = custom ? custom : s === 'done' ? 'rgb(var(--good))' : s === 'blocked' ? 'rgb(var(--bad))' : s === 'review' ? '#8b5cf6' : s === 'in_progress' ? 'rgb(var(--warn))' : s === 'todo' ? 'rgb(var(--sub))' : columnColor(s)
   return (
     <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} className="shrink-0" aria-label={statusLabel(s)}>
       {s === 'done' ? (

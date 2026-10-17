@@ -8,7 +8,8 @@ import { columns, statusLabel } from '../lib/columns'
 import { useStore } from '../lib/store'
 import { uid } from '../lib/api'
 import { todayISO } from '../lib/jalali'
-import { L, tr, type T2 } from '../lib/i18n'
+import { L, lbl, tr, type T2 } from '../lib/i18n'
+import { TRACK, TRACKS } from '../lib/tracks'
 import {
   CHANNEL, CONFIDENCE, CONTRACT_KIND, CONTRACT_STATUS, DELIVERABLE_STATUS, MEETING_SERIES, MEETING_STATUS, FOLLOWUP_STATUS, HEALTH, MILESTONE_STATUS, PRIORITY, PROJECT_STATUS, RISK_STATUS, RISK_TYPE, SCOPE_STATUS, SPRINT_STATUS,
   ACCESS, JOB_TITLE_OPTIONS, TEAM_NAMES } from '../lib/labels'
@@ -18,7 +19,7 @@ import { ItemSheet } from './ItemSheet'
 import { useAuto } from '../lib/automations'
 import { can } from '../lib/access'
 
-type FieldType = 'text' | 'textarea' | 'select' | 'multi' | 'date' | 'number' | 'project' | 'person' | 'people' | 'sprint' | 'member' | 'scale' | 'status' | 'area'
+type FieldType = 'text' | 'textarea' | 'select' | 'multi' | 'date' | 'number' | 'project' | 'person' | 'people' | 'sprint' | 'member' | 'scale' | 'status' | 'area' | 'side' | 'title' | 'assignees'
 export interface Field {
   key: string
   label: T2
@@ -29,7 +30,7 @@ export interface Field {
   placeholder?: T2
 }
 
-export type EditableSheet = Exclude<SheetName, 'Comments' | 'Files' | 'Config'>
+export type EditableSheet = Exclude<SheetName, 'Comments' | 'Files' | 'Config' | 'Handoffs' | 'Deliveries'>
 
 export const SCHEMAS: Record<EditableSheet, { title: T2; prefix: string; fields: Field[]; defaults: () => Record<string, unknown> }> = {
   Tasks: {
@@ -41,23 +42,25 @@ export const SCHEMAS: Record<EditableSheet, { title: T2; prefix: string; fields:
       { key: 'project_id', label: ['پروژه', 'Project'], type: 'project', half: true },
       { key: 'area', label: ['حوزه', 'Area'], type: 'area', half: true },
       { key: 'sprint_id', label: ['اسپرینت', 'Sprint'], type: 'sprint', half: true },
-      { key: 'assignee', label: ['مسئول انجام', 'Assignee'], type: 'person', half: true },
+      { key: 'assignee', label: ['مسئول انجام (یک یا چند نفر)', 'Assignees (one or more)'], type: 'assignees' },
       { key: 'collaborators', label: ['همکاران (تسک مشترک)', 'Shared with'], type: 'people' },
-      { key: 'watchers', label: ['پیگیرها (رادار و اعلان)', 'Tracked by (Radar & alerts)'], type: 'people' },
+      { key: 'watchers', label: ['پیگیرها (قطب‌نما و اعلان)', 'Tracked by (Compass & alerts)'], type: 'people' },
       { key: 'status', label: ['وضعیت', 'Status'], type: 'status', half: true },
       { key: 'priority', label: ['اولویت', 'Priority'], type: 'select', options: PRIORITY, half: true },
+      { key: 'start_date', label: ['تاریخ شروع', 'Start date'], type: 'date', half: true },
       { key: 'due_date', label: ['سررسید', 'Due date'], type: 'date', half: true },
       { key: 'follow_date', label: ['تاریخ پیگیری (اعلان)', 'Follow-up date (alert)'], type: 'date', half: true },
       { key: 'handoff_date', label: ['تحویل به پروداکت', 'Hand-off to product'], type: 'date', half: true },
       { key: 'test_date', label: ['زمان تست', 'Testing'], type: 'date', half: true },
       { key: 'deadline', label: ['ددلاین (تحویل نهایی)', 'Deadline (final delivery)'], type: 'date', half: true },
       { key: 'notify', label: ['اعلان‌ها', 'Alerts'], type: 'select', options: { '': ['روشن', 'On'], off: ['خاموش', 'Off'] }, half: true },
+      { key: 'estimate', label: ['تخمین (ساعت)', 'Estimate (hours)'], type: 'number', half: true },
       { key: 'points', label: ['استوری‌پوینت', 'Story points'], type: 'number', half: true },
       { key: 'tags', label: ['برچسب‌ها', 'Tags'], type: 'text', half: true, placeholder: ['با کاما جدا کنید', 'Comma separated'] },
-      { key: 'track', label: ['تیم', 'Track'], type: 'select', options: { '': ['خودکار', 'Auto'], product: ['پروداکت', 'Product'], tech: ['تک', 'Tech'] }, half: true },
+      { key: 'track', label: ['ساید', 'Side'], type: 'side', half: true },
       { key: 'private', label: ['دیده‌شدن', 'Visibility'], type: 'select', options: { '': ['عمومی', 'Visible'], '1': ['خصوصی', 'Private'] }, half: true },
     ],
-    defaults: () => ({ private: '', status: 'todo', priority: 'medium', points: 0, created_at: todayISO(), track: '', depends_on: '', meeting_id: '', deadline: '', handoff_date: '', test_date: '', follow_date: '', area: '', collaborators: '', watchers: '', notify: '' }),
+    defaults: () => ({ private: '', status: 'todo', priority: 'medium', points: 0, created_at: todayISO(), track: '', depends_on: '', meeting_id: '', deadline: '', handoff_date: '', test_date: '', follow_date: '', area: '', collaborators: '', watchers: '', notify: '', start_date: '', estimate: '', checklist: '' }),
   },
   FollowUps: {
     title: ['فالوآپ', 'Follow-up'],
@@ -178,9 +181,9 @@ export const SCHEMAS: Record<EditableSheet, { title: T2; prefix: string; fields:
       { key: 'name', label: ['نام', 'Name'], type: 'text', required: true, half: true },
       { key: 'name_en', label: ['نام انگلیسی', 'Name in English'], type: 'text', half: true },
       { key: 'username', label: ['نام کاربری', 'Username'], type: 'text', half: true, placeholder: ['خودکار از نام انگلیسی', 'From the English name'] },
-      { key: 'role', label: ['سمت', 'Title'], type: 'select', options: { '': ['—', '—'], ...JOB_TITLE_OPTIONS }, half: true },
+      { key: 'role', label: ['سمت', 'Title'], type: 'title', half: true },
       { key: 'team', label: ['تیم‌ها', 'Teams'], type: 'multi', options: TEAM_NAMES },
-      { key: 'track', label: ['ترک', 'Track'], type: 'select', options: { '': ['—', '—'], product: ['پروداکت', 'Product'], tech: ['تک', 'Tech'] }, half: true },
+      { key: 'track', label: ['ساید', 'Side'], type: 'side', half: true },
       { key: 'capacity', label: ['ظرفیت', 'Capacity'], type: 'number', half: true },
       { key: 'email', label: ['ایمیل گوگل', 'Google email'], type: 'text', half: true },
       { key: 'phone', label: ['تلفن', 'Phone'], type: 'text', half: true },
@@ -210,7 +213,7 @@ export const SCHEMAS: Record<EditableSheet, { title: T2; prefix: string; fields:
       { key: 'project_id', label: ['پروژه', 'Project'], type: 'project', half: true, required: true },
       { key: 'owner', label: ['مسئول', 'Owner'], type: 'person', half: true },
       { key: 'target_date', label: ['تاریخ تحویل', 'Target date'], type: 'date', half: true, required: true },
-      { key: 'track', label: ['تیم', 'Track'], type: 'select', options: { '': ['خودکار', 'Auto'], product: ['پروداکت', 'Product'], tech: ['تک', 'Tech'] }, half: true },
+      { key: 'track', label: ['ساید', 'Side'], type: 'side', half: true },
       { key: 'status', label: ['وضعیت', 'Status'], type: 'select', options: DELIVERABLE_STATUS, half: true },
       { key: 'confidence', label: ['اطمینان', 'Confidence'], type: 'select', options: CONFIDENCE, half: true },
       { key: 'baseline_date', label: ['تاریخ تعهد اولیه', 'Baseline date'], type: 'date', half: true },
@@ -268,7 +271,7 @@ export function EditorProvider({ children }: { children: ReactNode }) {
   const [state, setState] = useState<{ sheet: EditableSheet; row: Record<string, unknown>; isNew: boolean } | null>(null)
   const open = useCallback((sheet: EditableSheet, row?: Record<string, unknown>) => {
     const isNew = !row?.id
-    const who = db.Team.find((m) => m.name === (row?.assignee || me))
+    const who = db.Team.find((m) => m.name === (String(row?.assignee || '').split(',')[0] || me))
     const base = { ...SCHEMAS[sheet].defaults(), ...(sheet === 'Tasks' ? { due_date: dueFor(who) } : {}) }
     setState({ sheet, row: isNew ? { ...base, ...row } : { ...row }, isNew })
   }, [db.Team, me])
@@ -327,6 +330,28 @@ export function FieldInput({ f, value, set, form, disabled, autoFocus, onSubmit 
           ))}
         </select>
       )
+    case 'side':
+      return (
+        <select {...common} value={String(v)} onChange={(e) => set(e.target.value)}>
+          <option value="">{f.key === 'track' && 'assignee' in form ? L('خودکار (ساید مسئول)', 'Auto (assignee’s side)') : '—'}</option>
+          {TRACKS.map((t) => (
+            <option key={t} value={t}>
+              {lbl(TRACK, t)}
+            </option>
+          ))}
+        </select>
+      )
+    case 'title':
+      return (
+        <select {...common} value={String(v)} onChange={(e) => set(e.target.value)}>
+          <option value="">—</option>
+          {[...Object.keys(JOB_TITLE_OPTIONS), ...(v && !JOB_TITLE_OPTIONS[String(v)] ? [String(v)] : [])].map((k) => (
+            <option key={k} value={k}>
+              {JOB_TITLE_OPTIONS[k] ? tr(JOB_TITLE_OPTIONS[k]) : k}
+            </option>
+          ))}
+        </select>
+      )
     case 'area':
       return (
         <select {...common} value={String(v)} onChange={(e) => set(e.target.value)}>
@@ -338,9 +363,26 @@ export function FieldInput({ f, value, set, form, disabled, autoFocus, onSubmit 
           ))}
         </select>
       )
+    case 'assignees': {
+      const on = String(v || '').split(',').map((x) => x.trim()).filter(Boolean)
+      const team = Array.from(new Set([...db.Team.filter((m) => String(m.active) !== 'false').map((m) => m.name), ...on]))
+      return (
+        <div className="flex flex-wrap gap-1.5">
+          {team.map((n) => {
+            const i = on.indexOf(n)
+            return (
+              <button key={n} type="button" disabled={disabled} onClick={() => set((i >= 0 ? on.filter((x) => x !== n) : [...on, n]).join(','))} className={cx('h-8 rounded-full border px-3 text-xs transition disabled:opacity-60', i >= 0 ? 'border-ink bg-ink text-surface' : 'border-line text-sub hover:text-ink')}>
+                {n}
+                {i === 0 && on.length > 1 && <span className="ms-1 opacity-60">{L('· اصلی', '· lead')}</span>}
+              </button>
+            )
+          })}
+        </div>
+      )
+    }
     case 'people': {
       const on = String(v || '').split(',').map((x) => x.trim()).filter(Boolean)
-      const team = db.Team.filter((m) => String(m.active) !== 'false' && m.name !== form.assignee)
+      const team = db.Team.filter((m) => String(m.active) !== 'false' && !String(form.assignee || '').split(',').includes(m.name))
       return (
         <div className="flex flex-wrap gap-1.5">
           {team.map((m) => {
@@ -377,7 +419,7 @@ export function FieldInput({ f, value, set, form, disabled, autoFocus, onSubmit 
     case 'project':
       return (
         <select {...common} value={String(v)} onChange={(e) => set(e.target.value)}>
-          <option value="">{canPersonal(db.Team.find((m) => m.name === form.assignee)) ? L('— شخصی —', '— Personal —') : L('— بدون پروژه —', '— No project —')}</option>
+          <option value="">{canPersonal(db.Team.find((m) => m.name === String(form.assignee || '').split(',')[0])) ? L('— شخصی —', '— Personal —') : L('— بدون پروژه —', '— No project —')}</option>
           {db.Projects.map((p) => (
             <option key={p.id} value={p.id}>
               {p.name}
@@ -445,7 +487,7 @@ function EditorModal({ sheet, row, isNew, onClose }: { sheet: EditableSheet; row
   const [confirmDel, setConfirmDel] = useState(false)
   const set = (k: string, v: unknown) => setForm((f) => ({ ...f, [k]: v }))
   // task rules from the back office: deadline / project may be required, except for listed people
-  const owner = db.Team.find((m) => m.name === form.assignee)
+  const owner = db.Team.find((m) => m.name === String(form.assignee || '').split(',')[0])
   const optional = new Set<string>(TASK_FIELDS)
   const schema =
     sheet !== 'Tasks'

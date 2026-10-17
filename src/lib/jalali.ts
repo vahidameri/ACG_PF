@@ -246,3 +246,10 @@ export function greeting(d = new Date()) {
   if (h < 20) return en ? 'Good evening' : 'عصر بخیر'
   return en ? 'Good evening' : 'شب بخیر'
 }
+
+/** Local date and time as "YYYY-MM-DD HH:mm" (comments, hand-offs). */
+export function nowStamp() {
+  const d = new Date()
+  const p = (n: number) => String(n).padStart(2, '0')
+  return `${todayISO()} ${p(d.getHours())}:${p(d.getMinutes())}`
+}

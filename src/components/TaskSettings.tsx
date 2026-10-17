@@ -1,14 +1,15 @@
 // Task configuration for the program manager: rules, which fields a task has, areas and kanban columns.
 // Shown in the back office (Settings) and from the Tasks page; everything is stored in the Config tab.
 import { useState } from 'react'
-import { ArrowDown, ArrowUp, Columns3, ListChecks, Plus, SlidersHorizontal, Tags, Trash2 } from 'lucide-react'
+import { ArrowDown, ArrowUp, Bell, Columns3, ListChecks, Plus, SlidersHorizontal, Tags, Trash2 } from 'lucide-react'
 import { useStore } from '../lib/store'
 import { Card, Sheet, cx } from './ui'
 import { L, tr, type T2 } from '../lib/i18n'
 import { TASK_FIELDS, TASK_KEYS, fieldKey, taskCfg, type FieldMode, type TaskField } from '../lib/taskcfg'
-import { BUILTIN, COLUMNS_KEY, columns, statusLabel, withColumn, type Column } from '../lib/columns'
+import { BUILTIN, COLUMNS_KEY, columnColor, columns, statusLabel, withColumn, type Column } from '../lib/columns'
 import { StatusIcon } from './ui'
 import { useEditor } from './Editor'
+import { NOTIFY_KEY, NOTIFY_KINDS, notifyOff } from '../lib/inbox'
 
 export function Switch({ on, onChange, disabled }: { on: boolean; onChange: (v: boolean) => void; disabled?: boolean }) {
   return (
@@ -81,6 +82,9 @@ export function TaskCard({ admin }: { admin: boolean }) {
 }
 
 const FIELD_LABEL: Record<TaskField, T2> = {
+  start_date: ['تاریخ شروع', 'Start date'],
+  estimate: ['تخمین زمان (ساعت)', 'Time estimate (hours)'],
+  checklist: ['چک‌لیست', 'Checklist'],
   deadline: ['ددلاین (تحویل نهایی)', 'Deadline (final delivery)'],
   handoff_date: ['تحویل به پروداکت', 'Hand-off to product'],
   test_date: ['زمان تست', 'Testing'],
@@ -180,7 +184,11 @@ export function ColumnsCard({ admin }: { admin: boolean }) {
       <ul className="space-y-1.5">
         {list.map((c, i) => (
           <li key={c.id} className="flex items-center gap-2 rounded-2xl border border-line px-2.5 py-1.5">
-            <StatusIcon s={c.id} size={15} />
+            {admin ? (
+              <input type="color" className="h-6 w-6 shrink-0 cursor-pointer rounded-full border-0 bg-transparent p-0" defaultValue={c.color || columnColor(c.id)} onBlur={(e) => e.target.value !== (c.color || '') && save(list.map((x, k) => (k === i ? { ...x, color: e.target.value } : x)))} aria-label={L('رنگ ستون', 'Column colour')} />
+            ) : (
+              <StatusIcon s={c.id} size={15} />
+            )}
             <input key={statusLabel(c.id)} className="h-8 min-w-0 flex-1 rounded-lg bg-transparent px-2 text-sm outline-none focus:bg-muted disabled:opacity-80" disabled={!admin} defaultValue={statusLabel(c.id)} onBlur={(e) => rename(i, e.target.value)} onKeyDown={(e) => e.key === 'Enter' && e.currentTarget.blur()} />
             <span className="text-[0.6875rem] text-sub num">{db.Tasks.filter((t) => t.status === c.id).length}</span>
             {admin && (
@@ -249,5 +257,24 @@ export function TaskSettingsSheet({ onClose }: { onClose: () => void }) {
         <TaskCard admin={admin} />
       </div>
     </Sheet>
+  )
+}
+
+/** In-app notifications: which kinds the team gets. Email is separate (Automations, off by default). */
+export function NotifyCard({ admin }: { admin: boolean }) {
+  const { setSetting } = useStore()
+  const off = notifyOff()
+  return (
+    <Card eyebrow={<span className="flex items-center gap-1.5"><Bell size={12} /> {L('اعلان‌ها', 'Notifications')}</span>} title={L('اعلان‌های داخل اطلس', 'Notifications inside Atlas')}>
+      <p className="mb-3 text-xs leading-6 text-sub">{L('اعلان‌ها داخل اپ (زنگوله‌ی بالا و پیام کوتاه) می‌آیند. ایمیل فقط برای مواردی می‌رود که در «اتوماسیون‌ها» روشن کنید، یا با دکمه‌ی «ارسال ایمیل» در هر تسک.', 'Notifications arrive in the app (the bell and a short pop-up). Email goes only for what you switch on under Automations, or with “Send email” on a task.')}</p>
+      <div className="space-y-2.5">
+        {NOTIFY_KINDS.map((k) => (
+          <div key={k.id} className="flex items-center justify-between gap-3">
+            <div className="text-sm">{tr(k.label)}</div>
+            <Switch on={!off.includes(k.id)} disabled={!admin} onChange={(v) => setSetting(NOTIFY_KEY, (v ? off.filter((x) => x !== k.id) : [...off, k.id]).join(','))} />
+          </div>
+        ))}
+      </div>
+    </Card>
   )
 }

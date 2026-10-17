@@ -583,3 +583,12 @@ select:focus-visible {
   .hero-a { stroke-dashoffset: 0; fill-opacity: 1; animation: none !important; }
   .hero-dot { opacity: 1; animation: none !important; }
 }
+
+/* a side's chip: the colour comes from the settings (style --side) */
+.side-soft {
+  background: color-mix(in srgb, var(--side) 11%, transparent);
+  color: color-mix(in srgb, var(--side) 88%, #000);
+}
+.dark .side-soft {
+  color: color-mix(in srgb, var(--side) 45%, #fff);
+}

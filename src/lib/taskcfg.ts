@@ -12,10 +12,10 @@ export const TASK_KEYS = {
 } as const
 
 /** Optional task fields the program manager can switch off or make required (task.field.<key> = off | on | req). */
-export const TASK_FIELDS = ['deadline', 'handoff_date', 'test_date', 'follow_date', 'area', 'collaborators', 'watchers', 'sprint_id', 'points', 'tags', 'track'] as const
+export const TASK_FIELDS = ['start_date', 'deadline', 'handoff_date', 'test_date', 'follow_date', 'estimate', 'checklist', 'area', 'collaborators', 'watchers', 'sprint_id', 'points', 'tags', 'track'] as const
 export type TaskField = (typeof TASK_FIELDS)[number]
 export type FieldMode = 'off' | 'on' | 'req'
-const FIELD_DEFAULT: Record<TaskField, FieldMode> = { deadline: 'on', handoff_date: 'on', test_date: 'on', follow_date: 'on', area: 'on', collaborators: 'on', watchers: 'on', sprint_id: 'on', points: 'on', tags: 'on', track: 'on' }
+const FIELD_DEFAULT: Record<TaskField, FieldMode> = { start_date: 'on', estimate: 'on', checklist: 'on', deadline: 'on', handoff_date: 'on', test_date: 'on', follow_date: 'on', area: 'on', collaborators: 'on', watchers: 'on', sprint_id: 'on', points: 'on', tags: 'on', track: 'on' }
 export const fieldKey = (f: TaskField) => `task.field.${f}`
 
 interface Person { id: string; access?: string }

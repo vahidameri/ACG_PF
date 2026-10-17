@@ -1,3 +1,4 @@
+import { assigneesOf } from '../lib/assignees'
 import { useMemo, useState } from 'react'
 import { ChevronLeft, ChevronRight, Flag, BellRing, Zap, CalendarRange, Package } from 'lucide-react'
 import { useStore } from '../lib/store'
@@ -60,7 +61,7 @@ export default function CalendarPage() {
 
   const pass = (pid: string, person?: string) => (!project || pid === project) && (!who || person === who)
   const itemsOn = (d: string) => ({
-    tasks: kind === 'all' || kind === 'tasks' ? db.Tasks.filter((t) => t.due_date === d && pass(t.project_id, t.assignee)) : [],
+    tasks: kind === 'all' || kind === 'tasks' ? db.Tasks.filter((t) => t.due_date === d && pass(t.project_id, t.assignee.split(',')[0] || '')) : [],
     fus: kind === 'all' || kind === 'followups' ? db.FollowUps.filter((f) => f.due_date === d && f.status !== 'done' && pass(f.project_id)) : [],
     ms: kind === 'all' || kind === 'milestones' ? db.Milestones.filter((m) => m.planned_date === d && pass(m.project_id, m.owner)) : [],
     sprintStarts: kind === 'all' ? db.Sprints.filter((s) => s.start_date === d && pass(s.project_id)) : [],
@@ -86,7 +87,7 @@ export default function CalendarPage() {
   const Next = locale.lang === 'fa' ? ChevronLeft : ChevronRight
   const selItems = itemsOn(sel)
   const pcode = (id: string) => db.Projects.find((p) => p.id === id)?.code.replace('ACG-', '') || ''
-  const people = Array.from(new Set(db.Tasks.map((t) => t.assignee).filter(Boolean)))
+  const people = Array.from(new Set(db.Tasks.flatMap((t) => assigneesOf(t))))
 
   return (
     <>

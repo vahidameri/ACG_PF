@@ -1,3 +1,4 @@
+import { assigneesOf } from '../lib/assignees'
 import { useEffect, useMemo, useState, type ReactNode } from 'react'
 import { Link } from 'react-router-dom'
 import {
@@ -20,17 +21,18 @@ import { usePref } from '../lib/prefs'
 import { uid } from '../lib/api'
 import { addDays, fa, fmtDayMonth, fmtWeekday, relDays, todayISO } from '../lib/jalali'
 import { L, lbl } from '../lib/i18n'
-import { MEETING_SERIES, MEETING_STATUS } from '../lib/labels'
+import { MEETING_SERIES, MEETING_STATUS, isWeeklySeries } from '../lib/labels'
 import { inWeek, updateDue, weekCfg, weekLabel, weekRel, weekStart, weeklyDate, weeksFrom } from '../lib/weeks'
 import { assess } from '../lib/rag'
 import { isClosed, isOverdue, deliveryTrack, slipDays } from '../lib/delivery'
 import { overloaded, trackWeek } from '../lib/capacity'
-import { TRACK, trackOf, waitingOn } from '../lib/tracks'
+import { TRACK, TRACKS, trackOf, waitingOn } from '../lib/tracks'
 import { isTaskOverdue } from '../lib/metrics'
 import type { DB, Health, Meeting, Task, Track } from '../lib/types'
 
-const seriesTone: Record<Meeting['series'], string> = {
+const seriesTone: Record<string, string> = {
   portfolio: 'bg-ink text-surface',
+  design: 'bg-[#7c3aed]/10 text-[#7c3aed] dark:text-[#c4b5fd]',
   product: 'bg-wine/10 text-wine dark:text-[#ec7892]',
   tech: 'bg-brand/10 text-brand dark:text-brand-soft',
   project: 'bg-warn/12 text-warn',
@@ -178,7 +180,7 @@ function MeetingRoom({ m }: { m: Meeting }) {
         <div className="flex flex-wrap items-start gap-4">
           <div className="min-w-0 flex-1">
             <div className="flex flex-wrap items-center gap-2">
-              <span className={cx('chip', seriesTone[m.series])}>{lbl(MEETING_SERIES, m.series)}</span>
+              <span className={cx('chip', seriesTone[m.series] || 'bg-muted text-sub')}>{lbl(MEETING_SERIES, m.series)}</span>
               <span className={cx('chip', m.status === 'held' ? 'bg-good/10 text-good' : m.status === 'cancelled' ? 'bg-muted text-sub' : 'bg-brand/10 text-brand dark:text-brand-soft')}>{lbl(MEETING_STATUS, m.status)}</span>
               {project && (
                 <Link to={`/projects/${project.id}`} className="chip bg-muted text-sub hover:text-ink">
@@ -372,7 +374,7 @@ function buildAgenda(m: Meeting, db: DB, open: ReturnType<typeof useEditor>['ope
   const ws = weekStart(m.date)
   const pname = (id: string) => db.Projects.find((p) => p.id === id)?.name || ''
   const live = db.Projects.filter((p) => p.status === 'active')
-  const track: Track | '' = m.series === 'product' ? 'product' : m.series === 'tech' ? 'tech' : ''
+  const track: Track | '' = TRACKS.includes(m.series) ? m.series : ''
   const scope = m.project_id ? [m.project_id] : live.map((p) => p.id)
   const dels = db.Deliverables.filter((d) => scope.includes(d.project_id) && !isClosed(d) && (!track || deliveryTrack(d, db) === track))
   const dueSoon = dels.filter((d) => isOverdue(d) || d.target_date <= addDays(ws, 13)).sort((a, b) => (a.target_date < b.target_date ? -1 : 1))
@@ -392,7 +394,7 @@ function buildAgenda(m: Meeting, db: DB, open: ReturnType<typeof useEditor>['ope
   const capSection = (t: Track | ''): AgendaSection => {
     const over = overloaded(db, ws).filter((x) => !t || x.m.track === t)
     const items: AgendaItem[] = over.map(({ m: mem, w }) => ({ key: mem.id, primary: mem.name, secondary: L(`${fa(w.load)}٪ این هفته`, `${w.load}% this week`), tone: 'red', to: '/team' }))
-    ;(t ? [t] : (['tech', 'product'] as Track[])).forEach((tt) => {
+    ;(t ? [t] : TRACKS).forEach((tt) => {
       const hit = weeksFrom(addDays(ws, 7), 8).map((w) => trackWeek(db, tt, w)).find((x) => x.load > 100)
       if (hit) items.push({ key: 'f' + tt, primary: L(`تیم ${lbl(TRACK, tt)} از ${weekRel(hit.ws)} به ${fa(hit.load)}٪ می‌رسد`, `${lbl(TRACK, tt)} hits ${hit.load}% ${weekRel(hit.ws).toLowerCase()}`), secondary: weekLabel(hit.ws), tone: 'amber', to: '/team' })
     })
@@ -428,19 +430,24 @@ function buildAgenda(m: Meeting, db: DB, open: ReturnType<typeof useEditor>['ope
   }
 
   if (track) {
-    const other: Track = track === 'product' ? 'tech' : 'product'
-    const waiting = db.Tasks.filter((t) => t.status !== 'done' && trackOf(t, db) === track && waitingOn(t, db).some((d) => trackOf(d, db) === other))
-    const owed = db.Tasks.filter((t) => t.status !== 'done' && trackOf(t, db) === track && db.Tasks.some((x) => x.status !== 'done' && trackOf(x, db) === other && waitingOn(x, db).some((d) => d.id === t.id)))
+    const otherSide = (s: string) => !!s && s !== track
+    const waiting = db.Tasks.filter((t) => t.status !== 'done' && trackOf(t, db) === track && waitingOn(t, db).some((d) => otherSide(trackOf(d, db))))
+    const owed = db.Tasks.filter((t) => t.status !== 'done' && trackOf(t, db) === track && db.Tasks.some((x) => x.status !== 'done' && otherSide(trackOf(x, db)) && waitingOn(x, db).some((d) => d.id === t.id)))
+    const sideOf = (t: Task) => lbl(TRACK, trackOf(t, db) || '')
+    const waitsOn = (t: Task) => [...new Set(waitingOn(t, db).map((d) => trackOf(d, db)).filter(otherSide))].map((s) => lbl(TRACK, s)).join('، ')
+    const owedTo = (t: Task) => [...new Set(db.Tasks.filter((x) => x.status !== 'done' && otherSide(trackOf(x, db)) && waitingOn(x, db).some((d) => d.id === t.id)).map((x) => trackOf(x, db)))].map((s) => lbl(TRACK, s)).join('، ')
+    const hs = db.Handoffs.filter((h) => (h.from_side === track || h.to_side === track) && (h.status === 'sent' || h.status === 'returned') && (!m.project_id || h.project_id === m.project_id))
     return [
       delSection,
       {
         icon: Workflow,
-        title: L(`هماهنگی با تیم ${lbl(TRACK, other)}`, `Hand-offs with ${lbl(TRACK, other)}`),
+        title: L('تحویل‌ها و هماهنگی با سایدهای دیگر', 'Hand-offs with the other sides'),
         items: [
-          ...owed.slice(0, 4).map((t) => ({ key: 'o' + t.id, primary: t.title, secondary: L(`${pname(t.project_id)} · تیم ${lbl(TRACK, other)} منتظر این است`, `${pname(t.project_id)} · ${lbl(TRACK, other)} is waiting on this`), tone: 'amber' as Health, onClick: () => open('Tasks', t as never) })),
-          ...waiting.slice(0, 4).map((t) => ({ key: 'w' + t.id, primary: t.title, secondary: L(`${pname(t.project_id)} · منتظر تیم ${lbl(TRACK, other)}`, `${pname(t.project_id)} · waiting on ${lbl(TRACK, other)}`), tone: 'red' as Health, onClick: () => open('Tasks', t as never) })),
+          ...hs.slice(0, 6).map((h) => ({ key: 'h' + h.id, primary: h.title, secondary: `${lbl(TRACK, h.from_side)} → ${lbl(TRACK, h.to_side)} · ${h.status === 'returned' ? L('برگشت خورده', 'returned') : L('منتظر پاسخ', 'awaiting reply')}${Number(h.round) > 1 ? L(` · دور ${fa(h.round)}`, ` · round ${h.round}`) : ''}`, tone: (h.status === 'returned' ? 'red' : 'amber') as Health, to: '/teams' })),
+          ...owed.slice(0, 4).map((t) => ({ key: 'o' + t.id, primary: t.title, secondary: L(`${pname(t.project_id)} · ${owedTo(t)} منتظر این است`, `${pname(t.project_id)} · ${owedTo(t)} waiting on this`), tone: 'amber' as Health, onClick: () => open('Tasks', t as never) })),
+          ...waiting.slice(0, 4).map((t) => ({ key: 'w' + t.id, primary: t.title, secondary: L(`${pname(t.project_id)} · ${sideOf(t)} منتظر ${waitsOn(t)}`, `${pname(t.project_id)} · waiting on ${waitsOn(t)}`), tone: 'red' as Health, onClick: () => open('Tasks', t as never) })),
         ],
-        empty: L('وابستگی بازی بین دو تیم نیست', 'No open cross-team dependencies'),
+        empty: L('تحویل یا وابستگی بازی با سایدهای دیگر نیست', 'No open hand-offs with other sides'),
       },
       capSection(track),
       updSection,
@@ -579,7 +586,7 @@ function ActionPlan() {
   const actions = db.Tasks.filter((t) => t.meeting_id && t.status !== 'done' && (!series || meetingOf(t)?.series === series))
   const done = db.Tasks.filter((t) => t.meeting_id && t.status === 'done' && t.completed_at >= addDays(todayISO(), -14)).length
   const by = new Map<string, Task[]>()
-  actions.sort((a, b) => ((a.due_date || '9') < (b.due_date || '9') ? -1 : 1)).forEach((t) => by.set(t.assignee || '—', [...(by.get(t.assignee || '—') || []), t]))
+  actions.sort((a, b) => ((a.due_date || '9') < (b.due_date || '9') ? -1 : 1)).forEach((t) => (assigneesOf(t).length ? assigneesOf(t) : ['—']).forEach((a) => by.set(a, [...(by.get(a) || []), t])))
   const groups = [...by.entries()].sort((a, b) => b[1].filter(isTaskOverdue).length - a[1].filter(isTaskOverdue).length || b[1].length - a[1].length)
   return (
     <Card
@@ -590,7 +597,7 @@ function ActionPlan() {
         <Segmented
           value={series}
           onChange={setSeries}
-          options={[{ value: '' as const, label: L('همه', 'All') }, ...(['portfolio', 'product', 'tech', 'project'] as const).map((s) => ({ value: s, label: lbl(MEETING_SERIES, s) }))]}
+          options={[{ value: '' as const, label: L('همه', 'All') }, ...Object.keys(MEETING_SERIES).filter(isWeeklySeries).map((s) => ({ value: s, label: lbl(MEETING_SERIES, s) }))]}
         />
       }
     >

@@ -4,7 +4,7 @@ import type { DB, Project } from './types'
 
 export const isArchived = (p: Pick<Project, 'archived'>) => String(p.archived || '') === '1'
 
-const BY_PROJECT = ['Milestones', 'Sprints', 'Tasks', 'FollowUps', 'Risks', 'Scope', 'Updates', 'Deliverables', 'Allocations'] as const
+const BY_PROJECT = ['Milestones', 'Sprints', 'Tasks', 'FollowUps', 'Risks', 'Scope', 'Updates', 'Deliverables', 'Allocations', 'Handoffs', 'Deliveries'] as const
 
 export function hideArchived(db: DB): DB {
   const gone = new Set(db.Projects.filter(isArchived).map((p) => p.id))

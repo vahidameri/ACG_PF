@@ -1,3 +1,4 @@
+import { assigneesOf, isAssignee } from '../lib/assignees'
 import { useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { Send, Copy, Lightbulb, UserCheck, ListChecks, BellRing, Hourglass, Sparkles, CalendarDays, Target } from 'lucide-react'
@@ -71,11 +72,11 @@ export default function MyDesk() {
   }
 
   // ---------- My lists ----------
-  const myOpen = db.Tasks.filter((t) => t.assignee === me && t.status !== 'done')
+  const myOpen = db.Tasks.filter((t) => isAssignee(t, me) && t.status !== 'done')
   const myToday = myOpen.filter((t) => t.due_date && t.due_date <= today).sort(byDue)
   const myWeek = myOpen.filter((t) => t.due_date > today && t.due_date <= weekEnd).sort(byDue)
   const myLater = myOpen.filter((t) => !t.due_date || t.due_date > weekEnd).sort(byDue)
-  const doneToday = db.Tasks.filter((t) => t.assignee === me && t.status === 'done' && t.completed_at?.slice(0, 10) === today)
+  const doneToday = db.Tasks.filter((t) => isAssignee(t, me) && t.status === 'done' && t.completed_at?.slice(0, 10) === today)
 
   const [tab, setTab] = useState<'today' | 'week' | 'later'>('today')
   const [day, setDay] = useState('')
@@ -87,7 +88,7 @@ export default function MyDesk() {
 
   const nudge = useMemo(() => {
     const map = new Map<string, Task[]>()
-    db.Tasks.filter((t) => t.assignee && t.assignee !== me && (isTaskOverdue(t) || t.status === 'blocked')).forEach((t) => map.set(t.assignee, [...(map.get(t.assignee) || []), t]))
+    db.Tasks.filter((t) => t.assignee && !isAssignee(t, me) && (isTaskOverdue(t) || t.status === 'blocked')).forEach((t) => assigneesOf(t).forEach((a) => map.set(a, [...(map.get(a) || []), t])))
     return [...map.entries()].sort((a, b) => b[1].length - a[1].length)
   }, [db.Tasks, me])
 
@@ -167,7 +168,7 @@ export default function MyDesk() {
   const reported = live.filter((p) => db.Updates.some((u) => u.project_id === p.id && inWeek(u.week_date, ws))).length
   const myUnreported = live.filter((p) => p.owner === me && !db.Updates.some((u) => u.project_id === p.id && inWeek(u.week_date, ws)))
   const weekDel = db.Deliverables.filter((d) => inWeek(d.target_date, ws) && d.status !== 'dropped')
-  const myActions = db.Tasks.filter((t) => t.meeting_id && t.assignee === me && t.status !== 'done')
+  const myActions = db.Tasks.filter((t) => t.meeting_id && isAssignee(t, me) && t.status !== 'done')
   const overNow = overloaded(db, ws)
 
   const first = firstName(me)

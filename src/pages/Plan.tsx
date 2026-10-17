@@ -11,7 +11,7 @@ import { addDays, fa, todayISO } from '../lib/jalali'
 import { L, lbl } from '../lib/i18n'
 import { deliveryState, deliverySummary, deliveryTrack, isClosed, isOverdue } from '../lib/delivery'
 import { inWeek, weekLabel, weekRel, weekStart, weeksFrom } from '../lib/weeks'
-import { TRACK } from '../lib/tracks'
+import { TRACK, TRACKS } from '../lib/tracks'
 import { usePref } from '../lib/prefs'
 import type { Deliverable, Track } from '../lib/types'
 
@@ -82,7 +82,7 @@ export default function Plan() {
               ]}
             />
             <FilterSelect value={project} onChange={setProject} placeholder={L('همه‌ی پروژه‌ها', 'All projects')} options={db.Projects.map((p) => ({ value: p.id, label: p.name }))} />
-            <FilterSelect value={track} onChange={(v) => setTrack(v as Track | '')} placeholder={L('هر دو تیم', 'Both tracks')} options={(['product', 'tech'] as Track[]).map((t) => ({ value: t, label: lbl(TRACK, t) }))} />
+            <FilterSelect value={track} onChange={(v) => setTrack(v as Track | '')} placeholder={L('همه‌ی سایدها', 'All sides')} options={TRACKS.map((t) => ({ value: t, label: lbl(TRACK, t) }))} />
             <FilterSelect value={owner} onChange={setOwner} placeholder={L('همه‌ی مسئولان', 'All owners')} options={owners.map((o) => ({ value: o, label: o }))} />
             {view === 'timeline' && (
               <div className="ms-auto">

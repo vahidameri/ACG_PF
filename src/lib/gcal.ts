@@ -93,7 +93,8 @@ export function relate(e: GEvent, db: DB): Relation {
 
 export function seriesFor(e: GEvent, r: Relation): MeetingSeries {
   const t = e.title.toLowerCase()
-  if (/weekly|ویکلی/.test(t) && /portfolio|پورتفولیو/.test(t)) return 'portfolio'
+  if (/weekly|ویکلی|هفتگی/.test(t) && /portfolio|پورتفولیو/.test(t)) return 'portfolio'
+  if (/design|دیزاین|طراحی/.test(t)) return 'design'
   if (/product|پروداکت/.test(t)) return 'product'
   if (/tech|تک/.test(t)) return 'tech'
   if (r.projectId) return 'project'

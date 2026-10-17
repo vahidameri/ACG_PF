@@ -5,12 +5,12 @@ import type { DB, Task } from './types'
 
 export function isPrivateTask(t: Task, db: DB) {
   if (String(t.private) === '1') return true
-  const owner = db.Team.find((m) => m.name === t.assignee)
+  const owner = db.Team.find((m) => m.name === String(t.assignee || '').split(',')[0].trim())
   return String(owner?.tasks_private || '') === '1'
 }
 
 export function canSeeTask(t: Task, db: DB, viewer: string) {
-  return !isPrivateTask(t, db) || (!!viewer && (t.assignee === viewer || t.reporter === viewer || String(t.collaborators || '').split(',').map((x) => x.trim()).includes(viewer)))
+  return !isPrivateTask(t, db) || (!!viewer && (String(t.assignee || '').split(',').map((x) => x.trim()).includes(viewer) || t.reporter === viewer || String(t.collaborators || '').split(',').map((x) => x.trim()).includes(viewer)))
 }
 
 export function visibleDB(db: DB, viewer: string): DB {

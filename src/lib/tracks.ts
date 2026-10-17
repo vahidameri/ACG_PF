@@ -1,25 +1,26 @@
 // Product vs Tech tracks: every task belongs to a track (explicit, or inferred from the
 // assignee's team) and can depend on tasks in the other track (handoffs).
+import type React from 'react'
 import type { DB, Task, Track } from './types'
 import type { T2 } from './i18n'
 import { isTaskOverdue } from './metrics'
 import { addDays, todayISO } from './jalali'
 
-export const TRACKS: Track[] = ['product', 'tech']
-export const TRACK: Record<Track, T2> = { product: ['پروداکت', 'Product'], tech: ['تک', 'Tech'] }
-export const TRACK_COLOR: Record<Track, string> = { product: '#6A0421', tech: '#1D4F61' }
-export const trackDot: Record<Track, string> = { product: 'bg-[#8a1c3c] dark:bg-[#ec7892]', tech: 'bg-[#1D4F61] dark:bg-[#C1D6DE]' }
-export const trackSoft: Record<Track, string> = {
-  product: 'bg-[#6A0421]/[0.08] text-[#8a1c3c] dark:text-[#ec7892]',
-  tech: 'bg-[#1D4F61]/[0.10] text-[#1D4F61] dark:text-[#C1D6DE]',
-}
+// The sides (product, design, tech by default) come from the back office (lib/org.ts fills these in place).
+export const TRACKS: Track[] = ['product', 'design', 'tech']
+export const TRACK: Record<string, T2> = { product: ['پروداکت', 'Product'], design: ['دیزاین', 'Design'], tech: ['تک', 'Tech'] }
+export const SIDE_COLOR: Record<string, string> = { product: '#8a1c3c', design: '#7c3aed', tech: '#1d6f8a' }
+export const sideColor = (t: string) => SIDE_COLOR[t] || '#6b7180'
+/** Inline styles for a side's dot and soft chip (the colour is a setting, so no fixed classes). */
+export const sideDot = (t: string) => ({ background: sideColor(t) })
+export const sideSoft = (t: string) => ({ '--side': sideColor(t) }) as React.CSSProperties
 
 export function memberTrack(db: DB, name: string): Track | '' {
   return db.Team.find((m) => m.name === name)?.track || ''
 }
 
 export function trackOf(t: Task, db: DB): Track | '' {
-  return (t.track as Track) || memberTrack(db, t.assignee)
+  return (t.track as Track) || memberTrack(db, String(t.assignee || '').split(',')[0].trim())
 }
 
 export const depIds = (t: Task) => String(t.depends_on || '').split(',').map((x) => x.trim()).filter(Boolean)

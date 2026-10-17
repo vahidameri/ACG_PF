@@ -9,6 +9,7 @@ export interface Column {
   id: string
   fa: string
   en: string
+  color?: string
 }
 export const BUILTIN = new Set<string>(TASK_STATUS_ORDER)
 const DEFAULT: Column[] = TASK_STATUS_ORDER.map((id) => ({ id, fa: TASK_STATUS[id][0], en: TASK_STATUS[id][1] }))
@@ -21,7 +22,7 @@ export function readColumns(raw: string | undefined): Column[] {
   let list: Column[] = []
   try {
     const v = raw ? JSON.parse(raw) : null
-    if (Array.isArray(v)) list = v.filter((c) => c && typeof c.id === 'string' && c.id).map((c) => ({ id: c.id, fa: String(c.fa || ''), en: String(c.en || '') }))
+    if (Array.isArray(v)) list = v.filter((c) => c && typeof c.id === 'string' && c.id).map((c) => ({ id: c.id, fa: String(c.fa || ''), en: String(c.en || ''), ...(c.color ? { color: String(c.color) } : {}) }))
   } catch {}
   if (!list.length) return DEFAULT
   const seen = new Set(list.map((c) => c.id))
@@ -39,6 +40,8 @@ export function statusLabel(s: string) {
 /** Colour of a custom column (built-ins keep their own). */
 const PALETTE = ['#0ea5e9', '#14b8a6', '#f97316', '#ec4899', '#6366f1', '#84cc16', '#a855f7', '#eab308']
 export const columnColor = (s: string) => {
+  const own = cols.find((c) => c.id === s)?.color
+  if (own) return own
   const i = cols.filter((c) => !BUILTIN.has(c.id)).findIndex((c) => c.id === s)
   return PALETTE[(i < 0 ? 0 : i) % PALETTE.length]
 }

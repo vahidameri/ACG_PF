@@ -3,9 +3,11 @@ import type { DB, Role, Row, SheetName } from './types'
 import { readWeekCfg, setWeekCfg } from './weeks'
 import { readTaskCfg, setTaskCfg } from './taskcfg'
 import { COLUMNS_KEY, readColumns, setColumns } from './columns'
+import { applyOrg } from './org'
+import { setDeliveryCfg } from './cadence'
+import { NOTIFY_KEY, setNotifyOff } from './inbox'
 import { hideArchived, isArchived } from './archive'
 import type { Project } from './types'
-import { loadTr, pendingTexts, saveTr, translateDB, untranslateRow, type TrMap } from './translate'
 import { jobCode, teamCodes } from './labels'
 import { fetchAll, loadConfig, remoteAction, remoteDelete, remoteUpload, remoteUpsert, saveConfig, uid, type Config } from './api'
 import { useGoogle } from './google'
@@ -46,6 +48,12 @@ export function clearSnaps() {
   } catch {}
 }
 
+// translations were removed in 1.9; drop their old browser caches
+try {
+  localStorage.removeItem('acg.tr.en')
+  localStorage.removeItem('acg.tr.fa')
+} catch {}
+
 const NUMERIC: Partial<Record<SheetName, string[]>> = {
   Milestones: ['weight'],
   Sprints: ['committed_points', 'completed_points'],
@@ -55,10 +63,11 @@ const NUMERIC: Partial<Record<SheetName, string[]>> = {
   Team: ['capacity'],
   Files: ['size'],
   Meetings: ['duration'],
+  Handoffs: ['round'],
 }
 
 function emptyDB(): DB {
-  return { Projects: [], Scope: [], Milestones: [], Sprints: [], Tasks: [], FollowUps: [], Risks: [], Team: [], Allocations: [], Updates: [], Comments: [], Deliverables: [], Meetings: [], Files: [], Config: [], Contracts: [] }
+  return { Projects: [], Scope: [], Milestones: [], Sprints: [], Tasks: [], FollowUps: [], Risks: [], Team: [], Allocations: [], Updates: [], Comments: [], Deliverables: [], Meetings: [], Files: [], Config: [], Contracts: [], Handoffs: [], Deliveries: [] }
 }
 
 // Sheets return numbers as numbers or strings, dates as ISO strings. Normalize once here.
@@ -187,48 +196,16 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   const me = maps.toEn.get(canonMe) || canonMe
   // week settings are read synchronously so every page renders with the current cycle
   useMemo(() => {
+    applyOrg((k) => db.Config.find((r) => r.id === k)?.value)
     setWeekCfg(readWeekCfg((k) => db.Config.find((r) => r.id === k)?.value))
+    setDeliveryCfg((k) => db.Config.find((r) => r.id === k)?.value)
+    setNotifyOff(db.Config.find((r) => r.id === NOTIFY_KEY)?.value)
     setTaskCfg(readTaskCfg((k) => db.Config.find((r) => r.id === k)?.value, db.Team))
     setColumns(readColumns(db.Config.find((r) => r.id === COLUMNS_KEY)?.value))
   }, [db.Config, db.Team])
-  // English UI: Persian free text is shown translated (fetched from the server, cached locally)
-  const [tr, setTr] = useState<TrMap>(() => loadTr(lang))
-  const trLang = useRef(lang)
-  const trFailed = useRef(new Set<string>())
-  // switch to the other direction's dictionary when the UI language changes
-  if (trLang.current !== lang) {
-    trLang.current = lang
-    trFailed.current = new Set()
-    setTr(loadTr(lang))
-  }
-  const trRev = useMemo(() => new Map(Object.entries(tr).map(([fa, en]) => [en, fa])), [tr])
-  const trRevRef = useRef(trRev)
-  trRevRef.current = trRev
-  useEffect(() => {
-    if (mode !== 'live' || !lastSync) return
-    const to = lang
-    const todo = pendingTexts(db, to, tr, trFailed.current).slice(0, 80)
-    if (!todo.length) return
-    let live = true
-    remoteAction(config, 'translate', { texts: todo, target: to })
-      .then((r: { map?: TrMap }) => {
-        todo.forEach((t) => !(r.map && r.map[t]) && trFailed.current.add(t))
-        if (!live || !r.map || trLang.current !== to) return
-        setTr((m) => {
-          const next = { ...m, ...r.map }
-          saveTr(to, next)
-          return next
-        })
-      })
-      .catch(() => todo.forEach((t) => trFailed.current.add(t)))
-    return () => {
-      live = false
-    }
-  }, [lang, mode, lastSync, db, tr]) // eslint-disable-line react-hooks/exhaustive-deps
   const shown = useMemo(() => {
-    const v = mapDB(scopeDB(visibleDB(db, canonMe), canonMe, access), maps.toEn)
-    return translateDB(v, tr)
-  }, [db, canonMe, access, maps, lang, tr])
+    return mapDB(scopeDB(visibleDB(db, canonMe), canonMe, access), maps.toEn)
+  }, [db, canonMe, access, maps])
   // archived projects (and everything in them) leave the everyday views
   const live = useMemo(() => hideArchived(shown), [shown])
   const archived = useMemo(() => shown.Projects.filter(isArchived), [shown])
@@ -321,7 +298,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
 
   const upsert = useCallback(
     async <S extends SheetName>(sheet: S, input: Row<S>) => {
-      const row = mapRow(sheet, untranslateRow(sheet, input as unknown as Record<string, unknown>, trRevRef.current), toCanonRef.current) as unknown as Row<S>
+      const row = mapRow(sheet, input as unknown as Record<string, unknown>, toCanonRef.current) as unknown as Row<S>
       const prev = dbRef.current
       const list = prev[sheet] as Row<S>[]
       const exists = list.some((r) => r.id === row.id)

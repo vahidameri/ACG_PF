@@ -63,7 +63,7 @@ export function CommandPalette({ open, onClose }: { open: boolean; onClose: () =
         ['/calendar', L('تقویم', 'Calendar')],
         ['/', L('نمای کلی پورتفولیو', 'Portfolio overview')],
         ['/pulse', L('برد وضعیت پورتفولیو', 'Status board')],
-        ['/teams', L('پروداکت و تک', 'Product & Tech')],
+        ['/teams', L('سایدها و تحویل‌ها', 'Sides & hand-offs')],
         ['/projects', L('پروژه‌ها', 'Projects')],
         ['/roadmap', L('رودمپ', 'Roadmap')],
         ['/tasks', L('تسک‌ها', 'Tasks')],

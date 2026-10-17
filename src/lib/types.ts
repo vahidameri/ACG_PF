@@ -107,13 +107,20 @@ export interface Task {
   area?: string
   /** comma-separated names sharing the task (they see it like their own) */
   collaborators?: string
-  /** comma-separated names tracking the task (their Radar + notifications) */
+  /** comma-separated names tracking the task (their Compass + notifications) */
   watchers?: string
   /** 'off' mutes the reminders for this task */
   notify?: string
+  /** when work starts (with due_date it gives the task's window) */
+  start_date?: string
+  /** time estimate in hours */
+  estimate?: number | string
+  /** checklist, one item per line: "[ ] item" / "[x] item" */
+  checklist?: string
 }
 
-export type Track = 'product' | 'tech'
+/** a side from the settings: product, design, tech by default */
+export type Track = 'product' | 'design' | 'tech' | (string & {})
 
 export type FollowUpStatus = 'open' | 'waiting' | 'done'
 
@@ -228,7 +235,8 @@ export interface Deliverable {
   notes: string
 }
 
-export type MeetingSeries = 'portfolio' | 'product' | 'tech' | 'project' | 'one_on_one' | 'other'
+/** a meeting series from the settings (portfolio, product, design, tech, project, one_on_one, other by default) */
+export type MeetingSeries = 'portfolio' | 'product' | 'design' | 'tech' | 'project' | 'one_on_one' | 'other' | (string & {})
 
 export interface Meeting {
   id: string
@@ -279,6 +287,44 @@ export interface Comment {
   created_at: string // ISO datetime
 }
 
+export type HandoffStatus = 'sent' | 'accepted' | 'returned'
+
+/** One pass of work from one side to another (product → design → tech …). A return sends it back;
+ *  sending again opens the next round, so the back-and-forth stays visible. */
+export interface Handoff {
+  id: string
+  task_id: string
+  project_id: string
+  title: string
+  from_side: Track | ''
+  to_side: Track | ''
+  from_person: string
+  /** who should pick it up ('' = anyone on that side) */
+  to_person: string
+  status: HandoffStatus
+  round: number
+  sent_at: string
+  due_date: string
+  responded_at: string
+  note: string
+  /** the receiver's answer — why it came back, or what was accepted */
+  reply: string
+}
+
+export type DeliveryStatus = 'delivered' | 'partial' | 'skipped'
+
+/** A project's weekly delivery, one row per week. */
+export interface WeeklyDelivery {
+  id: string
+  project_id: string
+  /** first day of the week (Config week.start) */
+  week: string
+  date: string
+  status: DeliveryStatus
+  note: string
+  by: string
+}
+
 export interface DB {
   Projects: Project[]
   Scope: ScopeItem[]
@@ -296,6 +342,8 @@ export interface DB {
   Files: FileRef[]
   Config: ConfigRow[]
   Contracts: Contract[]
+  Handoffs: Handoff[]
+  Deliveries: WeeklyDelivery[]
 }
 
 export type SheetName = keyof DB

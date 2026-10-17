@@ -1,4 +1,4 @@
-import { DAYS as CADENCE_DAYS } from '../lib/cadence'
+import { DAYS as CADENCE_DAYS, DELIVERY_KEYS, deliveryCfg } from '../lib/cadence'
 import { useState } from 'react'
 import { CalendarClock, CheckCircle2, Link2, Loader2, RotateCcw, Unplug, XCircle, Zap } from 'lucide-react'
 import { useStore } from '../lib/store'
@@ -11,7 +11,8 @@ import { L, lbl, tr, useI18n } from '../lib/i18n'
 import { ROLE } from '../lib/labels'
 import { APP_NAME } from '../lib/brand'
 import { WEEK_KEYS, weekCfg } from '../lib/weeks'
-import { ColumnsCard, FieldsCard, Switch, TaskCard } from '../components/TaskSettings'
+import { OrgCard } from '../components/OrgSettings'
+import { ColumnsCard, FieldsCard, NotifyCard, Switch, TaskCard } from '../components/TaskSettings'
 
 export default function Settings({ embedded }: { embedded?: boolean }) {
   const { config, setConfig, mode, resetDemo, role, db, access } = useStore()
@@ -74,6 +75,8 @@ export default function Settings({ embedded }: { embedded?: boolean }) {
         </Card>
 
         <WeekCard admin={admin} />
+        <OrgCard admin={admin} />
+        <NotifyCard admin={admin} />
         <TaskCard admin={admin} />
         <FieldsCard admin={admin} />
         <ColumnsCard admin={admin} />
@@ -194,6 +197,18 @@ function WeekCard({ admin }: { admin: boolean }) {
         </div>
         {day(L('مهلت گزارش هفتگی', 'Weekly report due'), WEEK_KEYS.dueDay, c.dueDay)}
         {day(L('شروع هفته', 'Week starts'), WEEK_KEYS.start, c.start)}
+        <div className="flex items-center justify-between gap-4">
+          <div className="text-sm font-medium">{L('یادآوری روز تحویل پروژه‌ها', 'Remind before a delivery day')}</div>
+          <select className="input h-9 w-36 text-xs" disabled={!admin} value={deliveryCfg().remind} onChange={(e) => setSetting(DELIVERY_KEYS.remind, e.target.value)}>
+            {[0, 1, 2, 3].map((n) => <option key={n} value={n}>{n ? L(`${n} روز قبل`, `${n} day(s) before`) : L('همان روز', 'On the day')}</option>)}
+          </select>
+        </div>
+        <div className="flex items-center justify-between gap-4">
+          <div className="text-sm font-medium">{L('مهلت ثبت تحویل', 'Grace to record a delivery')}</div>
+          <select className="input h-9 w-36 text-xs" disabled={!admin} value={deliveryCfg().grace} onChange={(e) => setSetting(DELIVERY_KEYS.grace, e.target.value)}>
+            {[0, 1, 2].map((n) => <option key={n} value={n}>{n ? L(`${n} روز بعد`, `${n} day(s) after`) : L('همان روز', 'Same day')}</option>)}
+          </select>
+        </div>
         <div>
           <div className="mb-2 text-sm font-medium">{L('روزهای کاری', 'Workdays')}</div>
           <div className="flex flex-wrap gap-1.5">

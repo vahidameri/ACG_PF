@@ -1,3 +1,4 @@
+import { isAssignee } from '../lib/assignees'
 import { useState } from 'react'
 import { JOB_TITLE, TEAM_NAMES, teamCodes } from '../lib/labels'
 import { Link } from 'react-router-dom'
@@ -11,7 +12,7 @@ import { L, lbl } from '../lib/i18n'
 import { allocActive, capOf, fte, loadTone, memberWeek, trackWeek, type WeekLoad } from '../lib/capacity'
 import { uid } from '../lib/api'
 import { weekLabel, weekRel, weekStart, weeksFrom } from '../lib/weeks'
-import { TRACK } from '../lib/tracks'
+import { TRACK, TRACKS } from '../lib/tracks'
 import { usePref } from '../lib/prefs'
 import type { Member, Track } from '../lib/types'
 
@@ -40,7 +41,7 @@ export default function Team() {
   const over = now.filter((r) => r.w.load > 100)
 
   // Forecast: the first upcoming week a track goes over capacity
-  const forecast = (['tech', 'product'] as Track[])
+  const forecast = TRACKS
     .map((t) => {
       const hit = weeks.slice(1).map((w) => trackWeek(db, t, w)).find((x) => x.load > 100)
       return hit ? { t, hit } : null
@@ -86,7 +87,7 @@ export default function Team() {
 
       <Overlap className="space-y-4">
         <div className="grid gap-4 @xl:grid-cols-2">
-          {(['product', 'tech'] as Track[]).map((t) => (
+          {TRACKS.map((t) => (
             <TrackCard key={t} track={t} weeks={weeks} />
           ))}
         </div>
@@ -179,7 +180,7 @@ function PeopleGrid({ people }: { people: Member[] }) {
     <div className="grid gap-3 border-t border-line p-4 @lg:grid-cols-2 @2xl:grid-cols-3">
       {rows.map(({ m, w }) => {
         const tone = loadTone(w.load)
-        const tasks = db.Tasks.filter((t) => t.assignee === m.name && t.status !== 'done')
+        const tasks = db.Tasks.filter((t) => isAssignee(t, m.name) && t.status !== 'done')
         const base = Math.max(w.available, w.allocated, 1)
         return (
           <div key={m.id} className="rounded-2xl border border-line p-4 transition hover:border-line-strong">

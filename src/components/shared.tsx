@@ -1,4 +1,4 @@
-import { DeliveredButton, DeliveryBadge } from './DeliveryDay'
+import { DeliveredButton, DeliveryBadge, DeliveryHistory } from './DeliveryDay'
 import { hasDeliveryDay } from '../lib/cadence'
 import { Link } from 'react-router-dom'
 import { Check, Clock, AlarmClockOff, MessageSquare, Phone, Mail, Users2, MoreHorizontal, AlertTriangle, Star } from 'lucide-react'
@@ -11,7 +11,7 @@ import { L, lbl, locale } from '../lib/i18n'
 import { CHANNEL, FOLLOWUP_STATUS, HEALTH, PROJECT_STATUS } from '../lib/labels'
 import { projectMetrics } from '../lib/metrics'
 import { usePins } from '../lib/prefs'
-import { PersonPicker, PriorityPicker } from './pickers'
+import { AssigneesPicker, PriorityPicker } from './pickers'
 import { DatePicker } from './DatePicker'
 import { HealthTrend } from './widgets'
 import { PauseButton } from './PauseButton'
@@ -76,7 +76,7 @@ export function TaskRow({ t, showProject = true, dense }: { t: Task; showProject
       <span className="hidden min-w-[4.5rem] justify-end @md:inline-flex" onClick={(e) => e.stopPropagation()}>
         {canEdit ? <DueInline iso={t.due_date} done={done} onChange={(d) => patch({ due_date: d })} /> : <Due iso={t.due_date} done={done} />}
       </span>
-      <PersonPicker value={t.assignee} onChange={(a) => patch({ assignee: a })} label={false} />
+      <AssigneesPicker value={t.assignee} onChange={(a) => patch({ assignee: a })} />
     </div>
   )
 }
@@ -198,6 +198,8 @@ export function ProjectCard({ p }: { p: Project }) {
       {hasDeliveryDay(p) && (
         <div className="mt-2 flex items-center gap-2">
           <DeliveryBadge p={p} />
+          <DeliveryHistory p={p} n={6} />
+          <span className="flex-1" />
           <DeliveredButton p={p} small />
         </div>
       )}

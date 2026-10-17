@@ -7,7 +7,7 @@ import { CONFIDENCE, DELIVERABLE_STATUS } from '../lib/labels'
 import { L, lbl } from '../lib/i18n'
 import { addDays, fa, fmtDayMonth, relDays, todayISO } from '../lib/jalali'
 import { deliveryState, deliveryTrack, isClosed, slipDays } from '../lib/delivery'
-import { TRACK, trackDot } from '../lib/tracks'
+import { TRACK, sideDot } from '../lib/tracks'
 import { useProjectName } from './shared'
 
 type State = ReturnType<typeof deliveryState>
@@ -49,7 +49,7 @@ export function useDeliveryActions() {
 export function TrackDot({ d }: { d: Deliverable }) {
   const { db } = useStore()
   const t = deliveryTrack(d, db)
-  return t ? <span className={cx('h-1.5 w-1.5 shrink-0 rounded-full', trackDot[t])} title={lbl(TRACK, t)} /> : null
+  return t ? <span className="h-1.5 w-1.5 shrink-0 rounded-full" style={sideDot(t)} title={lbl(TRACK, t)} /> : null
 }
 
 /** Compact chip for timeline cells. */

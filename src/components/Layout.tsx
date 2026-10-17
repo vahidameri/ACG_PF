@@ -3,7 +3,7 @@ import { NavLink, useLocation, useNavigate, Link } from 'react-router-dom'
 import {
   LayoutGrid, Briefcase, ListChecks, BellRing, ShieldAlert, FileText, Settings, Moon, Sun, Search, Plus, RefreshCw, Menu,
   Sparkles, CheckCircle2, AlertCircle, Bell, PanelLeftClose, PanelLeftOpen, Languages, Star, AtSign, Flag, Clock, CircleAlert, Ban, CalendarDays, Keyboard, PackageCheck, CalendarRange, Gauge, UserRound, LogOut,
-  Radar as RadarIcon,
+  Compass as CompassIcon, Repeat,
 } from 'lucide-react'
 import { useStore, clearSnaps } from '../lib/store'
 import { useI18n, L } from '../lib/i18n'
@@ -16,7 +16,7 @@ import { fa, fmtDayMonth, todayISO as todayISOStr } from '../lib/jalali'
 import { inWeek, updateDue, weekStart } from '../lib/weeks'
 import { overloaded } from '../lib/capacity'
 import { isLate, tracking } from '../lib/radar'
-import { deliveryState } from '../lib/cadence'
+import { needsAttention, weekState } from '../lib/cadence'
 import { useGoogle } from '../lib/google'
 import { APP_NAME } from '../lib/brand'
 import { hubOf, type Hub } from './HubNav'
@@ -92,14 +92,14 @@ export function Layout({ children }: { children: ReactNode }) {
     ? db.Projects.filter((p) => p.status === 'active' && !db.Updates.some((u) => u.project_id === p.id && inWeek(u.week_date, ws))).length
     : 0
   const overCap = overloaded(db, ws).length
-  const radarLate = leader ? db.Tasks.filter((t) => tracking(t, me) && isLate(t)).length + db.Projects.filter((p) => deliveryState(p) === 'missed' || deliveryState(p) === 'today').length : 0
+  const radarLate = leader ? db.Tasks.filter((t) => tracking(t, me) && isLate(t)).length + db.Projects.filter((p) => needsAttention(weekState(p, db))).length : 0
 
   const groups: { label: string; links: { to: string; label: string; icon: typeof LayoutGrid; badge?: number; count?: number; hub?: Hub }[] }[] = [
     {
       label: L('کار من', 'My work'),
       links: [
         { to: '/my', label: L('خانه', 'Home'), icon: Sparkles, badge: myCount },
-        ...(leader ? [{ to: '/radar', label: L('رادار', 'Radar'), icon: RadarIcon, badge: radarLate }] : []),
+        ...(leader ? [{ to: '/compass', label: L('قطب‌نما', 'Compass'), icon: CompassIcon, badge: radarLate }] : []),
         { to: '/calendar', label: L('تقویم', 'Calendar'), icon: CalendarDays },
         { to: '/meetings', label: L('جلسات', 'Meetings'), icon: CalendarRange },
         { to: '/tasks', label: L('کارها', 'Work'), icon: ListChecks, count: db.Tasks.filter((t) => t.status !== 'done').length, hub: 'work' },
@@ -390,7 +390,7 @@ export function Layout({ children }: { children: ReactNode }) {
   )
 }
 
-const kindIcon = { mention: AtSign, overdue: Clock, followup: BellRing, milestone: Flag, risk: CircleAlert, blocked: Ban, assigned: UserRound, remind: Bell, deadline: Flag, delivery: PackageCheck }
+const kindIcon = { mention: AtSign, overdue: Clock, followup: BellRing, milestone: Flag, risk: CircleAlert, blocked: Ban, assigned: UserRound, remind: Bell, deadline: Flag, delivery: PackageCheck, handoff: Repeat }
 
 function InboxButton({ items }: { items: InboxItem[] }) {
   const [read, setRead] = usePref<string[]>('acg.inbox.read', [])
@@ -398,6 +398,16 @@ function InboxButton({ items }: { items: InboxItem[] }) {
   const { db } = useStore()
   const navigate = useNavigate()
   const unread = items.filter((i) => !read.includes(i.id))
+  // a new notification pops up once, inside the app
+  const [seen, setSeen] = usePref<string[]>('acg.inbox.seen', [])
+  const { toast } = useStore()
+  useEffect(() => {
+    const fresh = unread.filter((i) => !seen.includes(i.id))
+    if (!fresh.length) return
+    // the first time, everything already waiting is just marked seen
+    if (seen.length) fresh.slice(0, 3).forEach((i) => toast(`🔔 ${i.title} — ${i.sub}`))
+    setSeen((s) => Array.from(new Set([...s, ...fresh.map((i) => i.id), '_'])).slice(-500))
+  }, [unread.map((i) => i.id).join('|')]) // eslint-disable-line react-hooks/exhaustive-deps
   const go = (i: InboxItem) => {
     setRead((r) => Array.from(new Set([...r, i.id])))
     if ('href' in i.target) navigate(i.target.href)
