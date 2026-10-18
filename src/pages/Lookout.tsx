@@ -10,7 +10,7 @@ import { DeliveredButton, DeliveryHistory, DeliveryWeek, stateTone } from '../co
 import { HandoffCard } from '../components/Handoffs'
 import { WEEK_STATE, deliveryDate, hasDeliveryDay, needsAttention, weekState } from '../lib/cadence'
 import { bucketOf, isLate, nextDate, tracking, type Bucket } from '../lib/radar'
-import { ageDays, resent } from '../lib/handoffs'
+import { isReturn, recent, stuck as sittingTasks } from '../lib/handoffs'
 import { assigneesOf, isAssignee } from '../lib/assignees'
 import { portfolioSummary } from '../lib/metrics'
 import { TRACK, TRACKS, sideColor, trackStats } from '../lib/tracks'
@@ -53,9 +53,10 @@ export default function Lookout() {
 
   const deliveries = db.Projects.filter(hasDeliveryDay).sort((a, b) => deliveryDate(a).localeCompare(deliveryDate(b)))
   const deliveryAlerts = deliveries.filter((p) => needsAttention(weekState(p, db)))
-  const waiting = db.Handoffs.filter((h) => h.status === 'sent').sort((a, b) => (a.sent_at < b.sent_at ? -1 : 1))
-  const returned = db.Handoffs.filter((h) => h.status === 'returned' && !resent(h, db))
-  const stuck = [...returned, ...waiting.filter((h) => ageDays(h) >= 2 || (h.due_date && h.due_date < today))]
+  const last14 = recent(db)
+  const returned = last14.filter(isReturn)
+  const sitting = sittingTasks(db).map((x) => x.h)
+  const stuck = [...returned, ...sitting.filter((h) => !returned.includes(h))]
   const attention = s.live
     .map((p) => ({ p, m: s.metrics.get(p.id)! }))
     .filter((x) => x.m.health !== 'green')
@@ -82,8 +83,8 @@ export default function Lookout() {
           items={[
             { label: L('پروژه‌ی در خطر', 'Projects off track'), value: fa(s.counts.red), tone: s.counts.red ? 'red' : 'green', sub: L(`${fa(s.counts.amber)} نیازمند توجه · ${fa(s.live.length)} جاری`, `${s.counts.amber} at risk · ${s.live.length} live`) },
             { label: L('تحویل هفتگی نیازمند توجه', 'Weekly deliveries to watch'), value: fa(deliveryAlerts.length), tone: deliveryAlerts.length ? 'amber' : 'green', sub: L(`${fa(deliveries.length)} پروژه با روز تحویل`, `${deliveries.length} with a delivery day`) },
-            { label: L('تحویل بین واحدها · منتظر', 'Hand-offs waiting'), value: fa(waiting.length), tone: waiting.length ? 'amber' : undefined },
-            { label: L('برگشت‌خورده', 'Returned'), value: fa(returned.length), tone: returned.length ? 'red' : undefined },
+            { label: L('مانده در یک واحد (۳+ روز)', 'Sitting in a unit (3+ days)'), value: fa(sitting.length), tone: sitting.length ? 'amber' : undefined },
+            { label: L('برگشت‌ها · ۱۴ روز', 'Returns · 14 days'), value: fa(returned.length), tone: returned.length ? 'red' : undefined },
             { label: L('زیر نظر · عقب افتاده', 'Tracked · late'), value: fa(pool.filter((t) => isLate(t, today)).length), tone: pool.some((t) => isLate(t, today)) ? 'red' : undefined, sub: L(`${fa(pool.length)} در دیده‌بان`, `${pool.length} on the Lookout`) },
             { label: L('امروز', 'Today'), value: fa(pool.filter((t) => bucketOf(t, today) === 'today').length), tone: 'amber' },
           ]}
@@ -145,8 +146,8 @@ export default function Lookout() {
             <div className="grid gap-2" style={{ gridTemplateColumns: `repeat(${Math.min(TRACKS.length, 3)}, minmax(0,1fr))` }}>
               {TRACKS.map((t) => {
                 const st = trackStats(db, t)
-                const inbox = waiting.filter((h) => h.to_side === t).length
-                const back = returned.filter((h) => h.from_side === t).length
+                const inbox = last14.filter((h) => h.to_side === t).length
+                const back = returned.filter((h) => h.to_side === t).length
                 return (
                   <div key={t} className="rounded-2xl border border-line p-3" style={{ background: `linear-gradient(160deg, color-mix(in srgb, ${sideColor(t)} 8%, transparent), transparent 70%)` }}>
                     <div className="text-sm font-semibold" style={{ color: sideColor(t) }}>{lbl(TRACK, t)}</div>
@@ -154,21 +155,21 @@ export default function Lookout() {
                     <div className="text-[0.625rem] text-sub">{L('کار باز', 'open')}</div>
                     <div className="mt-2 space-y-0.5 text-[0.6875rem]">
                       <div className={cx(st.overdue ? 'text-bad' : 'text-sub')}>{L(`${fa(st.overdue)} معوق`, `${st.overdue} overdue`)}</div>
-                      <div className={cx(inbox ? 'text-warn' : 'text-sub')}>{L(`${fa(inbox)} تحویل منتظر این واحد`, `${inbox} waiting on this side`)}</div>
-                      <div className={cx(back ? 'text-bad' : 'text-sub')}>{L(`${fa(back)} برگشت به این واحد`, `${back} sent back here`)}</div>
+                      <div className={cx(inbox ? 'text-warn' : 'text-sub')}>{L(`${fa(inbox)} تحویل به این واحد`, `${inbox} handed in`)}</div>
+                      <div className={cx(back ? 'text-bad' : 'text-sub')}>{L(`${fa(back)} برگشت به این واحد`, `${back} came back here`)}</div>
                     </div>
                   </div>
                 )
               })}
             </div>
           </Card>
-          <Card eyebrow={<span className="flex items-center gap-1.5"><Repeat size={12} /> {L('رفت و برگشت', 'Back and forth')}</span>} title={L(`${fa(stuck.length)} تحویل نیازمند پیگیری`, `${stuck.length} hand-offs to chase`)}>
+          <Card eyebrow={<span className="flex items-center gap-1.5"><Repeat size={12} /> {L('رفت و برگشت', 'Back and forth')}</span>} title={L(`${fa(stuck.length)} مورد نیازمند پیگیری`, `${stuck.length} to chase`)}>
             {!stuck.length ? (
-              <Empty text={L('تحویل معطلی نیست', 'No hand-off is stuck')} />
+              <Empty text={L('برگشت یا تسک مانده‌ای نیست', 'No returns or stuck tasks')} />
             ) : (
               <div className="grid gap-2">
                 {stuck.slice(0, 6).map((h) => (
-                  <HandoffCard key={h.id} h={h} onOpen={() => openTask(h.task_id)} />
+                  <HandoffCard key={h.id} h={h} held={!isReturn(h)} onOpen={() => openTask(h.task_id)} />
                 ))}
               </div>
             )}
@@ -229,7 +230,7 @@ function LookoutRow({ t, onOpen }: { t: Task; onOpen: () => void }) {
             {code && <span className="font-mono uppercase" dir="ltr">{code}</span>}
             {t.area && <span>{t.area}</span>}
             {n && <span className={cx(n.d < todayISO() && 'text-bad')}>{n.label} · {relDays(n.d)}</span>}
-            {pass && pass.status !== 'accepted' && <span className={pass.status === 'returned' ? 'text-bad' : 'text-warn'}>{L(`از ${lbl(TRACK, pass.from_side)} به ${lbl(TRACK, pass.to_side)}`, `${lbl(TRACK, pass.from_side)} to ${lbl(TRACK, pass.to_side)}`)} · {pass.status === 'returned' ? L('برگشت', 'returned') : L('منتظر', 'waiting')}</span>}
+            {pass && isReturn(pass) && <span className="text-bad">{L(`برگشت از ${lbl(TRACK, pass.from_side)} به ${lbl(TRACK, pass.to_side)}`, `back from ${lbl(TRACK, pass.from_side)} to ${lbl(TRACK, pass.to_side)}`)}</span>}
           </div>
         </div>
         <span className="hidden items-center gap-1.5 text-xs text-sub sm:flex">

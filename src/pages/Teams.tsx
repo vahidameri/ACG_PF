@@ -7,7 +7,7 @@ import { useEditor } from '../components/Editor'
 import { Band, Card, Empty, Overlap, StatStrip, Segmented, FilterSelect, Toolbar, Ring, Avatar, AvatarStack, cx, StatusIcon, Due } from '../components/ui'
 import { TaskRow } from '../components/shared'
 import { TRACK, TRACKS, trackOf, trackStats, handoffs, sideDot, sideSoft, sideColor, waitingOn } from '../lib/tracks'
-import { pairStats } from '../lib/handoffs'
+import { isReturn, pairStats, recent, stuck } from '../lib/handoffs'
 import { HandoffBoard, Flow } from '../components/Handoffs'
 import { fa } from '../lib/jalali'
 import { L, lbl } from '../lib/i18n'
@@ -27,9 +27,9 @@ export default function Teams() {
   const pending = hs.filter((h) => !h.ready && h.to.status !== 'done')
   const ready = hs.filter((h) => h.ready && h.to.status !== 'done')
   const passes = db.Handoffs.filter((h) => !pid || h.project_id === pid)
-  const waitingPasses = passes.filter((h) => h.status === 'sent').length
-  const returned = passes.filter((h) => h.status === 'returned').length
-  const answered = passes.filter((h) => h.status !== 'sent').length
+  const last14 = recent(db).filter((h) => !pid || h.project_id === pid)
+  const returned = passes.filter(isReturn).length
+  const sitting = stuck(db).filter((x) => !pid || x.t.project_id === pid).length
   const pname = (id: string) => db.Projects.find((p) => p.id === id)?.name || ''
   const pairs = pairStats(db, pid)
 
@@ -46,9 +46,9 @@ export default function Teams() {
               const st = trackStats(db, t, pid)
               return { label: L(`${lbl(TRACK, t)} · باز`, `${lbl(TRACK, t)} · open`), value: fa(st.open), sub: st.overdue ? L(`${fa(st.overdue)} معوق`, `${st.overdue} overdue`) : L(`${fa(st.doneWeek)} انجام این هفته`, `${st.doneWeek} done this week`), tone: st.overdue ? ('amber' as const) : undefined }
             }),
-            { label: L('تحویل منتظر پاسخ', 'Hand-offs waiting'), value: fa(waitingPasses), tone: waitingPasses ? 'amber' : 'green' },
-            { label: L('برگشت‌خورده', 'Returned'), value: fa(returned), tone: returned ? 'red' : 'green', sub: answered ? L(`نرخ برگشت ${fa(Math.round((returned / answered) * 100))}٪`, `return rate ${Math.round((returned / answered) * 100)}%`) : undefined },
-            { label: L('منتظر وابستگی', 'Waiting on a dependency'), value: fa(pending.length), tone: pending.length ? 'amber' : undefined },
+            { label: L('تحویل در ۱۴ روز', 'Hand-overs · 14 days'), value: fa(last14.length) },
+            { label: L('برگشت‌ها', 'Returns'), value: fa(returned), tone: returned ? 'red' : 'green', sub: passes.length ? L(`نرخ برگشت ${fa(Math.round((returned / passes.length) * 100))}٪`, `return rate ${Math.round((returned / passes.length) * 100)}%`) : undefined },
+            { label: L('مانده در یک واحد', 'Sitting in a unit'), value: fa(sitting), tone: sitting ? 'amber' : undefined, sub: L('۳ روز یا بیشتر', '3+ days') },
           ]}
         />
       </Band>
@@ -77,19 +77,17 @@ export default function Teams() {
                     <thead className="border-b border-line">
                       <tr>
                         <th className="th">{L('مسیر', 'Lane')}</th>
-                        <th className="th">{L('منتظر پاسخ', 'Waiting')}</th>
-                        <th className="th">{L('پذیرفته', 'Accepted')}</th>
+                        <th className="th">{L('تحویل', 'Passes')}</th>
                         <th className="th">{L('برگشت', 'Returned')}</th>
                         <th className="th">{L('نرخ برگشت', 'Return rate')}</th>
-                        <th className="th">{L('میانگین پاسخ', 'Avg. reply')}</th>
+                        <th className="th">{L('میانگین ماندن در واحد بعدی', 'Avg. days in the next unit')}</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-line">
                       {pairs.map((p) => (
                         <tr key={p.from + p.to}>
                           <td className="td"><Flow from={p.from} to={p.to} /></td>
-                          <td className={cx('td num', p.open > 0 && 'font-semibold text-warn')}>{fa(p.open)}</td>
-                          <td className="td num">{fa(p.accepted)}</td>
+                          <td className="td num">{fa(p.total)}</td>
                           <td className={cx('td num', p.returned > 0 && 'text-bad')}>{fa(p.returned)}</td>
                           <td className={cx('td num', p.returnRate >= 30 && 'font-semibold text-bad')}>{fa(p.returnRate)}٪</td>
                           <td className="td num">{L(`${fa(p.avgDays)} روز`, `${p.avgDays}d`)}</td>
@@ -102,7 +100,7 @@ export default function Teams() {
             )}
             <HandoffBoard projectId={pid} side={side || undefined} />
             {!passes.length && (
-              <p className="text-center text-xs leading-6 text-sub">{L('در هر تسک «تحویل به واحد دیگر» را بزنید؛ گیرنده می‌پذیرد یا با توضیح برمی‌گرداند و هر رفت و برگشت این‌جا شمرده می‌شود.', 'In any task press “Hand off to another unit”; the receiver accepts it or sends it back with a reason, and every round is counted here.')}</p>
+              <p className="text-center text-xs leading-6 text-sub">{L('وقتی مسئول تسکی را به کسی در واحد دیگر بدهید، این‌جا ثبت می‌شود؛ برگشت به واحد قبلی «برگشت» و دور بعد شمرده می‌شود.', 'Assign a task to someone in another unit and it shows here; going back to an earlier unit counts as a return and the next round.')}</p>
             )}
           </>
         )}
@@ -156,8 +154,8 @@ export default function Teams() {
           <Card pad={false} eyebrow={L('مقایسه', 'Comparison')} title={L('پیشرفت هر واحد در هر پروژه', 'Each unit’s progress per project')}>
             <div className="divide-y divide-line">
               {db.Projects.filter((p) => p.status === 'active' || p.status === 'planning').map((p) => {
-                const open = db.Handoffs.filter((x) => x.project_id === p.id && x.status === 'sent').length
-                const back = db.Handoffs.filter((x) => x.project_id === p.id && x.status === 'returned').length
+                const open = recent(db).filter((x) => x.project_id === p.id).length
+                const back = db.Handoffs.filter((x) => x.project_id === p.id && isReturn(x)).length
                 return (
                   <div key={p.id} className="grid items-center gap-4 px-5 py-4" style={{ gridTemplateColumns: `minmax(10rem,14rem) repeat(${TRACKS.length}, minmax(0,1fr)) 8rem` }}>
                     <Link to={`/projects/${p.id}`} className="min-w-0">
@@ -187,7 +185,7 @@ export default function Teams() {
                     <div className="text-xs">
                       {open + back > 0 ? (
                         <span className={cx('chip', back ? 'bg-bad/10 text-bad' : 'bg-warn/12 text-warn')}>
-                          <Link2 size={11} /> {L(`${fa(open)} منتظر · ${fa(back)} برگشت`, `${open} waiting · ${back} back`)}
+                          <Link2 size={11} /> {L(`${fa(open)} تحویل اخیر · ${fa(back)} برگشت`, `${open} recent · ${back} back`)}
                         </span>
                       ) : (
                         <span className="text-sub">{L('بدون گلوگاه', 'No bottleneck')}</span>
@@ -229,7 +227,7 @@ function TrackColumn({ track, projectId }: { track: Track; projectId?: string })
   const members = db.Team.filter((m) => m.track === track)
   const open = db.Tasks.filter((t) => trackOf(t, db) === track && t.status !== 'done' && (!projectId || t.project_id === projectId)).sort((a, b) => (a.due_date || '9999').localeCompare(b.due_date || '9999'))
   const waiting = open.filter((t) => waitingOn(t, db).some((d) => trackOf(d, db) && trackOf(d, db) !== track))
-  const inbox = db.Handoffs.filter((h) => h.to_side === track && h.status === 'sent' && (!projectId || h.project_id === projectId)).length
+  const inbox = recent(db).filter((h) => h.to_side === track && (!projectId || h.project_id === projectId)).length
   return (
     <div className="min-w-0 space-y-4">
       <section className="card overflow-hidden">
@@ -238,7 +236,7 @@ function TrackColumn({ track, projectId }: { track: Track; projectId?: string })
           <div className="min-w-0 flex-1">
             <div className="chip side-soft mb-1" style={sideSoft(track)}>{lbl(TRACK, track)}</div>
             <div className="text-lg font-bold">{L(`واحد ${lbl(TRACK, track)}`, `${lbl(TRACK, track)} unit`)}</div>
-            <div className="text-xs text-sub">{L(`${fa(st.done)} از ${fa(st.total)} کار انجام شده · ${fa(inbox)} تحویل منتظر پاسخ`, `${st.done} of ${st.total} done · ${inbox} hand-offs waiting`)}</div>
+            <div className="text-xs text-sub">{L(`${fa(st.done)} از ${fa(st.total)} کار انجام شده · ${fa(inbox)} تحویل به این واحد در ۱۴ روز`, `${st.done} of ${st.total} done · ${inbox} handed in · 14 days`)}</div>
           </div>
         </div>
         <div className="grid grid-cols-4 divide-x divide-line border-t border-line rtl:divide-x-reverse">

@@ -6,6 +6,8 @@ import { COLUMNS_KEY, readColumns, setColumns } from './columns'
 import { applyOrg } from './org'
 import { TERMS_KEY, applyTerms } from './terms'
 import { setDeliveryCfg } from './cadence'
+import { passFor } from './handoffs'
+import type { Task } from './types'
 import { NOTIFY_KEY, setNotifyOff } from './inbox'
 import { hideArchived, isArchived } from './archive'
 import type { Project } from './types'
@@ -199,6 +201,8 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   const toCanonRef = useRef(maps.toCanon)
   toCanonRef.current = maps.toCanon
   const me = maps.toEn.get(canonMe) || canonMe
+  const canonMeRef = useRef(canonMe)
+  canonMeRef.current = canonMe
   // week settings are read synchronously so every page renders with the current cycle
   useMemo(() => {
     applyTerms(db.Config.find((r) => r.id === TERMS_KEY)?.value)
@@ -315,11 +319,20 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       setDb(next)
       if (mode === 'demo') {
         persistDemo(next)
+        if (sheet === 'Tasks') {
+          const pass = passFor(list.find((r) => r.id === row.id) as unknown as Task, row as unknown as Task, prev, canonMeRef.current)
+          if (pass) await upsertRef.current?.('Handoffs', pass)
+        }
         return
       }
       try {
         await remoteUpsert(config, sheet, row as unknown as Record<string, unknown>)
         setLastSync(new Date())
+        // a task re-assigned to someone in another unit is a hand-off; log it (see lib/handoffs)
+        if (sheet === 'Tasks') {
+          const pass = passFor(list.find((r) => r.id === row.id) as unknown as Task, row as unknown as Task, prev, canonMeRef.current)
+          if (pass) await upsertRef.current?.('Handoffs', pass)
+        }
       } catch (e) {
         dbRef.current = prev
         setDb(prev)
@@ -329,6 +342,9 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     },
     [config, mode, toast],
   )
+
+  const upsertRef = useRef<typeof upsert>(undefined)
+  upsertRef.current = upsert
 
   const remove = useCallback(
     async (sheet: SheetName, id: string) => {

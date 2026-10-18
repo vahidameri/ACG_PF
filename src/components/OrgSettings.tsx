@@ -18,7 +18,7 @@ const HINT: Record<OrgKind, T2> = {
   sides: ['واحدها کار را به هم تحویل می‌دهند (رفت و برگشت)؛ هر تسک و هر نفر یک واحد دارد.', 'Units hand work to each other (and back); every task and person belongs to one.'],
 }
 
-function OrgList({ kind, admin: canEdit }: { kind: OrgKind; admin: boolean }) {
+export function OrgList({ kind, admin: canEdit, bare }: { kind: OrgKind; admin: boolean; bare?: boolean }) {
   const admin = canEdit
   const fixed = kind === 'access'
   const { db, setSetting, toast } = useStore()
@@ -53,15 +53,23 @@ function OrgList({ kind, admin: canEdit }: { kind: OrgKind; admin: boolean }) {
   const cell = 'h-8 min-w-0 rounded-lg bg-transparent px-2 text-sm outline-none focus:bg-muted disabled:opacity-80'
   return (
     <div>
-      <div className="mb-1 text-sm font-semibold">{tr(TITLE[kind])}</div>
+      {!bare && <div className="mb-1 text-sm font-semibold">{tr(TITLE[kind])}</div>}
       <p className="mb-2 text-[0.6875rem] text-sub">{tr(HINT[kind])}</p>
+      <div className="mb-1 flex items-center gap-1.5 px-2 text-[0.625rem] text-sub">
+        {kind === 'sides' && <span className="w-6">{L('رنگ', 'Colour')}</span>}
+        <span className="w-14">{L('کد', 'Code')}</span>
+        <span className="flex-1 px-2">{L('نام فارسی', 'Persian name')}</span>
+        <span className="w-44 px-2">{L('نام انگلیسی', 'English name')}</span>
+        <span className="w-6 text-center" title={L('در حال استفاده', 'In use')}>#</span>
+        {admin && !fixed && <span className="w-[5.75rem]" />}
+      </div>
       <ul className="space-y-1.5">
         {list.map((x, i) => (
           <li key={x.id} className="flex items-center gap-1.5 rounded-2xl border border-line px-2 py-1">
             {kind === 'sides' && <input type="color" disabled={!admin} className="h-6 w-6 shrink-0 cursor-pointer rounded-full border-0 bg-transparent p-0" defaultValue={x.color || '#6b7180'} onBlur={(e) => edit(i, 'color', e.target.value)} aria-label={L('رنگ', 'Colour')} />}
             <span dir="ltr" className="w-14 shrink-0 truncate font-mono text-[0.6875rem] uppercase text-sub">{x.id}</span>
             <input key={'fa' + x.fa} className={cx(cell, 'flex-1')} disabled={!admin} defaultValue={x.fa} onBlur={(e) => e.target.value.trim() && edit(i, 'fa', e.target.value.trim())} />
-            <input key={'en' + x.en} dir="ltr" className={cx(cell, 'w-28')} disabled={!admin} defaultValue={x.en} onBlur={(e) => e.target.value.trim() && edit(i, 'en', e.target.value.trim())} />
+            <input key={'en' + x.en} dir="ltr" className={cx(cell, 'w-44')} disabled={!admin} defaultValue={x.en} onBlur={(e) => e.target.value.trim() && edit(i, 'en', e.target.value.trim())} />
             <span className="w-6 text-center text-[0.625rem] text-sub num" title={L('در حال استفاده', 'In use')}>{used(x.id) || ''}</span>
             {admin && !fixed && (
               <>
@@ -75,12 +83,12 @@ function OrgList({ kind, admin: canEdit }: { kind: OrgKind; admin: boolean }) {
       </ul>
       {admin && !fixed && (
         <form className="mt-2 flex flex-wrap gap-1.5" onSubmit={(e) => (e.preventDefault(), add())}>
-          <input dir="ltr" className="input h-9 w-20 text-xs" placeholder={L('کد', 'Code')} value={draft.id} onChange={(e) => setDraft({ ...draft, id: e.target.value })} />
-          <input className="input h-9 min-w-0 flex-1 text-xs" placeholder={L('نام فارسی', 'Persian name')} value={draft.fa} onChange={(e) => setDraft({ ...draft, fa: e.target.value })} />
-          <input dir="ltr" className="input h-9 w-28 text-xs" placeholder={L('نام انگلیسی', 'English name')} value={draft.en} onChange={(e) => setDraft({ ...draft, en: e.target.value })} />
+          <input dir="ltr" className="input h-9 w-20 text-xs" placeholder={kind === 'titles' ? 'APM' : L('کد', 'Code')} value={draft.id} onChange={(e) => setDraft({ ...draft, id: e.target.value })} />
+          <input className="input h-9 min-w-0 flex-1 text-xs" placeholder={kind === 'titles' ? L('نام فارسی، مثلاً دستیار مدیر محصول', 'Persian name') : L('نام فارسی', 'Persian name')} value={draft.fa} onChange={(e) => setDraft({ ...draft, fa: e.target.value })} />
+          <input dir="ltr" className="input h-9 w-44 text-xs" placeholder={kind === 'titles' ? 'Assistant PM' : L('نام انگلیسی', 'English name')} value={draft.en} onChange={(e) => setDraft({ ...draft, en: e.target.value })} />
           {kind === 'sides' && <input type="color" className="h-9 w-9 rounded-xl border border-line" value={draft.color || '#6b7180'} onChange={(e) => setDraft({ ...draft, color: e.target.value })} />}
           <button className="btn-outline btn-sm h-9" disabled={!draft.fa.trim() || !(draft.id || draft.en).trim()}>
-            <Plus size={14} /> {L('افزودن', 'Add')}
+            <Plus size={14} /> {kind === 'titles' ? L('افزودن سمت', 'Add title') : L('افزودن', 'Add')}
           </button>
         </form>
       )}
@@ -88,18 +96,32 @@ function OrgList({ kind, admin: canEdit }: { kind: OrgKind; admin: boolean }) {
   )
 }
 
-export function OrgCard({ admin }: { admin: boolean }) {
+/** Back office → Organisation: titles first (the most edited), then teams, units and the rest. */
+export function OrgPage({ admin }: { admin: boolean }) {
   return (
-    <Card eyebrow={<span className="flex items-center gap-1.5"><Building2 size={12} /> {L('سازمان', 'Organisation')}</span>} title={L('سمت‌ها، تیم‌ها، واحدها و جلسه‌ها', 'Titles, teams, units & meetings')} className="@xl:row-span-2">
-      <div className="space-y-6">
-        <OrgList kind="sides" admin={admin} />
-        <OrgList kind="teams" admin={admin} />
-        <OrgList kind="titles" admin={admin} />
-        <OrgList kind="series" admin={admin} />
-        <OrgList kind="access" admin={admin} />
-        <OrgList kind="links" admin={admin} />
+    <div className="grid items-start gap-4 @3xl:grid-cols-2">
+      <Card eyebrow={<span className="flex items-center gap-1.5"><Building2 size={12} /> {L('سازمان', 'Organisation')}</span>} title={L('سمت‌ها', 'Job titles')} className="@3xl:col-span-2">
+        <OrgList kind="titles" admin={admin} bare />
+      </Card>
+      <Card eyebrow={L('سازمان', 'Organisation')} title={L('تیم‌ها و واحدها', 'Teams & units')}>
+        <div className="space-y-6">
+          <OrgList kind="teams" admin={admin} />
+          <OrgList kind="sides" admin={admin} />
+        </div>
+      </Card>
+      <Card eyebrow={L('دسترسی', 'Access')} title={L('نام سطح‌های دسترسی', 'Access level names')}>
+        <OrgList kind="access" admin={admin} bare />
+      </Card>
+      <Card eyebrow={L('پروژه و جلسه', 'Projects & meetings')} title={L('نوع لینک‌ها و جلسه‌ها', 'Link types & meetings')}>
+        <div className="space-y-6">
+          <OrgList kind="links" admin={admin} />
+          <OrgList kind="series" admin={admin} />
+        </div>
+      </Card>
+      <div className="@3xl:col-span-2">
+        <TermsCard admin={admin} />
       </div>
-    </Card>
+    </div>
   )
 }
 

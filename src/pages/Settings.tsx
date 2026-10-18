@@ -11,7 +11,6 @@ import { L, lbl, tr, useI18n } from '../lib/i18n'
 import { ROLE } from '../lib/labels'
 import { APP_NAME } from '../lib/brand'
 import { WEEK_KEYS, weekCfg } from '../lib/weeks'
-import { OrgCard, TermsCard } from '../components/OrgSettings'
 import { ColumnsCard, FieldsCard, NotifyCard, Switch, TaskCard } from '../components/TaskSettings'
 
 export default function Settings({ embedded }: { embedded?: boolean }) {
@@ -75,8 +74,6 @@ export default function Settings({ embedded }: { embedded?: boolean }) {
         </Card>
 
         <WeekCard admin={admin} />
-        <OrgCard admin={admin} />
-        <TermsCard admin={admin} />
         <NotifyCard admin={admin} />
         <TaskCard admin={admin} />
         <FieldsCard admin={admin} />

@@ -8,17 +8,18 @@ import { ContractsList } from '../components/Contracts'
 import { PauseButton } from '../components/PauseButton'
 import Settings from './Settings'
 import { TelegramImport } from '../components/TelegramImport'
+import { OrgPage } from '../components/OrgSettings'
 import { L, lbl } from '../lib/i18n'
 import { ACCESS, PROJECT_STATUS, JOB_TITLE, TEAM_NAMES, teamCodes, usernameOf } from '../lib/labels'
 import { capOf, memberWeek } from '../lib/capacity'
 import { fa } from '../lib/jalali'
 import type { Access } from '../lib/types'
 
-type Tab = 'people' | 'projects' | 'contracts' | 'telegram' | 'settings'
+type Tab = 'people' | 'org' | 'projects' | 'contracts' | 'telegram' | 'settings'
 
 /** Back office — the program manager's control room: people & access, projects, contracts, settings. */
 export default function Admin({ initial = 'people' }: { initial?: Tab }) {
-  const { db } = useStore()
+  const { db, access } = useStore()
   const { open } = useEditor()
   const [tab, setTab] = useState<Tab>(initial)
   const active = db.Team.filter((m) => String(m.active) !== 'false')
@@ -34,6 +35,7 @@ export default function Admin({ initial = 'people' }: { initial?: Tab }) {
               onChange={setTab}
               options={[
                 { value: 'people', label: L('افراد و دسترسی', 'People & access') },
+                { value: 'org', label: L('سمت‌ها و سازمان', 'Titles & organisation') },
                 { value: 'projects', label: L('پروژه‌ها', 'Projects') },
                 { value: 'contracts', label: L('قراردادها', 'Contracts') },
                 { value: 'telegram', label: L('تلگرام', 'Telegram') },
@@ -42,8 +44,8 @@ export default function Admin({ initial = 'people' }: { initial?: Tab }) {
             />
             {tab === 'people' && (
               <>
-                <button className="btn h-10 border border-white/15 text-white hover:bg-white/10" onClick={() => setTab('settings')}>
-                  {L('سمت‌ها، تیم‌ها و واحدها', 'Titles, teams & units')}
+                <button className="btn h-10 border border-white/15 text-white hover:bg-white/10" onClick={() => setTab('org')}>
+                  {L('تعریف سمت‌ها و تیم‌ها', 'Define titles & teams')}
                 </button>
                 <button className="btn h-10 bg-white text-band" onClick={() => open('Team')}>
                   <Plus size={16} /> {L('نفر جدید', 'New person')}
@@ -80,6 +82,7 @@ export default function Admin({ initial = 'people' }: { initial?: Tab }) {
             <ContractsList />
           </Card>
         )}
+        {tab === 'org' && <OrgPage admin={access === 'super'} />}
         {tab === 'telegram' && <TelegramImport />}
         {tab === 'settings' && <Settings embedded />}
       </Overlap>

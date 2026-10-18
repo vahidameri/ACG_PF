@@ -27,6 +27,7 @@ import { assess } from '../lib/rag'
 import { isClosed, isOverdue, deliveryTrack, slipDays } from '../lib/delivery'
 import { overloaded, trackWeek } from '../lib/capacity'
 import { TRACK, TRACKS, trackOf, waitingOn } from '../lib/tracks'
+import { isReturn, recent } from '../lib/handoffs'
 import { isTaskOverdue } from '../lib/metrics'
 import type { DB, Health, Meeting, Task, Track } from '../lib/types'
 
@@ -436,14 +437,15 @@ function buildAgenda(m: Meeting, db: DB, open: ReturnType<typeof useEditor>['ope
     const sideOf = (t: Task) => lbl(TRACK, trackOf(t, db) || '')
     const waitsOn = (t: Task) => [...new Set(waitingOn(t, db).map((d) => trackOf(d, db)).filter(otherSide))].map((s) => lbl(TRACK, s)).join('، ')
     const owedTo = (t: Task) => [...new Set(db.Tasks.filter((x) => x.status !== 'done' && otherSide(trackOf(x, db)) && waitingOn(x, db).some((d) => d.id === t.id)).map((x) => trackOf(x, db)))].map((s) => lbl(TRACK, s)).join('، ')
-    const hs = db.Handoffs.filter((h) => (h.from_side === track || h.to_side === track) && (h.status === 'sent' || h.status === 'returned') && (!m.project_id || h.project_id === m.project_id))
+    // this unit's hand-overs and returns of the last two weeks
+    const hs = recent(db).filter((h) => (h.from_side === track || h.to_side === track) && (!m.project_id || h.project_id === m.project_id)).sort((a, b) => Number(isReturn(b)) - Number(isReturn(a)))
     return [
       delSection,
       {
         icon: Workflow,
         title: L('تحویل‌ها و هماهنگی با واحدهای دیگر', 'Hand-offs with the other units'),
         items: [
-          ...hs.slice(0, 6).map((h) => ({ key: 'h' + h.id, primary: h.title, secondary: `${L(`از ${lbl(TRACK, h.from_side)} به ${lbl(TRACK, h.to_side)}`, `${lbl(TRACK, h.from_side)} to ${lbl(TRACK, h.to_side)}`)} · ${h.status === 'returned' ? L('برگشت خورده', 'returned') : L('منتظر پاسخ', 'awaiting reply')}${Number(h.round) > 1 ? L(` · دور ${fa(h.round)}`, ` · round ${h.round}`) : ''}`, tone: (h.status === 'returned' ? 'red' : 'amber') as Health, to: '/teams' })),
+          ...hs.slice(0, 6).map((h) => ({ key: 'h' + h.id, primary: h.title, secondary: `${L(`از ${lbl(TRACK, h.from_side)} به ${lbl(TRACK, h.to_side)}`, `${lbl(TRACK, h.from_side)} to ${lbl(TRACK, h.to_side)}`)} · ${isReturn(h) ? L('برگشت', 'returned') : L('تحویل', 'handed over')}${Number(h.round) > 1 ? L(` · دور ${fa(h.round)}`, ` · round ${h.round}`) : ''}`, tone: (isReturn(h) ? 'red' : 'green') as Health, to: '/teams' })),
           ...owed.slice(0, 4).map((t) => ({ key: 'o' + t.id, primary: t.title, secondary: L(`${pname(t.project_id)} · ${owedTo(t)} منتظر این است`, `${pname(t.project_id)} · ${owedTo(t)} waiting on this`), tone: 'amber' as Health, onClick: () => open('Tasks', t as never) })),
           ...waiting.slice(0, 4).map((t) => ({ key: 'w' + t.id, primary: t.title, secondary: L(`${pname(t.project_id)} · ${sideOf(t)} منتظر ${waitsOn(t)}`, `${pname(t.project_id)} · waiting on ${waitsOn(t)}`), tone: 'red' as Health, onClick: () => open('Tasks', t as never) })),
         ],

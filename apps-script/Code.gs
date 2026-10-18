@@ -18,7 +18,7 @@
  *   viewer — read only (leadership)
  */
 
-var ATLAS_VERSION = '1.10.1'; // shown on the login page and by diagnose()
+var ATLAS_VERSION = '1.10.2'; // shown on the login page and by diagnose()
 
 var SCHEMA = {
   Projects: ['id', 'code', 'name', 'description', 'category', 'owner', 'client', 'liaison', 'liaison_contact', 'status', 'priority', 'phase', 'start_date', 'end_date', 'progress', 'health_override', 'objective', 'paused_at', 'pause_reason', 'delivery_day', 'last_delivery', 'archived', 'archived_at', 'links'],
@@ -475,9 +475,8 @@ function applyScope_(data, user, owners) {
   // own + shared tasks, plus every task of a project this person leads
   var led = {};
   data.Projects.forEach(function (p) { if (p.owner === me) led[p.id] = 1; });
-  // a hand-off sent to me, or to my unit, brings its task along so it can be accepted or returned
-  var myUnit = ((data.Team || []).filter(function (m) { return m.name === me; })[0] || {}).track || '';
-  var forMe = function (h) { return h.to_person === me || (!h.to_person && myUnit && h.to_side === myUnit); };
+  // a hand-off assigned to me brings its task along so it can be accepted or returned
+  var forMe = function (h) { return h.to_person === me; };
   var handed = {};
   (data.Handoffs || []).forEach(function (h) { if (forMe(h)) handed[h.task_id] = 1; });
   data.Tasks = data.Tasks.filter(function (t) { return isMine_(t, me) || !!led[t.project_id] || !!handed[t.id]; });
@@ -526,13 +525,13 @@ function guardWrite_(sheet, row, user) {
     row.by = user.name;
     return;
   }
-  // hand-offs: you send as yourself; only the sender or the receiver changes a pass
+  // hand-offs are logged by the app when a task is re-assigned to another unit: a member may log one
+  // for a task they work on, and nobody but leadership edits the log afterwards
   if (sheet === 'Handoffs') {
-    var curH = existingRow_('Handoffs', row.id);
-    if (!curH) { row.from_person = user.name; return; }
-    var mySide = ((rawAll_().Team || []).filter(function (m) { return m.name === user.name; })[0] || {}).track;
-    var receiver = curH.to_person ? curH.to_person === user.name : mySide && mySide === curH.to_side;
-    if (curH.from_person !== user.name && !receiver) throw new Error('این تحویل مربوط به شما نیست');
+    if (existingRow_('Handoffs', row.id)) throw new Error('سابقه‌ی تحویل قابل ویرایش نیست');
+    var task = existingRow_('Tasks', row.task_id);
+    // the person who handed it over (the previous assignee) or anyone working on it may log the pass
+    if (!task || !(row.from_person === user.name || isMine_(task, user.name) || handedTo_(row.task_id, user.name))) throw new Error('این تسک مربوط به شما نیست');
     return;
   }
   // a project lead keeps their project's links (stage, Figma…) up to date, nothing else
@@ -551,9 +550,14 @@ function guardWrite_(sheet, row, user) {
   if (row.project_id) {
     var ok = allowedProjects_(rawAll_(), user.name);
     // an existing task is judged by what is stored, so nobody can claim a task by adding themselves
-    var own = sheet === 'Tasks' && isMine_(existingRow_('Tasks', row.id) || row, user.name);
+    var own = sheet === 'Tasks' && (isMine_(existingRow_('Tasks', row.id) || row, user.name) || handedTo_(row.id, user.name));
     if (!ok[row.project_id] && !own) throw new Error('این پروژه در دسترس شما نیست');
   }
+}
+
+/** A hand-off on this task is assigned to this person (they may take the task on). */
+function handedTo_(taskId, name) {
+  return (rawAll_().Handoffs || []).some(function (h) { return String(h.task_id) === String(taskId) && h.to_person === name; });
 }
 
 /** Stops edits to a private task (or its comments/files) by someone who can't see it. */

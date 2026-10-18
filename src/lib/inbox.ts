@@ -5,7 +5,7 @@ import { isAssignee } from './assignees'
 import { WEEK_STATE, deliveryDate, weekState } from './cadence'
 import { lbl } from './i18n'
 import { TRACK } from './tracks'
-import { resent, returnedToMe, sentToMe } from './handoffs'
+import { isReturn, recent } from './handoffs'
 import { L } from './i18n'
 import { isTaskOverdue, riskScore } from './metrics'
 
@@ -60,15 +60,14 @@ export function buildInbox(db: DB, me: string): InboxItem[] {
     if (t.handoff_date === today || t.test_date === today) out.push({ id: `st-${t.id}`, kind: 'remind', tone: 'warn', when: today, title: t.title, sub: t.handoff_date === today ? L('امروز: تحویل به پروداکت', 'Today: hand-off to product') : L('امروز: زمان تست', 'Today: testing'), target: { sheet: 'Tasks', id: t.id } })
     if (t.deadline && t.deadline >= today && t.deadline <= addDays(today, 1)) out.push({ id: `dl-${t.id}`, kind: 'deadline', tone: 'bad', when: t.deadline, title: t.title, sub: t.deadline === today ? L('ددلاین امروز است', 'Deadline is today') : L('ددلاین فردا است', 'Deadline is tomorrow'), target: { sheet: 'Tasks', id: t.id } })
   })
-  // hand-offs: new ones for me (or my side), and mine that came back
-  db.Handoffs.forEach((h) => {
-    if (sentToMe(h, db, me))
-      out.push({ id: `hs-${h.id}`, kind: 'handoff', tone: 'brand', when: h.sent_at, title: h.title, sub: L(`تحویل از ${lbl(TRACK, h.from_side)} · ${h.from_person}`, `Hand-off from ${lbl(TRACK, h.from_side)} · ${h.from_person}`), target: { sheet: 'Tasks', id: h.task_id } })
-    else if (returnedToMe(h, me) && !resent(h, db))
-      out.push({ id: `hr-${h.id}`, kind: 'handoff', tone: 'bad', when: h.responded_at || h.sent_at, title: h.title, sub: L(`برگشت از ${lbl(TRACK, h.to_side)}: ${h.reply}`, `Returned by ${lbl(TRACK, h.to_side)}: ${h.reply}`), target: { sheet: 'Tasks', id: h.task_id } })
-    else if (h.from_person === me && h.status === 'sent' && h.due_date && h.due_date < today)
-      out.push({ id: `ho-${h.id}`, kind: 'handoff', tone: 'warn', when: h.due_date, title: h.title, sub: L(`${lbl(TRACK, h.to_side)} هنوز پاسخ نداده`, `${lbl(TRACK, h.to_side)} has not answered yet`), target: { sheet: 'Tasks', id: h.task_id } })
-  })
+  // hand-offs that reached me in the last two days (a task re-assigned to me from another unit)
+  recent(db, 2).filter((h) => h.to_person === me).forEach((h) =>
+    out.push({
+      id: `hs-${h.id}`, kind: 'handoff', tone: isReturn(h) ? 'bad' : 'brand', when: h.sent_at, title: h.title,
+      sub: isReturn(h) ? L(`برگشت از ${lbl(TRACK, h.from_side)} · ${h.from_person}`, `Back from ${lbl(TRACK, h.from_side)} · ${h.from_person}`) : L(`از ${lbl(TRACK, h.from_side)} به شما رسید · ${h.from_person}`, `Handed to you from ${lbl(TRACK, h.from_side)} · ${h.from_person}`),
+      target: { sheet: 'Tasks', id: h.task_id },
+    }),
+  )
   // weekly delivery day of the projects I lead (leadership sees all of them on the Lookout)
   db.Projects.filter((p) => p.owner === me).forEach((p) => {
     const st = weekState(p, db)
@@ -82,7 +81,7 @@ export function buildInbox(db: DB, me: string): InboxItem[] {
 /** In-app notification kinds; the program manager can switch any of them off (Config notify.off). */
 export const NOTIFY_KINDS: { id: InboxItem['kind']; label: [string, string] }[] = [
   { id: 'assigned', label: ['تسک تازه برای من', 'New task for me'] },
-  { id: 'handoff', label: ['تحویل بین واحدها (رسیده، برگشتی، بی‌پاسخ)', 'Hand-offs (new, returned, unanswered)'] },
+  { id: 'handoff', label: ['تسکی که از واحد دیگر به من رسید یا برگشت', 'A task handed to me from another unit, or back'] },
   { id: 'remind', label: ['تاریخ یادآوری، تحویل به پروداکت، تست', 'Follow-up, hand-off and testing dates'] },
   { id: 'deadline', label: ['ددلاین امروز و فردا', 'Deadline today or tomorrow'] },
   { id: 'overdue', label: ['تسک معوق', 'Overdue task'] },
