@@ -13,6 +13,7 @@ import { TaskRow, FollowUpRow, PinButton } from '../components/shared'
 import { PauseButton } from '../components/PauseButton'
 import { ArchiveButton } from '../components/ArchiveButton'
 import { ProjectLinks } from '../components/ProjectLinks'
+import { everyDay } from '../lib/cadence'
 import { DeliveredButton, DeliveryBadge } from '../components/DeliveryDay'
 import type { Project } from '../lib/types'
 import { Archive } from 'lucide-react'
@@ -91,7 +92,12 @@ export default function ProjectDetail() {
             )}
           </>
         }
-        title={p.name}
+        title={
+          <span className="flex flex-wrap items-baseline gap-x-4 gap-y-2">
+            {p.name}
+            {everyDay(p) && <span className="rounded-full bg-white/10 px-3 py-1 align-middle text-sm font-medium text-white/85">{L('تحویل', 'Delivery')} · {everyDay(p)}</span>}
+          </span>
+        }
         sub={
           <>
             {p.status === 'on_hold' && (
@@ -127,7 +133,7 @@ export default function ProjectDetail() {
       >
         <div className="mb-6 flex flex-wrap items-center gap-x-6 gap-y-2 text-sm text-band-sub">
           <span className="flex items-center gap-2">
-            <User size={14} /> {L('مدیر', 'Lead')}: <span className="text-white">{p.owner}</span>
+            <User size={14} /> {L('مدیر محصول', 'PM')}: <span className="text-white">{p.owner}</span>
           </span>
           {p.client && (
             <span className="flex items-center gap-2">
@@ -560,7 +566,7 @@ function SetupPrompt({ p }: { p: import('../lib/types').Project }) {
   const { db, canEdit } = useStore()
   const { open } = useEditor()
   const steps = [
-    { done: !!p.owner, label: L('مدیر پروژه', 'Project lead') },
+    { done: !!p.owner, label: L('مدیر محصول پروژه', 'Project lead') },
     { done: !!p.client, label: L('کارفرما و رابط', 'Client & liaison') },
     { done: !!(p.start_date && p.end_date), label: L('تاریخ شروع و ددلاین', 'Start date & deadline') },
     { done: db.Milestones.some((x) => x.project_id === p.id), label: L('مایلستون‌ها', 'Milestones'), sheet: 'Milestones' as const },
@@ -620,7 +626,7 @@ function ArchivedProject({ p }: { p: Project }) {
       <Overlap>
         <Card>
           <div className="flex items-center gap-3 text-sm text-sub">
-            <Archive size={18} /> {L('مدیر پروژه', 'Lead')}: <b className="text-ink">{p.owner || '—'}</b> · <span dir="ltr">{p.code}</span> · {lbl(PROJECT_STATUS, p.status)}
+            <Archive size={18} /> {L('مدیر محصول پروژه', 'Lead')}: <b className="text-ink">{p.owner || '—'}</b> · <span dir="ltr">{p.code}</span> · {lbl(PROJECT_STATUS, p.status)}
           </div>
         </Card>
       </Overlap>

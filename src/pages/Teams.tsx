@@ -35,7 +35,7 @@ export default function Teams() {
 
   return (
     <>
-      <Band nav={<HubNav hub="plan" />}
+      <Band nav={<HubNav hub="work" />}
         title={L('واحدها و تحویل‌ها', 'Units & hand-offs')}
         sub={TRACKS.map((t) => lbl(TRACK, t)).join(' · ')}
         actions={<Segmented dark value={view} onChange={setView} options={[{ value: 'handoffs', label: L('رفت و برگشت', 'Hand-offs') }, { value: 'side', label: L('کنار هم', 'Side by side') }, { value: 'deps', label: L('وابستگی‌ها', 'Dependencies') }, { value: 'projects', label: L('به تفکیک پروژه', 'By project') }]} />}

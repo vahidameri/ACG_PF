@@ -42,7 +42,7 @@ export default function Report() {
 
   return (
     <>
-      <Band nav={<HubNav hub="overview" />}
+      <Band nav={<HubNav hub="lookout" />}
         title={L('گزارش مدیریتی ACG', 'ACG executive report')}
         actions={
           <>

@@ -3,11 +3,11 @@
 // stored in the Config tab, so the whole team shares the same behaviour.
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { CalendarPlus, CalendarSync, Repeat, Mail, Unlock, Image, PauseCircle, BellRing, Sunrise, FileWarning, UserPlus, Bell, PackageCheck } from 'lucide-react'
-import type { Meeting, Project, Task } from './types'
+import type { DB, Meeting, Project, Task } from './types'
 import { useStore } from './store'
 import { useGoogle } from './google'
 import { L, type T2 } from './i18n'
-import { createEvent, demoEvents, fetchEvents, relate, seriesFor, type GEvent } from './gcal'
+import { demoEvents, fetchEvents, relate, seriesFor, type GEvent } from './gcal'
 import { addDays, daysBetween, fa, todayISO } from './jalali'
 import { weekStart } from './weeks'
 import { uid } from './api'
@@ -23,21 +23,27 @@ export interface AutomationDef {
 
 export const AUTOMATIONS: AutomationDef[] = [
   { id: 'gcal_import', where: 'app', icon: CalendarSync, title: ['آوردن ایونت‌های مرتبط تقویم گوگل', 'Bring in related Google Calendar events'], desc: ['ایونتی که نام پروژه را دارد یا دو نفر از تیم در آن هستند، خودکار به «جلسات» اضافه می‌شود.', 'Events that name a project or include two or more teammates are added to Meetings.'] },
-  { id: 'gcal_create', where: 'app', icon: CalendarPlus, title: ['ساخت رویداد تقویم و لینک Meet برای جلسه‌ی جدید', 'Create a calendar event + Meet link for new meetings'], desc: ['حاضران از طرف گوگل دعوت‌نامه می‌گیرند.', 'Attendees get a Google invitation.'] },
+  { id: 'gcal_create', where: 'app', icon: CalendarPlus, title: ['ثبت جلسه‌ها در تقویم گوگل با لینک Meet', 'Put meetings on Google Calendar with a Meet link'], desc: ['حاضران، برگزارکننده و همیشه مدیر برنامه و مدیرعامل دعوت می‌شوند؛ جابجایی یا لغو جلسه در تقویم هم اعمال می‌شود.', 'Attendees, the facilitator and always the program manager and CEO are invited; moves and cancellations follow.'] },
   { id: 'next_meeting', where: 'app', icon: Repeat, title: ['ساخت جلسه‌ی هفته‌ی بعد پس از بستن جلسه‌ی هفتگی', 'Schedule next week after a weekly is closed'], desc: ['برای همه‌ی جلسه‌های هفتگی (ACG، پروداکت، دیزاین، تک، پروژه).', 'For every weekly series (ACG, product, design, tech, project).'] },
   { id: 'minutes_mail', where: 'server', icon: Mail, title: ['ایمیل صورت‌جلسه و اکشن‌پلن به حاضران', 'Email minutes & action plan to attendees'], desc: ['وقتی جلسه «برگزار شد» زده می‌شود.', 'When a meeting is marked held.'] },
   { id: 'blocked_followup', where: 'app', icon: Unlock, title: ['پیگیری برای تسکی که بیش از ۳ روز مسدود مانده', 'Follow-up for tasks blocked over 3 days'], desc: ['با مسئول تسک، در پیگیری‌های مدیر برنامه.', 'With the assignee, on the program manager’s follow-ups.'] },
   { id: 'pause_shift', where: 'app', icon: PauseCircle, title: ['جابجایی ددلاین بعد از ادامه‌ی پروژه‌ی متوقف', 'Shift dates when a paused project resumes'], desc: ['ددلاین، مایلستون‌ها و تحویل‌های باز به اندازه‌ی روزهای توقف جلو می‌روند.', 'Deadline, milestones and open deliverables move by the paused days.'] },
   { id: 'google_photo', where: 'app', icon: Image, title: ['عکس پروفایل از حساب گوگل', 'Profile photo from Google'], desc: ['برای کسی که هنوز عکس آپلود نکرده.', 'For anyone who hasn’t uploaded one.'] },
-  { id: 'update_reminder', where: 'server', icon: FileWarning, title: ['یادآوری گزارش هفتگی', 'Weekly update reminder'], desc: ['روز مهلت ساعت ۱۴ و صبح روز جلسه‌ی هفتگی به مدیر پروژه‌هایی که گزارش نداده‌اند.', 'Deadline day 14:00 and the weekly’s morning to leads who haven’t reported.'] },
+  { id: 'update_reminder', where: 'server', icon: FileWarning, title: ['یادآوری گزارش هفتگی', 'Weekly update reminder'], desc: ['روز مهلت ساعت ۱۴ و صبح روز جلسه‌ی هفتگی به مدیر محصول پروژه‌هایی که گزارش نداده‌اند.', 'Deadline day 14:00 and the weekly’s morning to leads who haven’t reported.'] },
   { id: 'action_reminder', where: 'server', icon: BellRing, title: ['یادآوری اکشن‌های معوق', 'Overdue action reminders'], desc: ['هر صبح به مسئول هر اکشن عقب‌افتاده.', 'Every morning, to the owner of each overdue action.'] },
   { id: 'assign_mail', where: 'server', icon: UserPlus, title: ['ایمیل به مسئول، وقتی تسکی به او سپرده می‌شود', 'Email the assignee when a task is handed to them'], desc: ['همان لحظه، با سررسید و ددلاین.', 'Right away, with the due date and deadline.'] },
   { id: 'task_alerts', where: 'server', icon: Bell, title: ['یادآوری تسک‌ها: یادآوری، تحویل، تست و ددلاین', 'Task alerts: follow-up, hand-off, testing and deadline'], desc: ['هر صبح ۸:۳۰ به همه‌ی افراد تسک.', 'Every morning 08:30, to everyone on the task.'] },
-  { id: 'delivery_alerts', where: 'server', icon: PackageCheck, title: ['یادآوری روز تحویل هفتگی پروژه‌ها', 'Weekly delivery-day reminders'], desc: ['صبح روز تحویل به مدیر پروژه؛ اگر ثبت نشد، فردا به مدیر برنامه هم.', 'On the day to the lead; if not recorded, the next morning to the program manager too.'] },
+  { id: 'delivery_alerts', where: 'server', icon: PackageCheck, title: ['یادآوری روز تحویل هفتگی پروژه‌ها', 'Weekly delivery-day reminders'], desc: ['صبح روز تحویل به مدیر محصول پروژه؛ اگر ثبت نشد، فردا به مدیر برنامه هم.', 'On the day to the lead; if not recorded, the next morning to the program manager too.'] },
   { id: 'daily_digest', where: 'server', icon: Sunrise, title: ['خلاصه‌ی صبحگاهی', 'Morning digest'], desc: ['ساعت ۷:۳۰ برای مدیر برنامه.', '07:30, to the program manager.'] },
 ]
 
 const names = (s: string) => String(s || '').split(',').map((x) => x.trim()).filter(Boolean)
+
+/** Always invited to planned meetings: Config meeting.always, else the program manager and the CEO (super + exec). */
+export function alwaysInvited(d: DB, configured: string) {
+  if (configured.trim()) return names(configured)
+  return d.Team.filter((t) => (t.access === 'super' || t.access === 'exec') && String(t.active) !== '0').map((t) => t.name)
+}
 
 interface Ctx {
   on: (id: string) => boolean
@@ -46,7 +52,7 @@ interface Ctx {
   calStatus: 'demo' | 'live' | 'off' | 'error'
   reloadCal: () => void
   importEvent: (e: GEvent) => Promise<Meeting | undefined>
-  meetingCreated: (m: Meeting) => Promise<void>
+  meetingSaved: (m: Meeting, before?: Meeting) => Promise<void>
   meetingHeld: (m: Meeting) => Promise<void>
   pause: (p: Project, reason: string) => Promise<void>
   resume: (p: Project) => Promise<void>
@@ -57,7 +63,7 @@ export const useAuto = () => useContext(C)!
 
 export function AutomationProvider({ children }: { children: ReactNode }) {
   const store = useStore()
-  const { db, mode, me, canEdit, upsert, toast, setting, setSetting, action } = store
+  const { db, mode, me, canEdit, upsert, toast, setting, setSetting, action, refresh } = store
   const { session } = useGoogle()
   const [log, setLog] = useState<{ at: Date; text: string }[]>([])
   const [live, setLive] = useState<GEvent[]>([])
@@ -158,26 +164,40 @@ export function AutomationProvider({ children }: { children: ReactNode }) {
   }, [session, db.Team, on, upsert, fire])
 
   // ---------------------------------------------------------- meeting rules
-  const meetingCreated = useCallback(
-    async (m: Meeting) => {
-      if (!on('gcal_create') || m.gcal_id) return
+  // Planned meetings go to Google Calendar from the server (the deployment owner's calendar), with a
+  // Meet link; attendees, the facilitator and the always-invited people (program manager + CEO) get
+  // the invitation. A moved, re-staffed or cancelled meeting updates the same event.
+  const meetingSaved = useCallback(
+    async (m: Meeting, before?: Meeting) => {
+      if (!on('gcal_create')) return
+      const changed = !before || (['date', 'time', 'duration', 'title', 'attendees', 'facilitator', 'status', 'items'] as const).some((k) => String(before[k] ?? '') !== String(m[k] ?? ''))
+      if (!changed || (m.status === 'held' && before)) return
+      if (m.status === 'cancelled' && !m.gcal_id) return
       const d = dbRef.current
-      const emails = names(m.attendees).map((n) => d.Team.find((t) => t.name === n)?.email || '').filter(Boolean)
+      const always = alwaysInvited(d, setting('meeting.always', ''))
+      const people = [...new Set([...names(m.attendees), m.facilitator, ...always].filter(Boolean))]
       if (mode === 'demo') {
-        await upsert('Meetings', { ...m, gcal_id: `g-${m.id}`, meet_url: m.meet_url || `https://meet.google.com/acg-${m.id.slice(-6)}` })
-        return fire(L(`رویداد تقویم با لینک Meet ساخته شد و ${fa(emails.length)} نفر دعوت شدند (نمایشی)`, `Calendar event + Meet link created, ${emails.length} invited (demo)`))
+        if (m.status === 'cancelled') {
+          await upsert('Meetings', { ...m, gcal_id: '' })
+          return fire(L('رویداد تقویم لغو شد (نمایشی)', 'Calendar event cancelled (demo)'))
+        }
+        await upsert('Meetings', { ...m, gcal_id: m.gcal_id || `g-${m.id}`, meet_url: m.meet_url || `https://meet.google.com/acg-${m.id.slice(-6)}` })
+        return fire(before?.gcal_id
+          ? L('رویداد تقویم به‌روز شد (نمایشی)', 'Calendar event updated (demo)')
+          : L(`در تقویم ثبت شد و ${fa(people.length)} نفر دعوت شدند (نمایشی)`, `Added to the calendar, ${people.length} invited (demo)`))
       }
-      if (!session?.token) return
       try {
-        const ev = await createEvent(session.token, m, emails, L('ساخته‌شده از اطلس ACG', 'Created from ACG Atlas'))
-        await upsert('Meetings', { ...m, gcal_id: ev.id, meet_url: ev.meetUrl || m.meet_url })
-        fire(L(`رویداد تقویم با لینک Meet ساخته شد و ${fa(emails.length)} نفر دعوت شدند`, `Calendar event + Meet link created, ${emails.length} invited`))
+        await action('syncMeeting', { meeting_id: m.id })
+        await refresh()
+        fire(m.status === 'cancelled'
+          ? L('رویداد تقویم لغو شد', 'Calendar event cancelled')
+          : L(`در تقویم ثبت شد و ${fa(people.length)} نفر دعوت شدند`, `Added to the calendar, ${people.length} invited`))
         setCalTick((n) => n + 1)
       } catch {
-        toast(L('ساخت رویداد تقویم انجام نشد', 'Could not create the calendar event'), 'err')
+        toast(L('ثبت در تقویم گوگل انجام نشد', 'Could not update Google Calendar'), 'err')
       }
     },
-    [on, mode, session, upsert, fire, toast],
+    [on, mode, upsert, action, refresh, setting, fire, toast],
   )
 
   const meetingHeld = useCallback(
@@ -227,6 +247,6 @@ export function AutomationProvider({ children }: { children: ReactNode }) {
     [on, upsert, toast, fire],
   )
 
-  const value: Ctx = { on, setOn, events, calStatus, reloadCal: () => setCalTick((n) => n + 1), importEvent, meetingCreated, meetingHeld, pause, resume, log }
+  const value: Ctx = { on, setOn, events, calStatus, reloadCal: () => setCalTick((n) => n + 1), importEvent, meetingSaved, meetingHeld, pause, resume, log }
   return <C.Provider value={value}>{children}</C.Provider>
 }

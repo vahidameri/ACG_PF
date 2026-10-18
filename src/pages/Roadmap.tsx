@@ -295,7 +295,7 @@ function Row({
         <span className={cx('h-2 w-2 shrink-0 rounded-full', hue.dot)} />
         <Link to={`/projects/${p.id}`} className="min-w-0 flex-1">
           <span className="block truncate text-[0.8125rem] font-medium hover:underline">{p.name}</span>
-          <span className="block truncate text-[0.625rem] text-sub">{p.owner || L('بدون مدیر پروژه', 'No lead')}</span>
+          <span className="block truncate text-[0.625rem] text-sub">{p.owner || L('بدون مدیر محصول پروژه', 'No lead')}</span>
         </Link>
         <span className="shrink-0 text-end text-[0.6875rem] num">
           <b className="font-semibold">{fa(m.progress)}%</b>

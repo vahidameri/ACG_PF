@@ -34,7 +34,7 @@ export default function Dashboard() {
 
   return (
     <>
-      <Band nav={<HubNav hub="overview" />}
+      <Band nav={<HubNav hub="lookout" />}
         eyebrow={
           <>
             <span>{L('ACG', 'ACG')}</span>

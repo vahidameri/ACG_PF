@@ -238,7 +238,7 @@ export interface Deliverable {
 }
 
 /** a meeting series from the settings (portfolio, product, design, tech, project, one_on_one, other by default) */
-export type MeetingSeries = 'portfolio' | 'product' | 'design' | 'tech' | 'project' | 'one_on_one' | 'other' | (string & {})
+export type MeetingSeries = 'portfolio' | 'product' | 'design' | 'tech' | 'project' | 'planning' | 'demo' | 'retro' | 'one_on_one' | 'other' | (string & {})
 
 export interface Meeting {
   id: string
@@ -259,6 +259,11 @@ export interface Meeting {
   meet_url: string
   /** minutes length in minutes */
   duration: number
+  /** demo / planning agenda — "T:taskId,D:deliverableId" */
+  items?: string
+  /** preparation checklist — JSON [{id,text,done}] */
+  checklist?: string
+  sprint_id?: string
 }
 
 export interface FileRef {

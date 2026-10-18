@@ -18,7 +18,7 @@
  *   viewer — read only (leadership)
  */
 
-var ATLAS_VERSION = '1.10.2'; // shown on the login page and by diagnose()
+var ATLAS_VERSION = '1.11.0'; // shown on the login page and by diagnose()
 
 var SCHEMA = {
   Projects: ['id', 'code', 'name', 'description', 'category', 'owner', 'client', 'liaison', 'liaison_contact', 'status', 'priority', 'phase', 'start_date', 'end_date', 'progress', 'health_override', 'objective', 'paused_at', 'pause_reason', 'delivery_day', 'last_delivery', 'archived', 'archived_at', 'links'],
@@ -43,7 +43,7 @@ var SCHEMA = {
   // Delivery plan. baseline_date = first committed date (kept when target_date moves → slippage).
   Deliverables: ['id', 'project_id', 'title', 'track', 'owner', 'target_date', 'baseline_date', 'delivered_date', 'status', 'confidence', 'notes'],
   // Weekly meetings. series: portfolio | product | tech | project | other. attendees comma-separated; decisions one per line.
-  Meetings: ['id', 'series', 'title', 'project_id', 'date', 'time', 'facilitator', 'attendees', 'status', 'notes', 'decisions', 'gcal_id', 'meet_url', 'duration'],
+  Meetings: ['id', 'series', 'title', 'project_id', 'date', 'time', 'facilitator', 'attendees', 'status', 'notes', 'decisions', 'gcal_id', 'meet_url', 'duration', 'items', 'checklist', 'sprint_id'],
   // Uploaded files live in a Drive folder; this tab is the index.
   Files: ['id', 'entity', 'entity_id', 'name', 'mime', 'size', 'url', 'uploaded_by', 'created_at'],
   // Shared settings (automation switches: auto.<id> = on/off). id = key.
@@ -106,6 +106,7 @@ function doPost(e) {
     if (body.action === 'upload') result = upload_(body, user);
     else if (body.action === 'mailTask') result = mailTask_(body.id, user);
     else if (body.action === 'mailMinutes') result = mailMinutes_(body.meeting_id, user);
+    else if (body.action === 'syncMeeting') result = syncMeeting_(body.meeting_id, user);
     else {
       if (!SCHEMA[body.sheet]) throw new Error('Unknown sheet: ' + body.sheet);
             guardPrivate_(body.sheet, body.action === 'delete' ? { id: body.id } : body.row, user);
@@ -1032,6 +1033,85 @@ function upload_(b, user) {
   };
   upsert_('Files', row, user);
   return row;
+}
+
+// --------------------------------------------------------------------------
+// Google Calendar: every planned meeting lands in the calendar of whoever runs the deployment
+// (the program manager for "Atlas Team"), with a Meet link, and invites the attendees, the
+// facilitator and the always-invited people (by default the program manager and the CEO).
+// --------------------------------------------------------------------------
+
+/** Names always invited to meetings: Config meeting.always (comma-separated), else super + exec. */
+function alwaysInvited_(team) {
+  var v = setting_('meeting.always', '');
+  if (v) return names_(v);
+  return team.filter(function (t) { return (t.access === 'super' || t.access === 'exec') && String(t.active) !== '0'; }).map(function (t) { return t.name; });
+}
+
+function syncMeeting_(meetingId, user) {
+  if (setting_('auto.gcal_create', 'on') === 'off') return { skipped: true };
+  var data = rawAll_();
+  var m = data.Meetings.filter(function (x) { return String(x.id) === String(meetingId); })[0];
+  if (!m) throw new Error('جلسه پیدا نشد');
+  if (!LEADERS[user.access || 'member'] && m.facilitator !== user.name && !listed_(m.attendees, user.name)) throw new Error('این جلسه مربوط به شما نیست');
+  var real = m.gcal_id && String(m.gcal_id).indexOf('g-') !== 0;
+  var save = function (id, url) {
+    var row = {}; Object.keys(m).forEach(function (k) { row[k] = m[k]; });
+    row.gcal_id = id; row.meet_url = url;
+    upsert_('Meetings', row, user);
+    return { gcal_id: id, meet_url: url };
+  };
+  if (m.status === 'cancelled') {
+    if (real) { try { Calendar.Events.remove('primary', m.gcal_id, { sendUpdates: 'all' }); } catch (eGone) {} }
+    return save('', m.meet_url);
+  }
+  var email = {};
+  data.Team.forEach(function (t) { if (t.email) email[t.name] = String(t.email).trim(); });
+  var people = names_(m.attendees).concat([m.facilitator]).concat(alwaysInvited_(data.Team));
+  var seen = {};
+  var attendees = people.map(function (n) { return email[n]; }).filter(function (e) {
+    if (!e || seen[e.toLowerCase()]) return false;
+    seen[e.toLowerCase()] = 1; return true;
+  }).map(function (e) { return { email: e }; });
+  var tz = Session.getScriptTimeZone();
+  var start = Utilities.parseDate(m.date + ' ' + (m.time || '10:00'), tz, 'yyyy-MM-dd HH:mm');
+  var end = new Date(start.getTime() + (Number(m.duration) || 45) * 60000);
+  var iso = function (d) { return Utilities.formatDate(d, tz, "yyyy-MM-dd'T'HH:mm:ss"); };
+  var proj = m.project_id ? data.Projects.filter(function (p) { return String(p.id) === String(m.project_id); })[0] : null;
+  var agenda = agendaOf_(m, data);
+  var description = (proj ? 'پروژه: ' + proj.name + '\n' : '') +
+    (agenda.length ? '\nدستور جلسه:\n' + agenda.map(function (a) { return '• ' + a; }).join('\n') + '\n' : '') +
+    '\nاز اطلس ACG' + (appLink_() ? ' — ' + appLink_() + '#/meetings' : '');
+  var res = {
+    summary: m.title, description: description,
+    start: { dateTime: iso(start), timeZone: tz }, end: { dateTime: iso(end), timeZone: tz },
+    attendees: attendees,
+  };
+  var ev = null;
+  if (real) {
+    try { ev = Calendar.Events.patch(res, 'primary', m.gcal_id, { sendUpdates: 'all' }); } catch (eMissing) { ev = null; }
+  }
+  if (!ev) {
+    if (!m.meet_url) res.conferenceData = { createRequest: { requestId: 'acg-' + m.id + '-' + Date.now(), conferenceSolutionKey: { type: 'hangoutsMeet' } } };
+    ev = Calendar.Events.insert(res, 'primary', { conferenceDataVersion: 1, sendUpdates: 'all' });
+  }
+  var url = ev.hangoutLink || m.meet_url || '';
+  if (!url && ev.conferenceData && ev.conferenceData.entryPoints) {
+    ev.conferenceData.entryPoints.forEach(function (p) { if (p.entryPointType === 'video' && !url) url = p.uri; });
+  }
+  var out = save(ev.id, url);
+  out.invited = attendees.length;
+  return out;
+}
+
+/** The demo / planning agenda: "T:id,D:id" items resolved to titles. */
+function agendaOf_(m, data) {
+  return String(m.items || '').split(',').map(function (x) { return x.trim(); }).filter(Boolean).map(function (ref) {
+    var kind = ref.slice(0, 1), id = ref.slice(2);
+    var list = kind === 'D' ? data.Deliverables : data.Tasks;
+    var row = (list || []).filter(function (r) { return String(r.id) === id; })[0];
+    return row ? row.title || row.name : '';
+  }).filter(Boolean);
 }
 
 // --------------------------------------------------------------------------

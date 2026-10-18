@@ -178,13 +178,13 @@ function ProjectsAdmin() {
   const { open } = useEditor()
   const people = db.Team.filter((m) => String(m.active) !== 'false')
   return (
-    <Card pad={false} eyebrow={L('پروژه‌ها', 'Projects')} title={L('مدیر پروژه، کارفرما و وضعیت', 'Lead, client and status')}>
+    <Card pad={false} eyebrow={L('پروژه‌ها', 'Projects')} title={L('مدیر محصول پروژه، کارفرما و وضعیت', 'Lead, client and status')}>
       <div className="overflow-x-auto border-t border-line">
         <table className="w-full min-w-[52rem]">
           <thead className="border-b border-line">
             <tr>
               <th className="th">{L('پروژه', 'Project')}</th>
-              <th className="th">{L('مدیر پروژه', 'Lead')}</th>
+              <th className="th">{L('مدیر محصول پروژه', 'Lead')}</th>
               <th className="th">{L('کارفرما / رابط', 'Client / liaison')}</th>
               <th className="th">{L('وضعیت', 'Status')}</th>
               <th className="th text-center">{L('قرارداد', 'Contracts')}</th>

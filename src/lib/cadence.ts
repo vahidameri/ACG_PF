@@ -6,7 +6,7 @@
 import type { DB, Project, WeeklyDelivery } from './types'
 import { addDays, todayISO } from './jalali'
 import { weekCfg, weekStart } from './weeks'
-import type { T2 } from './i18n'
+import { locale, type T2 } from './i18n'
 
 export const DAYS: T2[] = [['شنبه', 'Saturday'], ['یکشنبه', 'Sunday'], ['دوشنبه', 'Monday'], ['سه‌شنبه', 'Tuesday'], ['چهارشنبه', 'Wednesday'], ['پنجشنبه', 'Thursday'], ['جمعه', 'Friday']]
 export const DAY_OPTIONS: Record<string, T2> = { '': ['— ندارد —', '— None —'], ...Object.fromEntries(DAYS.map((d, i) => [String(i), d])) }
@@ -78,3 +78,10 @@ export const WEEK_STATE: Record<WeekState, T2> = {
   missed: ['تحویل نشد', 'Missed'],
 }
 export const needsAttention = (s: WeekState | '') => s === 'today' || s === 'late' || s === 'missed'
+
+/** "Every Sunday" — the project's weekly delivery day in words ('' when it has none). */
+export function everyDay(p: Project) {
+  if (p.delivery_day === undefined || p.delivery_day === '' || !(Number(p.delivery_day) >= 0 && Number(p.delivery_day) <= 6)) return ''
+  const d = DAYS[Number(p.delivery_day)]
+  return locale.lang === 'fa' ? `هر ${d[0]}` : `Every ${d[1]}`
+}

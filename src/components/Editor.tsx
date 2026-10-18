@@ -87,7 +87,7 @@ export const SCHEMAS: Record<EditableSheet, { title: T2; prefix: string; fields:
       { key: 'category', label: ['دسته', 'Category'], type: 'text', half: true },
       { key: 'description', label: ['شرح', 'Description'], type: 'textarea' },
       { key: 'objective', label: ['هدف کسب‌وکاری', 'Business objective'], type: 'text' },
-      { key: 'owner', label: ['مدیر پروژه', 'Project manager'], type: 'person', half: true },
+      { key: 'owner', label: ['مدیر محصول پروژه', 'Project PM'], type: 'person', half: true },
       { key: 'client', label: ['کارفرما', 'Client'], type: 'text', half: true },
       { key: 'liaison', label: ['رابط پروژه', 'Client liaison'], type: 'text', half: true },
       { key: 'liaison_contact', label: ['تلفن یا ایمیل رابط', 'Liaison phone or email'], type: 'text', half: true },
@@ -236,11 +236,11 @@ export const SCHEMAS: Record<EditableSheet, { title: T2; prefix: string; fields:
       { key: 'meet_url', label: ['لینک Google Meet', 'Google Meet link'], type: 'text', half: true },
       { key: 'facilitator', label: ['برگزارکننده', 'Facilitator'], type: 'person', half: true },
       { key: 'status', label: ['وضعیت', 'Status'], type: 'select', options: MEETING_STATUS, half: true },
-      { key: 'attendees', label: ['حاضران', 'Attendees'], type: 'text' },
+      { key: 'attendees', label: ['حاضران', 'Attendees'], type: 'people' },
       { key: 'notes', label: ['صورت‌جلسه', 'Minutes'], type: 'textarea' },
       { key: 'decisions', label: ['تصمیم‌ها', 'Decisions'], type: 'textarea' },
     ],
-    defaults: () => ({ series: 'portfolio', status: 'scheduled', date: todayISO(), time: weekCfg().weeklyTime, duration: 45, notes: '', decisions: '', project_id: '', gcal_id: '', meet_url: '' }),
+    defaults: () => ({ series: 'portfolio', status: 'scheduled', date: todayISO(), time: weekCfg().weeklyTime, duration: 45, notes: '', decisions: '', project_id: '', gcal_id: '', meet_url: '', attendees: '', facilitator: '', items: '', checklist: '', sprint_id: '' }),
   },
   Contracts: {
     title: ['قرارداد', 'Contract'],
@@ -510,7 +510,7 @@ function EditorModal({ sheet, row, isNew, onClose }: { sheet: EditableSheet; row
     }
     try {
       await upsert(sheet, out as never)
-      if (sheet === 'Meetings' && isNew) auto.meetingCreated(out as never)
+      if (sheet === 'Meetings') auto.meetingSaved(out as never, isNew ? undefined : (row as never))
       toast(isNew ? L(`${title} ایجاد شد`, `${title} created`) : L('تغییرات ذخیره شد', 'Changes saved'))
       onClose()
     } catch {

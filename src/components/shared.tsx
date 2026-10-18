@@ -1,5 +1,5 @@
 import { DeliveredButton, DeliveryBadge, DeliveryHistory } from './DeliveryDay'
-import { hasDeliveryDay } from '../lib/cadence'
+import { everyDay, hasDeliveryDay } from '../lib/cadence'
 import { Link } from 'react-router-dom'
 import { Check, Clock, AlarmClockOff, MessageSquare, Phone, Mail, Users2, MoreHorizontal, AlertTriangle, Star } from 'lucide-react'
 import type { FollowUp, Project, Task } from '../lib/types'
@@ -193,7 +193,10 @@ export function ProjectCard({ p }: { p: Project }) {
           {p.pause_reason && ` — ${p.pause_reason}`}
         </div>
       )}
-      <h3 className="mt-3 text-[1.0625rem] font-semibold leading-snug tracking-tight">{p.name}</h3>
+      <h3 className="mt-3 flex flex-wrap items-baseline gap-x-2 text-[1.0625rem] font-semibold leading-snug tracking-tight">
+        {p.name}
+        {everyDay(p) && <span className="text-[0.6875rem] font-medium text-sub">· {everyDay(p)}</span>}
+      </h3>
       <p className="mt-1 line-clamp-1 text-xs leading-5 text-sub">{p.description}</p>
       {hasDeliveryDay(p) && (
         <div className="mt-2 flex items-center gap-2">

@@ -13,6 +13,7 @@ import Projects from './pages/Projects'
 import ProjectDetail from './pages/ProjectDetail'
 import Roadmap from './pages/Roadmap'
 import Sprints from './pages/Sprints'
+import Demos from './pages/Demos'
 import Tasks from './pages/Tasks'
 import FollowUps from './pages/FollowUps'
 import Risks from './pages/Risks'
@@ -121,6 +122,7 @@ export default function App() {
                 <Route path="/people/:id" element={<Profile />} />
                 <Route path="/me" element={<Profile />} />
                 <Route path="/sprints" element={<Sprints />} />
+                <Route path="/demos" element={<Demos />} />
                 <Route path="/tasks" element={<Tasks />} />
                 <Route path="/lookout" element={<Only rule="portfolio"><Lookout /></Only>} />
                 <Route path="/compass" element={<Navigate to="/lookout" replace />} />

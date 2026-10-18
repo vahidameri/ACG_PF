@@ -103,7 +103,7 @@ export default function Profile() {
                       <div className="mb-1 flex items-baseline justify-between gap-2 text-sm">
                         <Link to={`/projects/${a.project_id}`} className="truncate font-medium hover:underline">
                           {p?.name}
-                          {led.some((x) => x.id === a.project_id) && <span className="ms-2 text-[0.6875rem] font-normal text-sub">{L('مدیر پروژه', 'Lead')}</span>}
+                          {led.some((x) => x.id === a.project_id) && <span className="ms-2 text-[0.6875rem] font-normal text-sub">{L('مدیر محصول پروژه', 'Lead')}</span>}
                         </Link>
                         <span className="text-xs text-sub num">{fa(a.percent)}%</span>
                       </div>

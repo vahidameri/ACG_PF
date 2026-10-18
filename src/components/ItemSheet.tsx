@@ -707,7 +707,7 @@ export function parseChecklist(v: string) {
 }
 const serialize = (items: { done: boolean; text: string }[]) => items.map((i) => `[${i.done ? 'x' : ' '}] ${i.text}`).join('\n')
 
-function Checklist({ value, onChange }: { value: string; onChange: (v: string) => void }) {
+export function Checklist({ value, onChange, title }: { value: string; onChange: (v: string) => void; title?: string }) {
   const { canEdit } = useStore()
   const items = parseChecklist(value)
   const [draft, setDraft] = useState('')
@@ -715,7 +715,7 @@ function Checklist({ value, onChange }: { value: string; onChange: (v: string) =
   return (
     <div className="mt-6">
       <div className="eyebrow mb-2 flex items-center gap-2">
-        <ListChecks size={13} /> {L('چک‌لیست', 'Checklist')}
+        <ListChecks size={13} /> {title || L('چک‌لیست', 'Checklist')}
         {items.length > 0 && <span className="num">{fa(done)}/{fa(items.length)}</span>}
       </div>
       {items.length > 0 && (

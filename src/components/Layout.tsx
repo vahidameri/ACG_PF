@@ -3,7 +3,7 @@ import { NavLink, useLocation, useNavigate, Link } from 'react-router-dom'
 import {
   LayoutGrid, Briefcase, ListChecks, BellRing, ShieldAlert, FileText, Settings, Moon, Sun, Search, Plus, RefreshCw, Menu,
   Sparkles, CheckCircle2, AlertCircle, Bell, PanelLeftClose, PanelLeftOpen, Languages, Star, AtSign, Flag, Clock, CircleAlert, Ban, CalendarDays, Keyboard, PackageCheck, CalendarRange, Gauge, UserRound, LogOut,
-  Binoculars, Repeat,
+  Binoculars, Repeat, Map, Zap, Presentation,
 } from 'lucide-react'
 import { useStore, clearSnaps } from '../lib/store'
 import { useI18n, L } from '../lib/i18n'
@@ -94,25 +94,45 @@ export function Layout({ children }: { children: ReactNode }) {
   const overCap = overloaded(db, ws).length
   const radarLate = leader ? db.Tasks.filter((t) => tracking(t, me) && isLate(t)).length + db.Projects.filter((p) => needsAttention(weekState(p, db))).length : 0
 
+  // agile layout: my work → planning → doing → watching
+  const openTasks = db.Tasks.filter((t) => t.status !== 'done').length
+  const nextDemo = db.Meetings.filter((m) => ['planning', 'demo', 'retro'].includes(m.series) && m.status === 'scheduled' && m.date >= todayISOStr()).length
   const groups: { label: string; links: { to: string; label: string; icon: typeof LayoutGrid; badge?: number; count?: number; hub?: Hub }[] }[] = [
     {
       label: L('کار من', 'My work'),
       links: [
         { to: '/my', label: L('خانه', 'Home'), icon: Sparkles, badge: myCount },
-        ...(leader ? [{ to: '/lookout', label: L('دیده‌بان', 'Lookout'), icon: Binoculars, badge: radarLate }] : []),
         { to: '/calendar', label: L('تقویم', 'Calendar'), icon: CalendarDays },
         { to: '/meetings', label: L('جلسات', 'Meetings'), icon: CalendarRange },
-        { to: '/tasks', label: L('کارها', 'Work'), icon: ListChecks, count: db.Tasks.filter((t) => t.status !== 'done').length, hub: 'work' },
       ],
     },
     {
-      label: L('ACG', 'ACG'),
+      label: L('برنامه‌ریزی', 'Planning'),
       links: [
-        ...(leader ? [{ to: '/', label: L('نمای کلی', 'Overview'), icon: LayoutGrid, hub: 'overview' as Hub }] : []),
+        ...(leader ? [{ to: '/roadmap', label: L('رودمپ', 'Roadmap'), icon: Map }] : []),
+        { to: '/sprints', label: L('اسپرینت‌ها', 'Sprints'), icon: Zap },
+        { to: '/demos', label: L('دمو و برنامه‌ریزی', 'Demos & planning'), icon: Presentation, count: nextDemo },
+        { to: '/plan', label: L('برنامه‌ی تحویل', 'Delivery plan'), icon: PackageCheck },
+      ],
+    },
+    {
+      label: L('اجرا', 'Delivery'),
+      links: [
         { to: '/projects', label: leader ? L('پروژه‌ها', 'Projects') : L('پروژه‌های من', 'My projects'), icon: Briefcase, count: db.Projects.filter((p) => p.status === 'active').length },
-        { to: '/plan', label: L('برنامه و تحویل', 'Plan & delivery'), icon: PackageCheck, hub: leader ? ('plan' as Hub) : undefined },
+        { to: '/tasks', label: L('تسک‌ها و بورد', 'Tasks & board'), icon: ListChecks, count: openTasks },
+        { to: '/followups', label: L('پیگیری‌ها', 'Follow-ups'), icon: BellRing },
+        ...(leader ? [{ to: '/teams', label: L('واحدها و تحویل‌ها', 'Units & hand-offs'), icon: Repeat }] : []),
+      ],
+    },
+    {
+      label: L('پایش', 'Watching'),
+      links: [
+        ...(leader ? [{ to: '/lookout', label: L('دیده‌بان', 'Lookout'), icon: Binoculars, badge: radarLate, hub: 'lookout' as Hub }] : []),
         { to: '/updates', label: L('گزارش هفتگی', 'Weekly updates'), icon: FileText, badge: updatesMissing },
-        ...(leader ? [{ to: '/team', label: L('ظرفیت و منابع', 'Capacity & resourcing'), icon: Gauge, badge: overCap }] : []),
+        ...(leader ? [
+          { to: '/team', label: L('ظرفیت و منابع', 'Capacity & resourcing'), icon: Gauge, badge: overCap },
+          { to: '/risks', label: L('ریسک و تصمیم', 'Risks & decisions'), icon: ShieldAlert },
+        ] : []),
       ],
     },
     ...(can.backoffice(access)

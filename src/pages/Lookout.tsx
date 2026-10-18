@@ -5,6 +5,7 @@ import { Link } from 'react-router-dom'
 import { Binoculars, PackageCheck, Repeat, UserRound } from 'lucide-react'
 import { useStore } from '../lib/store'
 import { useEditor } from '../components/Editor'
+import { HubNav } from '../components/HubNav'
 import { Avatar, AvatarStack, Band, Card, Due, Empty, HealthDot, Overlap, Segmented, StatStrip, StatusIcon, cx } from '../components/ui'
 import { DeliveredButton, DeliveryHistory, DeliveryWeek, stateTone } from '../components/DeliveryDay'
 import { HandoffCard } from '../components/Handoffs'
@@ -69,7 +70,7 @@ export default function Lookout() {
 
   return (
     <>
-      <Band
+      <Band nav={<HubNav hub="lookout" />}
         eyebrow={
           <span className="flex items-center gap-1.5">
             <Binoculars size={12} /> {L('اطلس · دید از بالا', 'Atlas · the view from above')}

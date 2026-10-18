@@ -37,6 +37,9 @@ const seriesTone: Record<string, string> = {
   product: 'bg-wine/10 text-wine dark:text-[#ec7892]',
   tech: 'bg-brand/10 text-brand dark:text-brand-soft',
   project: 'bg-warn/12 text-warn',
+  planning: 'bg-brand/10 text-brand dark:text-brand-soft',
+  demo: 'bg-good/10 text-good',
+  retro: 'bg-[#be185d]/10 text-[#be185d] dark:text-[#f9a8d4]',
   one_on_one: 'bg-good/10 text-good',
   other: 'bg-muted text-sub',
 }
@@ -169,9 +172,12 @@ function MeetingRoom({ m }: { m: Meeting }) {
     await upsert('Meetings', { ...m, notes, decisions, ...patch })
     toast(patch.status === 'held' ? L('جلسه بسته شد', 'Meeting closed') : L('صورت‌جلسه ذخیره شد', 'Minutes saved'))
     if (patch.status === 'held') auto.meetingHeld({ ...m, notes, decisions, ...patch })
+    if (patch.status === 'cancelled' || patch.date || patch.time) auto.meetingSaved({ ...m, notes, decisions, ...patch }, m)
   }
   const scheduleNext = async () => {
-    await upsert('Meetings', { ...m, id: uid('MT'), date: addDays(m.date, 7), status: 'scheduled', notes: '', decisions: '' })
+    const next: Meeting = { ...m, id: uid('MT'), date: addDays(m.date, 7), status: 'scheduled', notes: '', decisions: '', gcal_id: '', checklist: '' }
+    await upsert('Meetings', next)
+    auto.meetingSaved(next)
     toast(L(`جلسه‌ی ${fmtDayMonth(addDays(m.date, 7))} ساخته شد`, `Meeting on ${fmtDayMonth(addDays(m.date, 7))} created`))
   }
 

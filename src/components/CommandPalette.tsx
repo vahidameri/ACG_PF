@@ -9,7 +9,7 @@ import { useEditor } from './Editor'
 import { useComposer } from './UpdateComposer'
 import { can } from '../lib/access'
 
-const LEADER_ONLY: string[] = ['/', '/pulse', '/teams', '/roadmap', '/risks', '/team', '/report']
+const LEADER_ONLY: string[] = ['/', '/lookout', '/pulse', '/teams', '/roadmap', '/risks', '/team', '/report']
 import { cx, HealthDot, StatusIcon } from './ui'
 import { projectMetrics } from '../lib/metrics'
 
@@ -61,7 +61,8 @@ export function CommandPalette({ open, onClose }: { open: boolean; onClose: () =
       [
         ['/my', L('میز کار من', 'My desk')],
         ['/calendar', L('تقویم', 'Calendar')],
-        ['/', L('نمای کلی ACG', 'ACG overview')],
+        ['/lookout', L('دیده‌بان', 'Lookout')],
+        ['/', L('وضعیت ACG', 'ACG status')],
         ['/pulse', L('برد وضعیت ACG', 'Status board')],
         ['/teams', L('واحدها و تحویل‌ها', 'Units & hand-offs')],
         ['/projects', L('پروژه‌ها', 'Projects')],
@@ -69,6 +70,7 @@ export function CommandPalette({ open, onClose }: { open: boolean; onClose: () =
         ['/tasks', L('تسک‌ها', 'Tasks')],
         ['/followups', L('پیگیری‌ها', 'Follow-ups')],
         ['/sprints', L('اسپرینت‌ها', 'Sprints')],
+        ['/demos', L('دمو و برنامه‌ریزی اسپرینت', 'Demos & sprint planning')],
         ['/risks', L('ریسک‌ها', 'Risks')],
         ['/team', L('ظرفیت تیم و افراد', 'Team capacity')],
         ['/plan', L('برنامه‌ی تحویل', 'Delivery plan')],

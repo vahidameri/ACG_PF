@@ -110,11 +110,16 @@ export const MEETING_SERIES: Record<MeetingSeries, T2> = {
   design: ['جلسه‌ی هفتگی دیزاین', 'Design weekly'],
   tech: ['جلسه‌ی هفتگی تک', 'Tech weekly'],
   project: ['جلسه‌ی هفتگی پروژه', 'Project weekly'],
+  planning: ['برنامه‌ریزی اسپرینت', 'Sprint planning'],
+  demo: ['دمو و ریویو', 'Demo & review'],
+  retro: ['رترو', 'Retro'],
   one_on_one: ['جلسه‌ی یک‌به‌یک', 'One-on-one'],
   other: ['سایر جلسات', 'Other meetings'],
 }
-/** Series that repeat every week (everything except one-on-ones and other meetings). */
-export const isWeeklySeries = (s: string) => !!s && s !== 'one_on_one' && s !== 'other'
+/** Sprint ceremonies are planned once per sprint, not copied every week. */
+export const AGILE_SERIES = ['planning', 'demo', 'retro']
+/** Series that repeat every week (everything except sprint ceremonies, one-on-ones and other meetings). */
+export const isWeeklySeries = (s: string) => !!s && s !== 'one_on_one' && s !== 'other' && !AGILE_SERIES.includes(s)
 export const MEETING_STATUS: Record<Meeting['status'], T2> = {
   scheduled: ['برنامه‌ریزی‌شده', 'Scheduled'],
   held: ['برگزار شد', 'Held'],

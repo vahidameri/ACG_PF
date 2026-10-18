@@ -62,7 +62,7 @@ export default function Projects() {
             <FilterSelect value={health} onChange={setHealth} placeholder={L('سلامت', 'Health')} options={options(HEALTH, lang)} />
             <FilterSelect value={prio} onChange={setPrio} placeholder={L('اولویت', 'Priority')} options={options(PRIORITY, lang)} />
             <FilterSelect value={cat} onChange={setCat} placeholder={L('دسته', 'Category')} options={cats.map((c) => ({ value: c, label: c }))} />
-            <FilterSelect value={owner} onChange={setOwner} placeholder={L('مدیر پروژه', 'Lead')} options={owners.map((c) => ({ value: c, label: c }))} />
+            <FilterSelect value={owner} onChange={setOwner} placeholder={L('مدیر محصول پروژه', 'Lead')} options={owners.map((c) => ({ value: c, label: c }))} />
           </Toolbar>
         </div>
         {scope === 'archived' ? (

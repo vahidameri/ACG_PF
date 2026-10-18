@@ -3,7 +3,7 @@
 //   org.teams  — teams a person can belong to
 //   org.sides  — the working sides that hand work to each other (default: product, design, tech)
 // The label maps used across the app are updated in place, so every page follows the settings.
-import { ACCESS, JOB_TITLE, JOB_TITLE_OPTIONS, MEETING_SERIES, TEAM_NAMES } from './labels'
+import { ACCESS, AGILE_SERIES, JOB_TITLE, JOB_TITLE_OPTIONS, MEETING_SERIES, TEAM_NAMES } from './labels'
 import { TRACK, TRACKS, SIDE_COLOR } from './tracks'
 import type { T2 } from './i18n'
 
@@ -60,12 +60,18 @@ const refill = (target: Record<string, T2>, items: OrgItem[]) => {
   for (const i of items) target[i.id] = [i.fa, i.en]
 }
 
+function withAgile<X extends { id: string }>(list: X[]): X[] {
+  const add = ORG_DEFAULT.series.filter((d) => AGILE_SERIES.includes(d.id) && !list.some((x) => x.id === d.id)) as unknown as X[]
+  return add.length ? [...list, ...add] : list
+}
+
 export function applyOrg(get: (k: string) => string | undefined) {
   cur = {
     titles: parse(get(ORG_KEYS.titles), ORG_DEFAULT.titles),
     teams: parse(get(ORG_KEYS.teams), ORG_DEFAULT.teams),
     sides: parse(get(ORG_KEYS.sides), ORG_DEFAULT.sides),
-    series: parse(get(ORG_KEYS.series), ORG_DEFAULT.series),
+    // sprint ceremonies (planning, demo, retro) are part of the product, so a saved list still gets them
+    series: withAgile(parse(get(ORG_KEYS.series), ORG_DEFAULT.series)),
     links: parse(get(ORG_KEYS.links), ORG_DEFAULT.links),
     // access levels are fixed (they decide what each person sees); only their names change
     access: ORG_DEFAULT.access.map((d) => parse(get(ORG_KEYS.access), ORG_DEFAULT.access).find((x) => x.id === d.id) || d),

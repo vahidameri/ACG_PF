@@ -178,7 +178,7 @@ function SubmissionTile({ r, canEdit, onWrite, onRemind, Arrow }: { r: Row; canE
             <PenLine size={13} /> {r.u ? L('ویرایش', 'Edit') : L('ثبت گزارش', 'Write')}
           </button>
           {!r.u && (
-            <button className="btn-outline btn-sm" onClick={onRemind} title={L('یادآوری به مدیر پروژه', 'Remind the lead')}>
+            <button className="btn-outline btn-sm" onClick={onRemind} title={L('یادآوری به مدیر محصول پروژه', 'Remind the lead')}>
               <BellRing size={13} />
             </button>
           )}

@@ -1,7 +1,6 @@
 import { useState } from 'react'
 import { Plus } from 'lucide-react'
 import { useStore } from '../lib/store'
-import { HubNav } from '../components/HubNav'
 import { useEditor } from '../components/Editor'
 import { Band, Card, Empty, FilterSelect, Overlap, Toolbar, Person, Chip, cx, StatStrip } from '../components/ui'
 import { RiskMatrix, riskTone } from '../components/widgets'
@@ -29,7 +28,7 @@ export default function Risks() {
 
   return (
     <>
-      <Band nav={<HubNav hub="overview" />}
+      <Band
         eyebrow={<span>RAID</span>}
         title={L('ریسک‌ها، مسائل و تصمیم‌ها', 'Risks, issues & decisions')}
         actions={
