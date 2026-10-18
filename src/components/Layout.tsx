@@ -28,7 +28,7 @@ import { AcgMark } from './Brand'
 import { lbl } from '../lib/i18n'
 
 export function Layout({ children }: { children: ReactNode }) {
-  const { db, me, setMe, mode, loading, error, refresh, lastSync, toasts, canEdit, dismissToast, config, setConfig, access, serverVersion } = useStore()
+  const { db, me, setMe, mode, loading, error, refresh, lastSync, toasts, canEdit, dismissToast, config, setConfig, access, serverVersion, setting } = useStore()
   const { signOut } = useGoogle()
   const [, setEntered] = usePref<boolean>('acg.entered', false)
   const myMember = db.Team.find((m) => m.name === me)
@@ -391,6 +391,12 @@ export function Layout({ children }: { children: ReactNode }) {
               `نسخه‌ی صفحه ${VERSION} است ولی سرور (Code.gs) ${serverVersion || 'قدیمی‌تر از 1.10.1'} — Code.gs را جایگزین کنید و در Manage deployments برای Atlas Team «New version» بزنید.`,
               `This page is ${VERSION} but the server (Code.gs) is ${serverVersion || 'older than 1.10.1'} — replace Code.gs and create a New version of Atlas Team in Manage deployments.`,
             )}
+          </div>
+        )}
+        {mode === 'live' && lastSync && can.backoffice(access) && !setting('app.google_url', '') && (
+          <div className="flex flex-wrap items-center justify-center gap-x-3 bg-warn px-4 py-2 text-center text-xs text-white no-print">
+            {L('ورود با گوگل برای تیم فعال نیست: لینک انتشار «Atlas Google» هنوز در تنظیمات ثبت نشده و فعلاً فقط خود شما این دکمه را می‌بینید.', 'Google sign-in is off for the team: the “Atlas Google” deployment link is not saved (only you see the button).')}
+            <Link to="/settings" className="font-semibold underline">{L('ذخیره‌ی لینک', 'Save the link')}</Link>
           </div>
         )}
         {error && mode === 'live' && <div className="bg-bad px-4 py-2 text-center text-xs text-white no-print">{L('اتصال به Google Sheet برقرار نشد', 'Could not reach Google Sheet')}: {error}</div>}

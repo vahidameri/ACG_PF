@@ -18,7 +18,7 @@
  *   viewer — read only (leadership)
  */
 
-var ATLAS_VERSION = '1.12.1'; // shown on the login page and by diagnose()
+var ATLAS_VERSION = '1.12.2'; // shown on the login page and by diagnose()
 
 var SCHEMA = {
   Projects: ['id', 'code', 'name', 'description', 'category', 'owner', 'client', 'liaison', 'liaison_contact', 'status', 'priority', 'phase', 'start_date', 'end_date', 'progress', 'health_override', 'objective', 'paused_at', 'pause_reason', 'delivery_day', 'last_delivery', 'archived', 'archived_at', 'links'],
@@ -673,6 +673,10 @@ function diagnose() {
   Logger.log('نسخه‌ی Code.gs = ' + ATLAS_VERSION);
   Logger.log('API_URL = ' + (url || '(خالی — setApiUrl اجرا نشده)'));
   Logger.log('GOOGLE_CLIENT_ID = ' + (props.getProperty('GOOGLE_CLIENT_ID') || '(خالی)'));
+  // teammates only see "Continue with Google" when the Atlas Google link is saved in the back office
+  var g = setting_('app.google_url', '');
+  Logger.log('لینک ورود با گوگل (app.google_url) = ' + (g || '(خالی — تیم دکمه‌ی «ورود با گوگل» را نمی‌بیند؛ بک‌آفیس ← تنظیمات)'));
+  if (g && url && g.split('?')[0] === url.split('?')[0]) Logger.log('⚠ لینک ورود با گوگل همان لینک Atlas Team است؛ باید لینک انتشار Atlas Google باشد.');
   if (!url) return;
   var show = function (label, res) {
     var t = res.getContentText();
