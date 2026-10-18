@@ -53,7 +53,11 @@ export function scopeDB(db: DB, me: string, access: Access): DB {
   const myId = db.Team.find((m) => m.name === me)?.id
   // members see their own tasks, the ones shared with them, and every task of a project they lead
   const led = new Set(db.Projects.filter((p) => p.owner === me).map((p) => p.id))
-  const Tasks = out.Tasks.filter((t) => isMine(t, me) || led.has(t.project_id))
+  // a hand-off sent to me, or to my unit, brings its task along so it can be accepted or returned
+  const myUnit = db.Team.find((m) => m.name === me)?.track || ''
+  const forMe = (h: { to_person: string; to_side: string }) => h.to_person === me || (!h.to_person && !!myUnit && h.to_side === myUnit)
+  const handed = new Set(out.Handoffs.filter(forMe).map((h) => h.task_id))
+  const Tasks = out.Tasks.filter((t) => isMine(t, me) || led.has(t.project_id) || handed.has(t.id))
   const Meetings = out.Meetings.filter((m) => names(m.attendees).includes(me) || m.facilitator === me || inP(m.project_id))
   const visible: Record<string, Set<string>> = {
     Tasks: new Set(Tasks.map((t) => t.id)),
@@ -65,7 +69,7 @@ export function scopeDB(db: DB, me: string, access: Access): DB {
     Risks: new Set(out.Risks.filter((r) => inP(r.project_id)).map((r) => r.id)),
   }
   // hand-offs: the ones I sent or received, and those on tasks I can see
-  const Handoffs = out.Handoffs.filter((h) => h.from_person === me || h.to_person === me || visible.Tasks.has(h.task_id) || (!h.task_id && inP(h.project_id)))
+  const Handoffs = out.Handoffs.filter((h) => h.from_person === me || forMe(h) || visible.Tasks.has(h.task_id) || (!h.task_id && inP(h.project_id)))
   return {
     ...out,
     Handoffs,

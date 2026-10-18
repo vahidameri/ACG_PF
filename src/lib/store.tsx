@@ -111,6 +111,8 @@ interface Store {
   db: DB
   /** archived projects, kept out of db */
   archived: Project[]
+  /** the Code.gs version the server runs (live mode) */
+  serverVersion: string
   mode: Mode
   role: Role
   me: string
@@ -160,6 +162,8 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   const [db, setDb] = useState<DB>(() => (mode === 'demo' ? loadDemo() : emptyDB()))
   const [role, setRole] = useState<Role>(mode === 'demo' ? 'admin' : 'viewer')
   const [remoteName, setRemoteName] = useState('')
+  /** Code.gs version reported by the server ('' = older than 1.10.1) */
+  const [serverVersion, setServerVersion] = useState('')
   const [meLocal, setMeLocal] = useState(() => {
     try {
       return localStorage.getItem(ME_KEY) || ''
@@ -234,7 +238,8 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     if (!authed) return
     setLoading(true)
     try {
-      const { data, user } = await fetchAll(config)
+      const { data, user, version } = await fetchAll(config)
+      setServerVersion(version)
       const fresh = normalize(data)
       dbRef.current = fresh
       setDb(fresh)
@@ -408,9 +413,9 @@ export function StoreProvider({ children }: { children: ReactNode }) {
 
 
   const value = useMemo<Store>(
-    () => ({ db: live, archived, mode, role, me, setMe, loading, error, lastSync, config, setConfig, refresh, upsert, remove, resetDemo, canEdit: role !== 'viewer', access, authed, email, upload, action, setting, setSetting, toasts, toast, dismissToast }),
+    () => ({ db: live, archived, serverVersion, mode, role, me, setMe, loading, error, lastSync, config, setConfig, refresh, upsert, remove, resetDemo, canEdit: role !== 'viewer', access, authed, email, upload, action, setting, setSetting, toasts, toast, dismissToast }),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [live, archived, access, mode, role, me, authed, email, upload, action, loading, error, lastSync, config, refresh, upsert, remove, toasts, toast, dismissToast],
+    [live, archived, serverVersion, access, mode, role, me, authed, email, upload, action, loading, error, lastSync, config, refresh, upsert, remove, toasts, toast, dismissToast],
   )
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>
 }

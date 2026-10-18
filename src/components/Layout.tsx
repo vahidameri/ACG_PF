@@ -18,7 +18,7 @@ import { overloaded } from '../lib/capacity'
 import { isLate, tracking } from '../lib/radar'
 import { needsAttention, weekState } from '../lib/cadence'
 import { useGoogle } from '../lib/google'
-import { APP_NAME } from '../lib/brand'
+import { APP_NAME, VERSION } from '../lib/brand'
 import { hubOf, type Hub } from './HubNav'
 import { can } from '../lib/access'
 import { ACCESS, JOB_TITLE } from '../lib/labels'
@@ -27,7 +27,7 @@ import { AcgMark } from './Brand'
 import { lbl } from '../lib/i18n'
 
 export function Layout({ children }: { children: ReactNode }) {
-  const { db, me, setMe, mode, loading, error, refresh, lastSync, toasts, canEdit, dismissToast, config, setConfig, access } = useStore()
+  const { db, me, setMe, mode, loading, error, refresh, lastSync, toasts, canEdit, dismissToast, config, setConfig, access, serverVersion } = useStore()
   const { signOut } = useGoogle()
   const [, setEntered] = usePref<boolean>('acg.entered', false)
   const myMember = db.Team.find((m) => m.name === me)
@@ -301,6 +301,7 @@ export function Layout({ children }: { children: ReactNode }) {
           <span className={cx('hidden items-center gap-1.5 font-mono text-[0.6875rem] md:flex', error ? 'text-[#ff8a9a]' : 'text-white/45')} title={error}>
             <span className={cx('h-1.5 w-1.5 rounded-full', mode === 'demo' ? 'bg-[#f5c565]' : error ? 'bg-[#ff8a9a]' : 'bg-[#7fe0b0]')} />
             {mode === 'demo' ? L('نمایشی', 'DEMO') : syncText}
+            <span className="text-white/30" dir="ltr">v{VERSION}</span>
           </span>
           <button className="icon-btn text-white/75 hover:bg-white/10 hover:text-white" onClick={() => refresh()} title={L('همگام‌سازی', 'Sync')}>
             <RefreshCw size={17} className={loading ? 'animate-spin' : ''} />
@@ -355,6 +356,15 @@ export function Layout({ children }: { children: ReactNode }) {
           )}
         </header>
 
+        {/* page and server must be the same release; a half-done update shows here for the program manager */}
+        {mode === 'live' && lastSync && can.backoffice(access) && serverVersion !== VERSION && (
+          <div className="bg-warn px-4 py-2 text-center text-xs text-white no-print">
+            {L(
+              `نسخه‌ی صفحه ${VERSION} است ولی سرور (Code.gs) ${serverVersion || 'قدیمی‌تر از 1.10.1'} — Code.gs را جایگزین کنید و در Manage deployments برای Atlas Team «New version» بزنید.`,
+              `This page is ${VERSION} but the server (Code.gs) is ${serverVersion || 'older than 1.10.1'} — replace Code.gs and create a New version of Atlas Team in Manage deployments.`,
+            )}
+          </div>
+        )}
         {error && mode === 'live' && <div className="bg-bad px-4 py-2 text-center text-xs text-white no-print">{L('اتصال به Google Sheet برقرار نشد', 'Could not reach Google Sheet')}: {error}</div>}
 
         <main ref={mainRef} className="flex-1 overflow-y-auto">

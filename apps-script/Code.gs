@@ -18,7 +18,7 @@
  *   viewer — read only (leadership)
  */
 
-var ATLAS_VERSION = '1.10.0'; // shown on the login page and by diagnose()
+var ATLAS_VERSION = '1.10.1'; // shown on the login page and by diagnose()
 
 var SCHEMA = {
   Projects: ['id', 'code', 'name', 'description', 'category', 'owner', 'client', 'liaison', 'liaison_contact', 'status', 'priority', 'phase', 'start_date', 'end_date', 'progress', 'health_override', 'objective', 'paused_at', 'pause_reason', 'delivery_day', 'last_delivery', 'archived', 'archived_at', 'links'],
@@ -77,7 +77,7 @@ function doGet(e) {
     var user = auth_(e.parameter);
     var action = e.parameter.action || 'all';
     var me = { name: user.name, role: user.role, email: user.email, access: user.access };
-    if (action === 'all') return json_({ ok: true, user: me, data: readAll_(user) });
+    if (action === 'all') return json_({ ok: true, user: me, data: readAll_(user), version: ATLAS_VERSION });
     if (action === 'ping') return json_({ ok: true, user: me, version: ATLAS_VERSION });
     throw new Error('Unknown action: ' + action);
   } catch (err) {
@@ -111,9 +111,11 @@ function doPost(e) {
             guardPrivate_(body.sheet, body.action === 'delete' ? { id: body.id } : body.row, user);
       guardWrite_(body.sheet, body.action === 'delete' ? existingRow_(body.sheet, body.id) : body.row, user);
       var before = body.action === 'upsert' && body.sheet === 'Tasks' ? existingRow_('Tasks', body.row.id) : null;
-      if (body.action === 'upsert') result = upsert_(body.sheet, body.row, user);
-      if (body.action === 'upsert' && body.sheet === 'Tasks') { try { mailAssigned_(before, body.row, user); } catch (eMail) {} }
-      else if (body.action === 'delete') result = delete_(body.sheet, body.id, user);
+      if (body.action === 'upsert') {
+        result = upsert_(body.sheet, body.row, user);
+        // the assignment email must never turn a saved row into an error
+        if (body.sheet === 'Tasks') { try { mailAssigned_(before, body.row, user); } catch (eMail) {} }
+      } else if (body.action === 'delete') result = delete_(body.sheet, body.id, user);
       else throw new Error('Unknown action: ' + body.action);
     }
     return json_({ ok: true, row: result });
@@ -473,7 +475,12 @@ function applyScope_(data, user, owners) {
   // own + shared tasks, plus every task of a project this person leads
   var led = {};
   data.Projects.forEach(function (p) { if (p.owner === me) led[p.id] = 1; });
-  data.Tasks = data.Tasks.filter(function (t) { return isMine_(t, me) || !!led[t.project_id]; });
+  // a hand-off sent to me, or to my unit, brings its task along so it can be accepted or returned
+  var myUnit = ((data.Team || []).filter(function (m) { return m.name === me; })[0] || {}).track || '';
+  var forMe = function (h) { return h.to_person === me || (!h.to_person && myUnit && h.to_side === myUnit); };
+  var handed = {};
+  (data.Handoffs || []).forEach(function (h) { if (forMe(h)) handed[h.task_id] = 1; });
+  data.Tasks = data.Tasks.filter(function (t) { return isMine_(t, me) || !!led[t.project_id] || !!handed[t.id]; });
   data.Meetings = (data.Meetings || []).filter(function (m) { return listed(m.attendees) || m.facilitator === me || inP(m.project_id); });
   var vis = { Tasks: {}, Projects: ok, Meetings: {}, FollowUps: {}, Deliverables: {}, Risks: {}, Team: {} };
   data.Tasks.forEach(function (t) { vis.Tasks[t.id] = 1; });
@@ -482,7 +489,7 @@ function applyScope_(data, user, owners) {
   data.Deliverables.forEach(function (d) { vis.Deliverables[d.id] = 1; });
   data.Risks.forEach(function (r) { vis.Risks[r.id] = 1; });
   data.Team.forEach(function (m) { vis.Team[m.id] = 1; });
-  data.Handoffs = (data.Handoffs || []).filter(function (h) { return h.from_person === me || h.to_person === me || vis.Tasks[h.task_id] || (!h.task_id && inP(h.project_id)); });
+  data.Handoffs = (data.Handoffs || []).filter(function (h) { return h.from_person === me || forMe(h) || vis.Tasks[h.task_id] || (!h.task_id && inP(h.project_id)); });
   data.Deliveries = (data.Deliveries || []).filter(function (x) { return inP(x.project_id); });
   data.Comments = data.Comments.filter(function (c) { return vis[c.entity] && vis[c.entity][c.entity_id]; });
   data.Files = data.Files.filter(function (f) { return vis[f.entity] && vis[f.entity][f.entity_id]; });

@@ -70,13 +70,13 @@ async function readJson(res: Response) {
   return JSON.parse(text)
 }
 
-export async function fetchAll(c: Config): Promise<{ data: DB; user: RemoteUser }> {
+export async function fetchAll(c: Config): Promise<{ data: DB; user: RemoteUser; version: string }> {
   const q = new URLSearchParams({ action: 'all', ...auth(c) }).toString()
   const url = `${c.apiUrl}${c.apiUrl.includes('?') ? '&' : '?'}${q}`
   const res = await fetch(url, { method: 'GET', redirect: 'follow' })
   const json = (await readJson(res)) as AllResponse
   if (!json.ok) throw new Error(json.error || 'خطای ناشناخته از سرور')
-  return { data: json.data, user: json.user }
+  return { data: json.data, user: json.user, version: String((json as { version?: string }).version || '') }
 }
 
 // text/plain avoids a CORS preflight, which Apps Script doesn't answer.
