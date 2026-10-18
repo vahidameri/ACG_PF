@@ -81,8 +81,8 @@ export default function Profile() {
       >
         <StatStrip
           items={[
-            { label: L('بار این هفته', 'Load this week'), value: `${fa(w.load)}%`, tone: loadTone(w.load) === 'muted' ? undefined : loadTone(w.load) },
-            { label: L('ظرفیت آزاد', 'Free'), value: `${fa(Math.max(0, w.free))}%`, sub: capOf(m) !== 100 ? L(`از ظرفیت ${fa(capOf(m))}٪`, `of ${capOf(m)}%`) : undefined },
+            { label: L('بار این هفته', 'Load this week'), value: `${fa(`${w.load}%`)}`, tone: loadTone(w.load) === 'muted' ? undefined : loadTone(w.load) },
+            { label: L('ظرفیت آزاد', 'Free'), value: `${fa(`${Math.max(0, w.free)}%`)}`, sub: capOf(m) !== 100 ? L(`از ظرفیت ${fa(capOf(m))}٪`, `of ${capOf(m)}%`) : undefined },
             { label: L('پروژه‌ها', 'Projects'), value: fa(w.projects.length) },
             { label: L('تسک باز', 'Open tasks'), value: hiddenCount ? '—' : fa(tasks.length), sub: hiddenCount ? L('خصوصی', 'private') : undefined },
             { label: L('معوق', 'Overdue'), value: hiddenCount ? '—' : fa(tasks.filter(isTaskOverdue).length), tone: tasks.some(isTaskOverdue) ? 'red' : undefined },
@@ -105,7 +105,7 @@ export default function Profile() {
                           {p?.name}
                           {led.some((x) => x.id === a.project_id) && <span className="ms-2 text-[0.6875rem] font-normal text-sub">{L('مدیر محصول پروژه', 'Lead')}</span>}
                         </Link>
-                        <span className="text-xs text-sub num">{fa(a.percent)}%</span>
+                        <span className="text-xs text-sub num">{fa(`${a.percent}%`)}</span>
                       </div>
                       <div className="h-1.5 overflow-hidden rounded-full bg-muted">
                         <span className="block h-full rounded-full bg-brand dark:bg-brand-soft" style={{ width: `${Math.min(100, (a.percent / Math.max(1, w.available)) * 100)}%` }} />

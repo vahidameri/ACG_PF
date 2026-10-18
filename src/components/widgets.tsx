@@ -393,7 +393,7 @@ export function SprintHeader({ s, db }: { s: Sprint; db: DB }) {
         {fmtDayMonth(s.start_date)} — {fmtDayMonth(s.end_date)}
       </span>
       <span className="text-xs num">
-        <b>{fa(done)}</b>/{fa(committed)} SP · {fa(pct)}%
+        <b>{fa(done)}</b>/{fa(committed)} SP · {fa(`${pct}%`)}
       </span>
       {s.status === 'active' && <span className={cx('text-xs', daysLeft < 0 ? 'text-bad' : 'text-sub')}>{daysLeft >= 0 ? L(`${fa(daysLeft)} روز مانده`, `${daysLeft}d left`) : L('پایان یافته', 'Ended')}</span>}
       {s.goal && <span className="w-full text-xs text-sub">{s.goal}</span>}

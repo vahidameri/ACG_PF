@@ -200,7 +200,7 @@ export function Progress({ value, h, className, marker }: { value: number; h?: H
         <div
           className="absolute -top-1 h-3.5 w-[2px] rounded bg-ink/60"
           style={{ insetInlineStart: `calc(${Math.max(0, Math.min(100, marker))}% - 1px)` }}
-          title={`${L('زمان سپری‌شده', 'Time elapsed')}: ${fa(Math.round(marker))}%`}
+          title={`${L('زمان سپری‌شده', 'Time elapsed')}: ${fa(`${Math.round(marker)}%`)}`}
         />
       )}
     </div>
@@ -422,7 +422,7 @@ export function Ring({ value, size = 56, stroke = 6, h, light }: { value: number
         <circle cx={size / 2} cy={size / 2} r={r} stroke={light ? 'rgb(255 255 255 / .12)' : 'rgb(var(--muted))'} strokeWidth={stroke} fill="none" />
         <circle cx={size / 2} cy={size / 2} r={r} stroke={color} strokeWidth={stroke} fill="none" strokeDasharray={c} strokeDashoffset={c * (1 - v / 100)} strokeLinecap="round" style={{ transition: 'stroke-dashoffset .8s cubic-bezier(.2,.8,.2,1)' }} />
       </svg>
-      <span className="absolute text-sm font-semibold num">{fa(Math.round(v))}%</span>
+      <span className="absolute text-sm font-semibold num">{fa(`${Math.round(v)}%`)}</span>
     </div>
   )
 }

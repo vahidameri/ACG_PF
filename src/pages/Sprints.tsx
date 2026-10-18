@@ -155,7 +155,7 @@ export default function Sprints() {
                       </td>
                       <td className="td num">{fa(c)}</td>
                       <td className="td num">{fa(d)}</td>
-                      <td className={cx('td font-semibold num', s.status === 'closed' && r < 80 ? 'text-bad' : s.status === 'closed' ? 'text-good' : '')}>{fa(r)}%</td>
+                      <td className={cx('td font-semibold num', s.status === 'closed' && r < 80 ? 'text-bad' : s.status === 'closed' ? 'text-good' : '')}>{fa(`${r}%`)}</td>
                     </tr>
                   )
                 })}

@@ -3,7 +3,7 @@ import { NavLink, useLocation, useNavigate, Link } from 'react-router-dom'
 import {
   LayoutGrid, Briefcase, ListChecks, BellRing, ShieldAlert, FileText, Settings, Moon, Sun, Search, Plus, RefreshCw, Menu,
   Sparkles, CheckCircle2, AlertCircle, Bell, PanelLeftClose, PanelLeftOpen, Languages, Star, AtSign, Flag, Clock, CircleAlert, Ban, CalendarDays, Keyboard, PackageCheck, CalendarRange, Gauge, UserRound, LogOut,
-  Binoculars, Repeat, Map, Zap, Target, FileSignature,
+  Binoculars, Repeat, Map, Zap, Target, FileSignature, Send,
 } from 'lucide-react'
 import { useStore, clearSnaps } from '../lib/store'
 import { useI18n, L } from '../lib/i18n'
@@ -130,6 +130,7 @@ export function Layout({ children }: { children: ReactNode }) {
       links: [
         ...(leader ? [{ to: '/lookout', label: L('دیده‌بان', 'Lookout'), icon: Binoculars, badge: radarLate, hub: 'lookout' as Hub }] : []),
         { to: '/updates', label: L('گزارش‌های هفتگی', 'Weekly updates'), icon: FileText, badge: updatesMissing },
+        ...(can.backoffice(access) ? [{ to: '/telegram', label: L('به‌روزرسانی از تلگرام', 'Update from Telegram'), icon: Send }] : []),
         ...(leader ? [
           { to: '/team', label: L('ظرفیت و منابع', 'Capacity & resourcing'), icon: Gauge, badge: overCap },
           { to: '/risks', label: L('ریسک‌ها و تصمیم‌ها', 'Risks & decisions'), icon: ShieldAlert },

@@ -5,7 +5,7 @@ import { PackageCheck } from 'lucide-react'
 import type { DeliveryStatus, Project, WeeklyDelivery } from '../lib/types'
 import { useStore } from '../lib/store'
 import { can } from '../lib/access'
-import { DAYS, WEEK_STATE, deliveryDate, hasDeliveryDay, history, onTimeRate, recordOf, weekState, type WeekState } from '../lib/cadence'
+import { DAYS, WEEK_STATE, deliveryDate, everyDay, hasDeliveryDay, history, onTimeRate, recordOf, weekLine, weekState, type WeekState } from '../lib/cadence'
 import { L, lbl, tr } from '../lib/i18n'
 import { addDays, fa, fmtDayMonth, todayISO } from '../lib/jalali'
 import { weekStart } from '../lib/weeks'
@@ -30,8 +30,8 @@ export function DeliveryBadge({ p, dark }: { p: Project; dark?: boolean }) {
   const st = weekState(p, db)
   if (!st) return null
   return (
-    <span className={cx('inline-flex h-6 items-center gap-1 rounded-full px-2.5 text-[0.6875rem] font-medium', dark ? 'bg-white/10 text-white' : stateTone[st])}>
-      <PackageCheck size={12} /> {tr(DAYS[Number(p.delivery_day)])} · {lbl(WEEK_STATE, st)}
+    <span title={everyDay(p) ? L(`روز تحویل: ${everyDay(p)}`, `Delivery day: ${everyDay(p)}`) : undefined} className={cx('inline-flex h-6 items-center gap-1 whitespace-nowrap rounded-full px-2.5 text-[0.6875rem] font-medium', dark ? 'bg-white/10 text-white' : stateTone[st])}>
+      <PackageCheck size={12} className="shrink-0" /> {weekLine(p, st)}
     </span>
   )
 }
@@ -80,11 +80,11 @@ export function DeliveredButton({ p, dark, small }: { p: Project; dark?: boolean
       {(close) => (
         <div className="space-y-2 p-2.5" onClick={(e) => e.stopPropagation()}>
           <div className="text-sm font-semibold">{L(`تحویل هفتگی ${p.name}`, `${p.name} — weekly delivery`)}</div>
-          <div className="text-[0.6875rem] text-sub">{L(`روز تحویل: ${tr(DAYS[Number(p.delivery_day)])} ${fmtDayMonth(deliveryDate(p))}`, `Delivery day: ${tr(DAYS[Number(p.delivery_day)])} ${fmtDayMonth(deliveryDate(p))}`)}</div>
+          <div className="text-[0.6875rem] text-sub">{L(`روز تحویل این هفته: ${tr(DAYS[Number(p.delivery_day)])}، ${fmtDayMonth(deliveryDate(p))}`, `This week’s delivery day: ${tr(DAYS[Number(p.delivery_day)])}, ${fmtDayMonth(deliveryDate(p))}`)}</div>
           <textarea className="input text-xs" rows={2} value={note} onChange={(e) => setNote(e.target.value)} placeholder={rec?.note || L('چه چیزی تحویل شد؟ لینک یا توضیح', 'What was delivered? Link or note')} />
           <div className="grid gap-1.5">
-            <button className="btn-primary btn-sm" onClick={() => save('delivered', close)}>{L('تحویل کامل', 'Delivered')}</button>
-            <button className="btn-outline btn-sm" onClick={() => save('partial', close)}>{L('تحویل بخشی', 'Partly delivered')}</button>
+            <button className="btn-primary btn-sm" onClick={() => save('delivered', close)}>{L('کامل تحویل شد', 'Fully delivered')}</button>
+            <button className="btn-outline btn-sm" onClick={() => save('partial', close)}>{L('بخشی تحویل شد', 'Partly delivered')}</button>
             <button className="btn-ghost btn-sm" onClick={() => save('skipped', close)}>{L('این هفته تحویل ندارد', 'No delivery this week')}</button>
           </div>
         </div>

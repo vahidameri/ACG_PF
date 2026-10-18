@@ -95,7 +95,7 @@ export default function ProjectDetail() {
         title={
           <span className="flex flex-wrap items-baseline gap-x-4 gap-y-2">
             {p.name}
-            {everyDay(p) && <span className="rounded-full bg-white/10 px-3 py-1 align-middle text-sm font-medium text-white/85">{L('تحویل', 'Delivery')} · {everyDay(p)}</span>}
+            {everyDay(p) && <span className="rounded-full bg-white/10 px-3 py-1 align-middle text-sm font-medium text-white/85">{L(`روز تحویل: ${everyDay(p)}`, `Delivery day: ${everyDay(p)}`)}</span>}
           </span>
         }
         sub={
@@ -160,12 +160,12 @@ export default function ProjectDetail() {
         </div>
         <StatStrip
           items={[
-            { label: L('پیشرفت', 'Progress'), value: `${fa(m.progress)}%`, tone: m.health },
-            { label: L('زمان سپری‌شده', 'Time elapsed'), value: `${fa(m.elapsed)}%` },
+            { label: L('پیشرفت', 'Progress'), value: `${fa(`${m.progress}%`)}`, tone: m.health },
+            { label: L('زمان سپری‌شده', 'Time elapsed'), value: `${fa(`${m.elapsed}%`)}` },
             { label: m.daysLeft >= 0 ? L('تا ددلاین', 'To deadline') : L('از ددلاین گذشته', 'Past deadline'), value: p.end_date ? fa(Math.abs(m.daysLeft)) : '—', tone: m.daysLeft < 0 ? 'red' : undefined, sub: L('روز', 'days') },
             { label: L('خروجی‌های باز', 'Open deliverables'), value: fa(deliverySummary(db, p.id).open.length), tone: deliverySummary(db, p.id).overdue.length ? 'red' : undefined, sub: L(`${fa(deliverySummary(db, p.id).overdue.length)} عقب‌افتاده`, `${deliverySummary(db, p.id).overdue.length} overdue`) },
             { label: L('تسک باز', 'Open tasks'), value: fa(m.openTasks), sub: L(`${fa(m.overdueTasks)} معوق · ${fa(m.blockedTasks)} مسدود`, `${m.overdueTasks} overdue · ${m.blockedTasks} blocked`) },
-            { label: L('ریسک باز', 'Open risks'), value: fa(m.openRisks), tone: m.highRisks ? 'red' : undefined, sub: L(`${fa(m.highRisks)} بحرانی`, `${m.highRisks} critical`) },
+            { label: L('ریسک‌های باز', 'Open risks'), value: fa(m.openRisks), tone: m.highRisks ? 'red' : undefined, sub: L(`${fa(m.highRisks)} بحرانی`, `${m.highRisks} critical`) },
           ]}
         />
       </Band>
@@ -210,8 +210,8 @@ export default function ProjectDetail() {
                 </div>
                 <div className="mt-5">
                   <div className="mb-1.5 flex justify-between text-[0.6875rem] text-sub">
-                    <span>{L('پیشرفت', 'Progress')} {fa(m.progress)}%</span>
-                    <span>{L('زمان', 'Time')} {fa(m.elapsed)}%</span>
+                    <span>{L('پیشرفت', 'Progress')} {fa(`${m.progress}%`)}</span>
+                    <span>{L(`${fa(m.elapsed)}٪ از زمان گذشته`, `${m.elapsed}% of time used`)}</span>
                   </div>
                   <Progress value={m.progress} h={m.health} marker={m.elapsed} className="h-2" />
                 </div>
@@ -487,7 +487,7 @@ export default function ProjectDetail() {
                         </div>
                         <div className="mt-2 flex items-center gap-2">
                           <Progress value={Number(a.percent)} />
-                          <span className="text-xs num">{fa(a.percent)}%</span>
+                          <span className="text-xs num">{fa(`${a.percent}%`)}</span>
                         </div>
                         {total > 100 && <div className="mt-1 text-[0.6875rem] text-bad">{L(`بار کل این هفته ${fa(total)}٪ — بیش از ظرفیت`, `Total load this week ${total}% — over capacity`)}</div>}
                       </div>
@@ -518,7 +518,7 @@ function ProjectDelivery({ projectId }: { projectId: string }) {
           [L('در پیش رو', 'Upcoming'), fa(upcoming.length), ''],
           [L('عقب‌افتاده', 'Overdue'), fa(sum.overdue.length), sum.overdue.length ? 'text-bad' : ''],
           [L('جابجا شده از تعهد', 'Moved from baseline'), fa(sum.slipped.length), sum.slipped.length ? 'text-warn' : ''],
-          [L('تحویل به‌موقع', 'On-time'), sum.onTimeRate === null ? '—' : `${fa(sum.onTimeRate)}%`, ''],
+          [L('تحویل به‌موقع', 'On-time'), sum.onTimeRate === null ? '—' : `${fa(`${sum.onTimeRate}%`)}`, ''],
         ].map(([l, v, c]) => (
           <div key={l} className="card p-4">
             <div className="text-[0.6875rem] text-sub">{l}</div>

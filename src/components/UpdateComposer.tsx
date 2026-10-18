@@ -214,7 +214,7 @@ function Composer({ projectId, update, onClose }: { projectId?: string; update?:
 
           <div>
             <label className="label">
-              {L('پیشرفت کلی', 'Overall progress')} <span className="text-ink num">{fa(progress)}%</span>
+              {L('پیشرفت کلی', 'Overall progress')} <span className="text-ink num">{fa(`${progress}%`)}</span>
               {m && <span className="ms-2 text-[0.6875rem] font-normal text-sub">{L(`زمان سپری‌شده: ${fa(Math.round(m.elapsed))}٪`, `time elapsed: ${Math.round(m.elapsed)}%`)}</span>}
             </label>
             <input type="range" min={0} max={100} step={1} value={progress} onChange={(e) => setProgress(Number(e.target.value))} className="w-full accent-[rgb(var(--brand))]" />

@@ -298,7 +298,7 @@ function Row({
           <span className="block truncate text-[0.625rem] text-sub">{p.owner || L('بدون مدیر محصول پروژه', 'No lead')}</span>
         </Link>
         <span className="shrink-0 text-end text-[0.6875rem] num">
-          <b className="font-semibold">{fa(m.progress)}%</b>
+          <b className="font-semibold">{fa(`${m.progress}%`)}</b>
           {planned !== null && <span className={cx('block text-[0.5625rem]', m.progress < planned - 10 ? 'text-bad' : 'text-sub')}>{L(`برنامه ${fa(planned)}٪`, `plan ${planned}%`)}</span>}
         </span>
       </div>
@@ -315,7 +315,7 @@ function Row({
                 </div>
                 <div className="mt-1.5 flex justify-between gap-3">
                   <span>{L('پیشرفت', 'Progress')}</span>
-                  <b className="num">{fa(m.progress)}%</b>
+                  <b className="num">{fa(`${m.progress}%`)}</b>
                 </div>
                 <div className="flex justify-between gap-3">
                   <span>{L('ددلاین', 'Deadline')}</span>

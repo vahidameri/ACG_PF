@@ -471,7 +471,7 @@ function buildAgenda(m: Meeting, db: DB, open: ReturnType<typeof useEditor>['ope
       title: L('پروژه‌های نیازمند توجه', 'Projects needing attention'),
       items: attention.map(({ p, a }) => {
         const bad = Object.values(a.dims).filter((d) => d.h !== 'green').map((d) => d.why).slice(0, 2).join(L('؛ ', '; '))
-        return { key: p.id, primary: p.name, secondary: `${a.trend === 'down' ? L('بدتر از هفته‌ی قبل · ', 'worse than last week · ') : ''}${bad}`, tone: a.overall, to: `/projects/${p.id}` }
+        return { key: p.id, primary: p.name, secondary: `${a.trend === 'down' ? L('بدتر از هفته‌ی قبل — ', 'worse than last week — ') : ''}${bad}`, tone: a.overall, to: `/projects/${p.id}` }
       }),
       empty: L('همه‌ی پروژه‌ها سبز هستند', 'All projects are green'),
     },

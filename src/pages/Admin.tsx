@@ -135,8 +135,8 @@ function People() {
                   </td>
                   <td className="td text-xs">{teamCodes(m.team).map((t) => lbl(TEAM_NAMES, t)).join(L('، ', ', ')) || '—'}</td>
                   <td className="td text-center text-xs num">
-                    <span className={cx(w.load > 100 ? 'font-semibold text-bad' : 'text-sub')}>{fa(w.load)}%</span>
-                    {capOf(m) !== 100 && <span className="text-sub"> / {fa(capOf(m))}%</span>}
+                    <span className={cx(w.load > 100 ? 'font-semibold text-bad' : 'text-sub')}>{fa(`${w.load}%`)}</span>
+                    {capOf(m) !== 100 && <span className="text-sub"> / {fa(`${capOf(m)}%`)}</span>}
                   </td>
                   <td className="td text-center">
                     <button

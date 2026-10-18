@@ -1,17 +1,26 @@
-// Back office → Telegram: read a Telegram Desktop export (JSON), match each group to a project and each
-// sender to a person, then turn the messages that matter into tasks, follow-ups, decisions or project notes.
+// Telegram → Atlas: read a Telegram Desktop export (JSON), match each group to a project and each sender
+// to a person. Then either let Atlas read each group and propose the project's status for the week
+// (what was finished, what is stuck, what was decided, what comes next, which tasks are done), or pick
+// single messages by hand and turn them into tasks, follow-ups, decisions or project notes.
 import { useMemo, useState } from 'react'
-import { CheckSquare, FileUp, Gavel, ListTodo, MessageSquareText, Send, StickyNote } from 'lucide-react'
+import { CheckCircle2, CheckSquare, FileUp, Gavel, ListTodo, MessageSquareText, Send, Sparkles, StickyNote } from 'lucide-react'
 import { useStore } from '../lib/store'
 import { uid } from '../lib/api'
-import { parseExport, titleOf, type TgChat, type TgMessage } from '../lib/telegram'
-import { L } from '../lib/i18n'
+import { bullets, digest, parseExport, titleOf, type TgChat, type TgMessage } from '../lib/telegram'
+import { L, lbl, locale } from '../lib/i18n'
+import { HEALTH } from '../lib/labels'
+import { inWeek, weekStart } from '../lib/weeks'
+import type { Health, Project, Update } from '../lib/types'
 import { fa, fmtDayMonth, todayISO } from '../lib/jalali'
-import { Card, Empty, cx } from './ui'
+import { Card, Empty, HealthDot, Segmented, cx } from './ui'
 
 const PEOPLE_KEY = 'tg.people'
 const PROJECTS_KEY = 'tg.projects'
 const doneKey = (chatId: string) => `tg.done.${chatId}`
+/** newest message already used for a project's status, per group */
+const lastKey = (chatId: string) => `tg.last.${chatId}`
+// kept as "at:2026-10-18T09:05:00" so nothing on the way treats it as a plain date and drops the time
+const lastOf = (v: string) => v.replace(/^at:/, '')
 const json = <T,>(v: string | undefined, d: T): T => {
   try {
     return v ? (JSON.parse(v) as T) : d
@@ -33,6 +42,7 @@ export function TelegramImport() {
   const [picked, setPicked] = useState<Set<string>>(new Set())
   const [limit, setLimit] = useState(200)
   const [busy, setBusy] = useState(false)
+  const [mode, setMode] = useState<'status' | 'manual'>('status')
 
   const peopleMap = json<Record<string, string>>(setting(PEOPLE_KEY), {})
   const projectMap = json<Record<string, string>>(setting(PROJECTS_KEY), {})
@@ -164,6 +174,15 @@ export function TelegramImport() {
       )}
 
       {chats.length > 0 && (
+        <Segmented value={mode} onChange={setMode} options={[
+          { value: 'status', label: L('وضعیت خودکار پروژه‌ها', 'Project status, automatically') },
+          { value: 'manual', label: L('انتخاب دستی پیام‌ها', 'Pick messages by hand') },
+        ]} />
+      )}
+
+      {chats.length > 0 && mode === 'status' && <StatusFromChats chats={chats} projectOf={guessProject} />}
+
+      {chats.length > 0 && mode === 'manual' && (
         <Card pad={false}>
           <div className="flex flex-wrap items-center gap-2 border-b border-line p-3">
             <select className="input h-9 w-44 text-xs" value={chat} onChange={(e) => setChat(e.target.value)}>
@@ -227,5 +246,157 @@ export function TelegramImport() {
         </Card>
       )}
     </div>
+  )
+}
+
+type Period = 'new' | 'week' | '14'
+
+/** One suggested weekly update per project, read from its groups; reviewed, then saved in one click. */
+function StatusFromChats({ chats, projectOf }: { chats: TgChat[]; projectOf: (c: TgChat) => string }) {
+  const { db, setting } = useStore()
+  const [period, setPeriod] = useState<Period>('new')
+  const ws = weekStart()
+  const since = (c: TgChat) => {
+    const last = lastOf(setting(lastKey(c.id), ''))
+    if (period === 'week') return ws
+    if (period === '14') return new Date(Date.now() - 14 * 864e5).toISOString().slice(0, 10)
+    return last || ws
+  }
+  const byProject = new Map<string, { chats: TgChat[]; messages: TgMessage[] }>()
+  chats.forEach((c) => {
+    const pid = projectOf(c)
+    if (!pid) return
+    const from = since(c)
+    const msgs = c.messages.filter((m) => (period === 'new' && setting(lastKey(c.id), '') ? m.date > from : m.date.slice(0, 10) >= from))
+    const cur = byProject.get(pid) || { chats: [], messages: [] }
+    byProject.set(pid, { chats: [...cur.chats, c], messages: [...cur.messages, ...msgs] })
+  })
+  const unmapped = chats.filter((c) => !projectOf(c))
+  return (
+    <div className="space-y-4">
+      <Card eyebrow={<span className="flex items-center gap-1.5"><Sparkles size={12} /> {L('خودکار', 'Automatic')}</span>} title={L('وضعیت این هفته‌ی پروژه‌ها از گفت‌وگوها', 'This week’s project status from the chats')}>
+        <p className="text-xs leading-6 text-sub">
+          {L('اطلس پیام‌های هر گروه را می‌خواند: کارهای تمام‌شده، مشکل‌ها و مانع‌ها، تصمیم‌ها و برنامه‌ی بعد را جدا می‌کند، سلامت پروژه را پیشنهاد می‌دهد و تسک‌هایی را که در گفت‌وگو «انجام شد» گفته شده پیدا می‌کند. پیش از ثبت، هر بخش را بازبینی و ویرایش کنید؛ با ثبت، گزارش هفتگی همان پروژه پر یا تکمیل می‌شود.',
+            'Atlas reads each group: finished work, problems and blockers, decisions and what comes next. It proposes the project’s health and finds tasks the chat calls done. Review and edit before saving; saving fills in (or adds to) that project’s weekly update.')}
+        </p>
+        <div className="mt-3 flex flex-wrap items-center gap-2 text-xs">
+          <span className="text-sub">{L('کدام پیام‌ها؟', 'Which messages?')}</span>
+          <Segmented value={period} onChange={setPeriod} options={[
+            { value: 'new', label: L('پیام‌های تازه (از آخرین ثبت)', 'New since last time') },
+            { value: 'week', label: L('این هفته', 'This week') },
+            { value: '14', label: L('۱۴ روز اخیر', 'Last 14 days') },
+          ]} />
+        </div>
+        {unmapped.length > 0 && (
+          <p className="mt-3 rounded-xl bg-warn/[0.09] px-3 py-2 text-xs text-warn">
+            {L(`${fa(unmapped.length)} گروه به پروژه‌ای وصل نیست (${unmapped.map((c) => c.name).join('، ')}). در کارت «گروه ← پروژه» پروژه‌اش را انتخاب کنید.`, `${unmapped.length} group(s) have no project (${unmapped.map((c) => c.name).join(', ')}). Pick one under “Group → project”.`)}
+          </p>
+        )}
+      </Card>
+      {!byProject.size && <Card><Empty text={L('هیچ گروهی به پروژه وصل نیست.', 'No group is linked to a project yet.')} /></Card>}
+      {[...byProject.entries()].map(([pid, g]) => {
+        const p = db.Projects.find((x) => x.id === pid)
+        if (!p) return null
+        return <ProjectStatus key={`${pid}-${period}-${g.messages.length}`} p={p} chats={g.chats} messages={g.messages} ws={ws} />
+      })}
+    </div>
+  )
+}
+
+function ProjectStatus({ p, chats, messages, ws }: { p: Project; chats: TgChat[]; messages: TgMessage[]; ws: string }) {
+  const { db, me, upsert, setSetting, toast } = useStore()
+  const isFa = locale.lang === 'fa'
+  const open = db.Tasks.filter((t) => t.project_id === p.id && t.status !== 'done')
+  const dg = useMemo(() => digest(messages, open, isFa), [messages]) // eslint-disable-line react-hooks/exhaustive-deps
+  const existing = db.Updates.find((u) => u.project_id === p.id && inWeek(u.week_date, ws))
+  const [health, setHealth] = useState<Health>(dg?.health || 'amber')
+  const [summary, setSummary] = useState(() => {
+    if (!dg) return ''
+    const head = isFa
+      ? `از گفت‌وگوهای تلگرام (${fa(dg.count)} پیام از ${fa(dg.people)} نفر، ${fmtDayMonth(dg.from)} تا ${fmtDayMonth(dg.to)}): ${fa(dg.done.length)} کار تمام‌شده، ${fa(dg.blockers.length)} مشکل یا مانع، ${fa(dg.decisions.length)} تصمیم.`
+      : `From Telegram (${dg.count} messages from ${dg.people} people, ${dg.from} to ${dg.to}): ${dg.done.length} finished, ${dg.blockers.length} problems, ${dg.decisions.length} decisions.`
+    return dg.decisions.length ? `${head}\n${isFa ? 'تصمیم‌ها:' : 'Decisions:'}\n${bullets(dg.decisions, 5)}` : head
+  })
+  const [done, setDone] = useState(dg ? bullets(dg.done) : '')
+  const [next, setNext] = useState(dg ? bullets(dg.next) : '')
+  const [blockers, setBlockers] = useState(dg ? bullets(dg.blockers) : '')
+  const [finish, setFinish] = useState<Set<string>>(() => new Set(dg?.finished.map((f) => f.id)))
+  const [saved, setSaved] = useState(false)
+  const [busy, setBusy] = useState(false)
+
+  if (!dg)
+    return (
+      <Card eyebrow={chats.map((c) => c.name).join('، ')} title={p.name}>
+        <p className="text-xs text-sub">{L('در این بازه پیام تازه‌ای در گروه نیست؛ وضعیتی برای پیشنهاد وجود ندارد.', 'No new messages in this period, so there is nothing to suggest.')}</p>
+      </Card>
+    )
+
+  const merge = (old: string, add: string) => [...new Set([...String(old || '').split('\n'), ...add.split('\n')].map((l) => l.trimEnd()).filter((l) => l.trim()))].join('\n')
+  const save = async () => {
+    setBusy(true)
+    try {
+      const row: Update = existing
+        ? { ...existing, health, summary: merge(existing.summary, summary), done: merge(existing.done, done), next: merge(existing.next, next), blockers: merge(existing.blockers, blockers) }
+        : { id: `U-${p.id}-${ws}`, project_id: p.id, week_date: ws, author: me, health, summary, done, next, blockers }
+      await upsert('Updates', row)
+      for (const t of open.filter((x) => finish.has(x.id))) await upsert('Tasks', { ...t, status: 'done', completed_at: todayISO() })
+      const newest = messages.reduce((a, m) => (m.date > a ? m.date : a), '')
+      for (const c of chats) await setSetting(lastKey(c.id), `at:${newest}`)
+      setSaved(true)
+      toast(L(`وضعیت ${p.name} برای این هفته ثبت شد${finish.size ? ` و ${fa(finish.size)} تسک انجام‌شده شد` : ''}`, `${p.name}: this week’s status saved${finish.size ? `, ${finish.size} tasks done` : ''}`))
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  const area = (label: string, v: string, set: (x: string) => void, hint: string) => (
+    <label className="block">
+      <span className="label">{label}</span>
+      <textarea className="input min-h-24 py-2 text-xs leading-6" dir="auto" value={v} onChange={(e) => set(e.target.value)} placeholder={hint} />
+    </label>
+  )
+  return (
+    <Card eyebrow={<span dir="auto">{chats.map((c) => c.name).join('، ')} · {L(`${fa(dg.count)} پیام`, `${dg.count} messages`)}</span>} title={p.name}
+      action={saved ? <span className="flex items-center gap-1 text-xs font-medium text-good"><CheckCircle2 size={14} /> {L('ثبت شد', 'Saved')}</span> : undefined}>
+      <div className="space-y-4">
+        <div className="flex flex-wrap items-center gap-3">
+          <span className="label m-0">{L('سلامت پیشنهادی', 'Suggested health')}</span>
+          <div className="flex gap-1">
+            {(['green', 'amber', 'red'] as Health[]).map((h) => (
+              <button key={h} type="button" onClick={() => setHealth(h)} className={cx('chip gap-1.5 border', health === h ? 'border-ink bg-surface text-ink' : 'border-transparent bg-muted text-sub')}>
+                <HealthDot h={h} /> {lbl(HEALTH, h)}
+              </button>
+            ))}
+          </div>
+          <span className="text-[0.6875rem] text-sub">{L('چرا: ', 'Why: ')}{dg.why}</span>
+        </div>
+        {existing && <p className="rounded-xl bg-muted/60 px-3 py-2 text-[0.6875rem] text-sub">{L('گزارش این هفته از قبل هست؛ این موارد به آن اضافه می‌شود و سلامت به‌روز می‌شود.', 'This week already has an update; these lines are added to it and the health is updated.')}</p>}
+        {area(L('خلاصه', 'Summary'), summary, setSummary, '')}
+        <div className="grid gap-3 @2xl:grid-cols-3">
+          {area(L('انجام شد', 'Done'), done, setDone, L('کار تمام‌شده‌ای پیدا نشد', 'No finished work found'))}
+          {area(L('مشکل‌ها و مانع‌ها', 'Blockers'), blockers, setBlockers, L('مانعی پیدا نشد', 'No blockers found'))}
+          {area(L('برنامه‌ی بعد', 'Next'), next, setNext, L('برنامه‌ای پیدا نشد', 'Nothing planned found'))}
+        </div>
+        {dg.finished.length > 0 && (
+          <div>
+            <div className="label">{L('این تسک‌ها در گفت‌وگو «انجام شد» گفته شده‌اند — انجام‌شده شوند؟', 'The chat says these tasks are done — mark them done?')}</div>
+            <ul className="space-y-1">
+              {dg.finished.map((f) => (
+                <li key={f.id} className="flex items-start gap-2 text-sm">
+                  <input type="checkbox" className="mt-1" checked={finish.has(f.id)} onChange={() => setFinish((s0) => { const n = new Set(s0); if (n.has(f.id)) n.delete(f.id); else n.add(f.id); return n })} />
+                  <span>{f.title} <span className="text-[0.6875rem] text-sub" dir="auto">— {f.by.from}: «{titleOf(f.by.text, 60)}»</span></span>
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
+        <div className="flex items-center gap-2">
+          <button className="btn-primary btn-sm" disabled={busy || saved} onClick={save}>
+            <CheckCircle2 size={14} /> {existing ? L('افزودن به گزارش این هفته', 'Add to this week’s update') : L('ثبت وضعیت این هفته', 'Save this week’s status')}
+          </button>
+          <span className="text-[0.6875rem] text-sub">{L('پیشنهاد خودکار است؛ قبل از ثبت بازبینی کنید.', 'This is a suggestion; review it before saving.')}</span>
+        </div>
+      </div>
+    </Card>
   )
 }

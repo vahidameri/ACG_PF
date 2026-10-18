@@ -59,9 +59,9 @@ export default function Dashboard() {
         <StatStrip
           items={[
             { label: L('پروژه‌های جاری', 'Live projects'), value: fa(s.live.length), sub: L(`${fa(db.Projects.filter((p) => p.status === 'completed').length)} تکمیل‌شده`, `${db.Projects.filter((p) => p.status === 'completed').length} completed`) },
-            { label: L('میانگین پیشرفت', 'Avg. progress'), value: `${fa(s.avgProgress)}%` },
+            { label: L('میانگین پیشرفت', 'Avg. progress'), value: `${fa(`${s.avgProgress}%`)}` },
             { label: L('در خطر', 'Off track'), value: fa(s.counts.red), tone: s.counts.red ? 'red' : 'green', sub: L(`${fa(s.counts.amber)} نیازمند توجه`, `${s.counts.amber} at risk`) },
-            { label: L('تحویل به‌موقع (۹۰ روز)', 'On-time delivery (90d)'), value: ds.onTimeRate === null ? '—' : `${fa(ds.onTimeRate)}%`, tone: ds.onTimeRate !== null && ds.onTimeRate < 70 ? 'amber' : undefined, sub: L(`${fa(ds.overdue.length)} تحویل عقب‌افتاده`, `${ds.overdue.length} overdue deliveries`) },
+            { label: L('تحویل به‌موقع (۹۰ روز)', 'On-time delivery (90d)'), value: ds.onTimeRate === null ? '—' : `${fa(`${ds.onTimeRate}%`)}`, tone: ds.onTimeRate !== null && ds.onTimeRate < 70 ? 'amber' : undefined, sub: L(`${fa(ds.overdue.length)} تحویل عقب‌افتاده`, `${ds.overdue.length} overdue deliveries`) },
             { label: L('مایلستون معوق', 'Overdue milestones'), value: fa(s.overdueMilestones.length), tone: s.overdueMilestones.length ? 'amber' : 'green', sub: L(`${fa(s.upcomingMilestones.length)} در ۳۰ روز آینده`, `${s.upcomingMilestones.length} in next 30 days`) },
             { label: L('ریسک بحرانی', 'Critical risks'), value: fa(critical), tone: critical ? 'red' : 'green', sub: L(`${fa(db.Risks.filter((r) => r.status !== 'closed').length)} ریسک باز`, `${db.Risks.filter((r) => r.status !== 'closed').length} open`) },
           ]}
@@ -95,7 +95,7 @@ export default function Dashboard() {
                       </ul>
                     </div>
                     <div className="hidden text-end @sm:block">
-                      <div className="text-sm font-semibold num">{fa(m.progress)}%</div>
+                      <div className="text-sm font-semibold num">{fa(`${m.progress}%`)}</div>
                       <div className="text-[0.6875rem] text-sub">{p.owner}</div>
                     </div>
                     <ArrowUpRight size={16} className="mt-1 text-sub/40 transition group-hover:text-ink rtl:-scale-x-100" />
@@ -144,7 +144,7 @@ export default function Dashboard() {
                   <tr>
                     <th className="th">{L('پروژه', 'Project')}</th>
                     <th className="th">{L('سلامت', 'Health')}</th>
-                    <th className="th">{L('روند', 'Trend')}</th>
+                    <th className="th">{L('روند گزارش‌ها', 'Update trend')}</th>
                     <th className="th w-60">{L('پیشرفت / زمان', 'Progress / time')}</th>
                     <th className="th">{L('ددلاین', 'Deadline')}</th>
                     <th className="th">{L('ریسک', 'Risks')}</th>
@@ -175,7 +175,7 @@ export default function Dashboard() {
                         <td className="td">
                           <div className="flex items-center gap-3">
                             <Progress value={m.progress} h={m.health} marker={m.elapsed} />
-                            <span className="w-10 text-xs font-semibold num">{fa(m.progress)}%</span>
+                            <span className="w-10 text-xs font-semibold num">{fa(`${m.progress}%`)}</span>
                           </div>
                           <div className={cx('mt-1 text-[0.6875rem] num', m.scheduleGap < -10 ? 'text-bad' : 'text-sub')}>
                             {m.scheduleGap >= 0 ? L(`${fa(m.scheduleGap)}٪ جلوتر`, `${m.scheduleGap}% ahead`) : L(`${fa(-m.scheduleGap)}٪ عقب‌تر`, `${-m.scheduleGap}% behind`)}
@@ -187,7 +187,7 @@ export default function Dashboard() {
                         </td>
                         <td className="td">
                           <div className={cx('text-sm font-semibold num', m.highRisks > 0 && 'text-bad')}>{fa(m.openRisks)}</div>
-                          <div className="text-[0.6875rem] text-sub">{m.highRisks ? L(`${fa(m.highRisks)} بحرانی`, `${m.highRisks} critical`) : L('ریسک باز', 'open risks')}</div>
+                          <div className="text-[0.6875rem] text-sub">{m.highRisks ? L(`${fa(m.highRisks)} بحرانی`, `${m.highRisks} critical`) : L('ریسک‌های باز', 'open risks')}</div>
                         </td>
                         <td className="td max-w-[13rem]">
                           {m.nextMilestone ? (

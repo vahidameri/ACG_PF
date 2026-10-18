@@ -132,7 +132,7 @@ function TrackCard({ track, weeks }: { track: Track; weeks: string[] }) {
     <Card
       eyebrow={L(`تیم ${lbl(TRACK, track)}`, `${lbl(TRACK, track)} track`)}
       title={L(`${fa(cur.people)} نفر · ظرفیت این هفته معادل ${fa(fte(cur.available))} نفر تمام‌وقت`, `${cur.people} people · ${fte(cur.available)} full-time this week`)}
-      action={<span className={cx('display text-3xl num', toneText[tone])}>{fa(cur.load)}%</span>}
+      action={<span className={cx('display text-3xl num', toneText[tone])}>{fa(`${cur.load}%`)}</span>}
     >
       <div className="relative flex h-28 items-end gap-1.5">
         {/* 100% line */}
@@ -145,7 +145,7 @@ function TrackCard({ track, weeks }: { track: Track; weeks: string[] }) {
               className={cx('rounded-t-md transition-all', r.load > 100 ? 'bg-bad' : r.load >= 85 ? 'bg-warn' : 'bg-brand dark:bg-[#7fb3c4]')}
               style={{ height: `${(Math.min(r.load, top) / top) * 100}%`, opacity: i === 0 ? 1 : 0.7 }}
             />
-            <span className="pointer-events-none absolute -top-5 start-1/2 hidden -translate-x-1/2 rounded bg-ink px-1.5 text-[0.625rem] text-surface num group-hover:block">{fa(r.load)}%</span>
+            <span className="pointer-events-none absolute -top-5 start-1/2 hidden -translate-x-1/2 rounded bg-ink px-1.5 text-[0.625rem] text-surface num group-hover:block">{fa(`${r.load}%`)}</span>
           </div>
         ))}
       </div>
@@ -158,7 +158,7 @@ function TrackCard({ track, weeks }: { track: Track; weeks: string[] }) {
           {L('تخصیص‌یافته', 'Allocated')}: <b className="text-ink num">{fa(fte(cur.allocated))}</b> {L('نفر', 'people')}
         </span>
         <span>
-          {L('اوج', 'Peak')}: <b className={cx('num', toneText[loadTone(peak.load)])}>{fa(peak.load)}%</b> {weekRel(peak.ws)}
+          {L('اوج', 'Peak')}: <b className={cx('num', toneText[loadTone(peak.load)])}>{fa(`${peak.load}%`)}</b> {weekRel(peak.ws)}
         </span>
         {cur.over > 0 && <span className="text-bad">{L(`${fa(cur.over)} نفر بیش از ظرفیت`, `${cur.over} over capacity`)}</span>}
       </div>
@@ -198,7 +198,7 @@ function PeopleGrid({ people }: { people: Member[] }) {
                 </div>
               </div>
               <div className="text-end">
-                <div className={cx('display text-2xl leading-none num', toneText[tone])}>{fa(w.load)}%</div>
+                <div className={cx('display text-2xl leading-none num', toneText[tone])}>{fa(`${w.load}%`)}</div>
                 <div className="mt-1 text-[0.625rem] text-sub">{w.free >= 0 ? L(`${fa(w.free)}٪ آزاد`, `${w.free}% free`) : L(`${fa(-w.free)}٪ اضافه`, `${-w.free}% over`)}</div>
               </div>
             </div>
@@ -223,7 +223,7 @@ function PeopleGrid({ people }: { people: Member[] }) {
                     >
                       <span className="h-2 w-2 rounded-full" style={{ background: color(p.project_id) }} />
                       {proj?.name || p.project_id}
-                      <span className="text-sub num">{fa(p.percent)}%</span>
+                      <span className="text-sub num">{fa(`${p.percent}%`)}</span>
                     </button>
                   )
                 })
@@ -286,7 +286,7 @@ function Timeline({ people, weeks }: { people: Member[]; weeks: string[] }) {
                 return (
                   <td key={ws} className="px-1 py-1.5">
                     <div className={cx('relative grid h-10 min-w-[3.25rem] place-items-center rounded-xl text-xs font-semibold num', toneCell[loadTone(w.load)], !w.allocated && 'opacity-60')} title={tip(w)}>
-                      {w.allocated ? `${fa(w.load > 999 ? 999 : w.load)}%` : '—'}
+                      {w.allocated ? `${fa(`${w.load > 999 ? 999 : w.load}%`)}` : '—'}
                     </div>
                   </td>
                 )
@@ -387,7 +387,7 @@ function Matrix({ people }: { people: Member[] }) {
                             className={cx('h-10 w-full min-w-[3.25rem] rounded-xl text-xs font-semibold num transition hover:ring-2 hover:ring-brand/40', cellTone(v, p.status === 'on_hold'), !v && 'bg-muted/50 text-transparent hover:text-sub')}
                             title={a && (a.start_date || a.end_date) ? `${a.start_date ? fmtDayMonth(a.start_date) : '…'} – ${a.end_date ? fmtDayMonth(a.end_date) : '…'}` : undefined}
                           >
-                            {v ? `${fa(v)}%` : '+'}
+                            {v ? `${fa(`${v}%`)}` : '+'}
                             {a && (a.start_date || a.end_date) && <span className="ms-0.5 align-super text-[0.5rem]">●</span>}
                           </button>
                         )}
@@ -395,7 +395,7 @@ function Matrix({ people }: { people: Member[] }) {
                     )
                   })}
                   <td className="td text-center">
-                    <span className={cx('rounded-full px-2.5 py-1 text-sm font-semibold num', w.load > 100 ? 'bg-bad/10 text-bad' : w.load >= 85 ? 'bg-warn/12 text-warn' : 'text-sub')}>{fa(w.load)}%</span>
+                    <span className={cx('rounded-full px-2.5 py-1 text-sm font-semibold num', w.load > 100 ? 'bg-bad/10 text-bad' : w.load >= 85 ? 'bg-warn/12 text-warn' : 'text-sub')}>{fa(`${w.load}%`)}</span>
                   </td>
                 </tr>
               )

@@ -33,7 +33,7 @@ export default function Report() {
       '',
       ...rows.map((p) => {
         const m = s.metrics.get(p.id)!
-        return `${m.health === 'red' ? '🔴' : m.health === 'amber' ? '🟡' : '🟢'} ${p.name} — ${fa(m.progress)}% — ${m.reasons[0].text}`
+        return `${m.health === 'red' ? '🔴' : m.health === 'amber' ? '🟡' : '🟢'} ${p.name} — ${fa(`${m.progress}%`)} — ${m.reasons[0].text}`
       }),
       ...(decisions.length ? ['', L('تصمیم‌های مورد نیاز:', 'Decisions needed:'), ...decisions.map((d) => `• ${d.title} (${pname(d.project_id)})`)] : []),
     ]
@@ -72,7 +72,7 @@ export default function Report() {
                 [L('سالم', 'On track'), fa(s.counts.green), 'text-[#7fe0b0]'],
                 [L('نیازمند توجه', 'At risk'), fa(s.counts.amber), 'text-[#f5c565]'],
                 [L('در خطر', 'Off track'), fa(s.counts.red), 'text-[#ff8a9a]'],
-                [L('میانگین پیشرفت', 'Avg. progress'), `${fa(s.avgProgress)}%`, ''],
+                [L('میانگین پیشرفت', 'Avg. progress'), `${fa(`${s.avgProgress}%`)}`, ''],
               ].map(([l, v, c]) => (
                 <div key={l} className="border-band-line py-4 pe-4 @sm:border-e @sm:ps-4 @sm:first:ps-0 @sm:last:border-e-0">
                   <div className={cx('display text-3xl num', c)}>{v}</div>
@@ -114,7 +114,7 @@ export default function Report() {
                         <td className="td">
                           <div className="flex items-center gap-2">
                             <Progress value={m.progress} h={m.health} marker={m.elapsed} />
-                            <span className="text-xs num">{fa(m.progress)}%</span>
+                            <span className="text-xs num">{fa(`${m.progress}%`)}</span>
                           </div>
                         </td>
                         <td className="td text-xs num">

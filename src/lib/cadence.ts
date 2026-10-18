@@ -69,13 +69,32 @@ export function onTimeRate(p: Project, db: DB, n = 8) {
 
 export const WEEK_STATE: Record<WeekState, T2> = {
   delivered: ['تحویل شد', 'Delivered'],
-  partial: ['تحویل بخشی', 'Partly delivered'],
+  partial: ['بخشی از کار تحویل شد', 'Partly delivered'],
   skipped: ['این هفته تحویل ندارد', 'No delivery this week'],
-  today: ['امروز تحویل', 'Due today'],
-  soon: ['نزدیک', 'Coming up'],
-  upcoming: ['در راه', 'Later this week'],
-  late: ['دیر شده', 'Late'],
-  missed: ['تحویل نشد', 'Missed'],
+  today: ['امروز روز تحویل است', 'Due today'],
+  soon: ['تحویل نزدیک است', 'Due soon'],
+  upcoming: ['تحویل در پیش است', 'Later this week'],
+  late: ['تحویل عقب افتاده', 'Late'],
+  missed: ['تحویل انجام نشد', 'Missed'],
+}
+
+/** One readable line for this week's delivery, e.g. «امروز روز تحویل است» or «تحویل فردا، یکشنبه». */
+export function weekLine(p: Project, st: WeekState): string {
+  const d = DAYS[Number(p.delivery_day)]
+  const fa = locale.lang === 'fa'
+  const day = fa ? d[0] : d[1]
+  const due = deliveryDate(p)
+  const tomorrow = due === addDays(todayISO(), 1)
+  switch (st) {
+    case 'today': return fa ? 'امروز روز تحویل است' : 'Delivery is due today'
+    case 'soon':
+    case 'upcoming': return fa ? (tomorrow ? `تحویل فردا، ${day}` : `تحویل ${day}`) : tomorrow ? `Delivery tomorrow, ${day}` : `Delivery on ${day}`
+    case 'late': return fa ? `تحویل ${day} عقب افتاده` : `${day}’s delivery is late`
+    case 'missed': return fa ? `تحویل ${day} انجام نشد` : `${day}’s delivery was missed`
+    case 'delivered': return fa ? 'تحویل این هفته انجام شد' : 'Delivered this week'
+    case 'partial': return fa ? 'این هفته بخشی از کار تحویل شد' : 'Partly delivered this week'
+    case 'skipped': return fa ? 'این هفته تحویل ندارد' : 'No delivery this week'
+  }
 }
 export const needsAttention = (s: WeekState | '') => s === 'today' || s === 'late' || s === 'missed'
 

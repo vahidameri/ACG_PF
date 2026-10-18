@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
-import { Plus, BellRing, PenLine, ArrowLeft, ArrowRight, Check, Clock } from 'lucide-react'
+import { Plus, BellRing, PenLine, ArrowLeft, ArrowRight, Check, Clock, Send } from 'lucide-react'
+import { can } from '../lib/access'
 import { useStore } from '../lib/store'
 import { Band, Card, Empty, Overlap, StatStrip, Avatar, HealthDot, cx } from '../components/ui'
 import { UpdateCard } from '../components/widgets'
@@ -17,7 +18,7 @@ type Row = { p: Project; u?: Update; prev?: Update; state: 'on_time' | 'late' | 
 
 /** Weekly update cycle: who has reported, who is late, what changed — and one click to report. */
 export default function Updates() {
-  const { db, canEdit, upsert, toast, me } = useStore()
+  const { db, canEdit, upsert, toast, me, access } = useStore()
   const { openComposer } = useComposer()
   const today = todayISO()
   const [ws, setWs] = useState(weekStart())
@@ -63,6 +64,11 @@ export default function Updates() {
         actions={
           <>
             <WeekNav ws={ws} onChange={setWs} />
+            {isCurrent && can.backoffice(access) && (
+              <Link to="/telegram" className="btn h-10 border border-white/20 text-white hover:bg-white/10">
+                <Send size={15} className="rtl:-scale-x-100" /> {L('از تلگرام', 'From Telegram')}
+              </Link>
+            )}
             {canEdit && isCurrent && (
               <button className="btn h-10 bg-white text-band" onClick={() => openComposer({ projectId: expected.find((p) => p.owner === me)?.id })}>
                 <Plus size={16} /> {L('ثبت گزارش', 'Submit update')}
@@ -73,7 +79,7 @@ export default function Updates() {
       >
         <StatStrip
           items={[
-            { label: L('ارسال‌شده', 'Submitted'), value: `${fa(submitted.length)}/${fa(expected.length)}`, sub: `${fa(pct)}%`, tone: pct === 100 ? 'green' : undefined },
+            { label: L('ارسال‌شده', 'Submitted'), value: `${fa(submitted.length)}/${fa(expected.length)}`, sub: `${fa(`${pct}%`)}`, tone: pct === 100 ? 'green' : undefined },
             { label: isCurrent && today <= due ? L('در انتظار', 'Pending') : L('ارسال نشده', 'Missing'), value: fa(missing.length + pending.length), tone: missing.length ? 'red' : pending.length ? 'amber' : 'green' },
             { label: L('با تأخیر', 'Late'), value: fa(late.length), tone: late.length ? 'amber' : undefined },
             { label: L('بهتر از هفته‌ی قبل', 'Better than last week'), value: fa(better.length), tone: better.length ? 'green' : undefined },

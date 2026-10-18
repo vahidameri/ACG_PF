@@ -41,7 +41,7 @@ export default function Risks() {
       >
         <StatStrip
           items={[
-            { label: L('ریسک باز', 'Open risks'), value: fa(count('risk')) },
+            { label: L('ریسک‌های باز', 'Open risks'), value: fa(count('risk')) },
             { label: L('بحرانی (≥۱۵)', 'Critical (≥15)'), value: fa(openAll.filter((r) => riskScore(r) >= 15).length), tone: 'red' },
             { label: L('مسئله', 'Issues'), value: fa(count('issue')), tone: count('issue') ? 'amber' : undefined },
             { label: L('وابستگی', 'Dependencies'), value: fa(count('dependency')) },

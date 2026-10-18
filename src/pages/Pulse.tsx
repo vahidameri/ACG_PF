@@ -96,7 +96,7 @@ export default function Pulse() {
                   <tr>
                     <th className="th">{L('پروژه', 'Project')}</th>
                     <th className="th text-center">{L('کلی', 'Overall')}</th>
-                    <th className="th text-center">{L('روند', 'Trend')}</th>
+                    <th className="th text-center">{L('روند گزارش‌ها', 'Update trend')}</th>
                     {DIMS.map((d) => (
                       <th key={d} className="th text-center">
                         {tr(DIM[d])}
@@ -133,9 +133,9 @@ export default function Pulse() {
                       <td className="td">
                         <Progress value={m.progress} h={m.health} marker={m.elapsed} />
                         <div className="mt-1 flex justify-between text-[0.625rem] text-sub num">
-                          <span>{fa(m.progress)}%</span>
+                          <span>{fa(`${m.progress}%`)}</span>
                           <span>
-                            {L('زمان', 'time')} {fa(m.elapsed)}%
+                            {L(`${fa(m.elapsed)}٪ از زمان گذشته`, `${m.elapsed}% of time used`)}
                           </span>
                         </div>
                       </td>

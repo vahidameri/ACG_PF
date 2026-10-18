@@ -79,10 +79,11 @@ export function CommandPalette({ open, onClose }: { open: boolean; onClose: () =
         ['/updates', L('گزارش‌های هفتگی', 'Weekly updates')],
         ['/report', L('گزارش مدیریتی', 'Executive report')],
         ['/contracts', L('قراردادها', 'Contracts')],
+        ['/telegram', L('به‌روزرسانی وضعیت پروژه‌ها از تلگرام', 'Update project status from Telegram')],
         ['/admin', L('بک‌آفیس و تنظیمات', 'Back office & settings')],
       ] as const
     )
-      .filter(([to]) => (LEADER_ONLY.includes(to) ? can.portfolio(access) : to === '/admin' ? can.backoffice(access) : to === '/contracts' ? can.contracts(access) : true))
+      .filter(([to]) => (LEADER_ONLY.includes(to) ? can.portfolio(access) : to === '/admin' ? can.backoffice(access) : to === '/contracts' ? can.contracts(access) : to === '/telegram' ? can.backoffice(access) : true))
       .map(([to, label]) => ({ key: `nav-${to}`, group: G.nav, label, icon: <ArrowRight size={16} className="rtl:-scale-x-100" />, run: () => navigate(to) }))
     const data: Item[] = [
       ...db.Projects.map((p) => ({ key: p.id, group: G.proj, label: p.name, sub: p.code, icon: <HealthDot h={projectMetrics(p, db).health} />, run: () => navigate(`/projects/${p.id}`) })),

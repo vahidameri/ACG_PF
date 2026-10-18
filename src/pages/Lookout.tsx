@@ -85,8 +85,8 @@ export default function Lookout() {
             { label: L('پروژه‌ی در خطر', 'Projects off track'), value: fa(s.counts.red), tone: s.counts.red ? 'red' : 'green', sub: L(`${fa(s.counts.amber)} نیازمند توجه · ${fa(s.live.length)} جاری`, `${s.counts.amber} at risk · ${s.live.length} live`) },
             { label: L('تحویل هفتگی نیازمند توجه', 'Weekly deliveries to watch'), value: fa(deliveryAlerts.length), tone: deliveryAlerts.length ? 'amber' : 'green', sub: L(`${fa(deliveries.length)} پروژه با روز تحویل`, `${deliveries.length} with a delivery day`) },
             { label: L('مانده در یک واحد (۳+ روز)', 'Sitting in a unit (3+ days)'), value: fa(sitting.length), tone: sitting.length ? 'amber' : undefined },
-            { label: L('برگشت‌ها · ۱۴ روز', 'Returns · 14 days'), value: fa(returned.length), tone: returned.length ? 'red' : undefined },
-            { label: L('زیر نظر · عقب افتاده', 'Tracked · late'), value: fa(pool.filter((t) => isLate(t, today)).length), tone: pool.some((t) => isLate(t, today)) ? 'red' : undefined, sub: L(`${fa(pool.length)} در دیده‌بان`, `${pool.length} on the Lookout`) },
+            { label: L('برگشت‌ها در ۱۴ روز اخیر', 'Returns, last 14 days'), value: fa(returned.length), tone: returned.length ? 'red' : undefined },
+            { label: L('کارهای زیر نظر که عقب افتاده‌اند', 'Tracked and late'), value: fa(pool.filter((t) => isLate(t, today)).length), tone: pool.some((t) => isLate(t, today)) ? 'red' : undefined, sub: L(`${fa(pool.length)} در دیده‌بان`, `${pool.length} on the Lookout`) },
             { label: L('امروز', 'Today'), value: fa(pool.filter((t) => bucketOf(t, today) === 'today').length), tone: 'amber' },
           ]}
         />

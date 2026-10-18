@@ -62,7 +62,7 @@ export default function Plan() {
             { label: L('جابجا شده از تعهد اولیه', 'Moved from baseline'), value: fa(sum.slipped.length), tone: sum.slipped.length ? 'amber' : 'green' },
             {
               label: L('تحویل به‌موقع (۹۰ روز)', 'On-time (90 days)'),
-              value: sum.onTimeRate === null ? '—' : `${fa(sum.onTimeRate)}%`,
+              value: sum.onTimeRate === null ? '—' : `${fa(`${sum.onTimeRate}%`)}`,
               tone: sum.onTimeRate === null ? undefined : sum.onTimeRate >= 80 ? 'green' : sum.onTimeRate >= 60 ? 'amber' : 'red',
               sub: L(`${fa(sum.delivered90.length)} تحویل`, `${sum.delivered90.length} delivered`),
             },

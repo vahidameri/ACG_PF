@@ -168,6 +168,8 @@ export function ProjectCard({ p }: { p: Project }) {
   const { db } = useStore()
   const m = projectMetrics(p, db)
   const issue = m.reasons.find((r) => r.level !== 'green')
+  const hasData = m.totalTasks > 0 || db.Milestones.some((x) => x.project_id === p.id) || db.Updates.some((u) => u.project_id === p.id) || Number(p.progress) > 0
+  const dated = !!(p.start_date && p.end_date)
   return (
     <Link to={`/projects/${p.id}`} className="card card-hover group flex flex-col p-5">
       <div className="flex items-start justify-between gap-3">
@@ -175,9 +177,15 @@ export function ProjectCard({ p }: { p: Project }) {
           <span className="rounded-md bg-muted px-1.5 py-0.5 font-mono text-[0.625rem] font-medium tracking-wider text-sub" dir="ltr">
             {p.code}
           </span>
-          <span className={cx('inline-flex items-center gap-1.5 text-[0.6875rem] font-medium', healthText[m.health])}>
-            <HealthDot h={m.health} pulse /> {p.status === 'active' ? lbl(HEALTH, m.health) : lbl(PROJECT_STATUS, p.status)}
-          </span>
+          {!hasData && p.status === 'active' ? (
+            <span className="inline-flex items-center gap-1.5 text-[0.6875rem] font-medium text-sub">
+              <span className="h-2 w-2 rounded-full bg-line-strong" /> {L('هنوز داده‌ای ندارد', 'No data yet')}
+            </span>
+          ) : (
+            <span className={cx('inline-flex items-center gap-1.5 text-[0.6875rem] font-medium', healthText[m.health])}>
+              <HealthDot h={m.health} pulse /> {p.status !== 'active' ? lbl(PROJECT_STATUS, p.status) : lbl(HEALTH, m.health)}
+            </span>
+          )}
         </div>
         <span className="-me-2 -mt-1.5 flex items-center gap-0.5">
           <span className="opacity-0 transition group-hover:opacity-100">
@@ -193,56 +201,67 @@ export function ProjectCard({ p }: { p: Project }) {
           {p.pause_reason && ` — ${p.pause_reason}`}
         </div>
       )}
-      <h3 className="mt-3 flex flex-wrap items-baseline gap-x-2 text-[1.0625rem] font-semibold leading-snug tracking-tight">
-        {p.name}
-        {everyDay(p) && <span className="text-[0.6875rem] font-medium text-sub">· {everyDay(p)}</span>}
-      </h3>
-      <p className="mt-1 line-clamp-1 text-xs leading-5 text-sub">{p.description}</p>
+      <h3 className="mt-3 text-[1.0625rem] font-semibold leading-snug tracking-tight" dir="auto">{p.name}</h3>
+      {p.description && <p className="mt-1 line-clamp-1 text-xs leading-5 text-sub">{p.description}</p>}
       {hasDeliveryDay(p) && (
-        <div className="mt-2 flex items-center gap-2">
+        <div className="mt-3 flex flex-wrap items-center gap-2">
           <DeliveryBadge p={p} />
-          <DeliveryHistory p={p} n={6} />
           <span className="flex-1" />
           <DeliveredButton p={p} small />
+          <div className="flex w-full items-center gap-2 text-[0.6875rem] text-sub">
+            <span>{L(`روز تحویل: ${everyDay(p)}`, `Delivery day: ${everyDay(p)}`)}</span>
+            <DeliveryHistory p={p} n={6} />
+          </div>
         </div>
       )}
 
-      <div className="mt-5 flex items-end justify-between">
-        <div>
-          <div className="display text-3xl num">
-            {fa(m.progress)}
-            <span className="text-base text-sub">%</span>
-          </div>
-          <div className="text-[0.6875rem] text-sub">
-            {L('زمان', 'Time')} {fa(m.elapsed)}%
-          </div>
+      {!hasData ? (
+        // a project with nothing in it yet: say so instead of a wall of zeros
+        <div className="mt-5 rounded-2xl border border-dashed border-line px-4 py-5 text-center text-xs leading-6 text-sub">
+          {L('هنوز تسک، مایلستون یا گزارشی برای این پروژه ثبت نشده است.', 'No tasks, milestones or updates yet.')}
+          <div className="text-[0.6875rem] text-sub/80">{L('برای شروع، پروژه را باز کنید و اولین تسک یا مایلستون را اضافه کنید.', 'Open the project to add its first task or milestone.')}</div>
         </div>
-        <div className="text-end text-[0.6875rem] text-sub">
-          <div>{L('ددلاین', 'Deadline')}</div>
-          <div className={cx('text-sm font-medium num text-ink', m.daysLeft < 0 && p.status === 'active' && '!text-bad')}>{fmtDayMonth(p.end_date)}</div>
-        </div>
-      </div>
-      <Progress value={m.progress} h={m.health} marker={m.elapsed} className="mt-3" />
+      ) : (
+        <>
+          <div className="mt-5 flex items-end justify-between">
+            <div>
+              <div className="display text-3xl num">
+                {fa(m.progress)}
+                <span className="text-base text-sub">٪</span>
+              </div>
+              <div className="text-[0.6875rem] text-sub">{L('پیشرفت', 'Progress')}{dated && L(` · ${fa(m.elapsed)}٪ از زمان گذشته`, ` · ${m.elapsed}% of time used`)}</div>
+            </div>
+            <div className="text-end text-[0.6875rem] text-sub">
+              <div>{L('ددلاین', 'Deadline')}</div>
+              {p.end_date ? (
+                <div className={cx('text-sm font-medium num text-ink', m.daysLeft < 0 && p.status === 'active' && '!text-bad')}>{fmtDayMonth(p.end_date)}</div>
+              ) : (
+                <div className="text-xs">{L('تعیین نشده', 'Not set')}</div>
+              )}
+            </div>
+          </div>
+          <Progress value={m.progress} h={m.health} marker={dated ? m.elapsed : undefined} className="mt-3" />
 
-      <div className="mt-4 grid grid-cols-3 divide-x divide-line rounded-2xl border border-line rtl:divide-x-reverse">
-        <div className="px-3 py-2">
-          <div className="text-[0.625rem] text-sub">{L('تسک‌ها', 'Tasks')}</div>
-          <div className="mt-0.5 text-sm font-semibold num">
-            {fa(m.doneTasks)}
-            <span className="font-normal text-sub">/{fa(m.totalTasks)}</span>
+          <div className="mt-4 grid grid-cols-3 divide-x divide-line rounded-2xl border border-line rtl:divide-x-reverse">
+            <div className="px-3 py-2">
+              <div className="text-[0.625rem] text-sub">{L('تسک‌های انجام‌شده', 'Tasks done')}</div>
+              <div className="mt-0.5 text-sm font-semibold num">
+                {m.totalTasks ? <>{fa(m.doneTasks)}<span className="font-normal text-sub">{L(` از ${fa(m.totalTasks)}`, ` of ${m.totalTasks}`)}</span></> : <span className="text-xs font-normal text-sub">{L('بدون تسک', 'None')}</span>}
+              </div>
+            </div>
+            <div className="px-3 py-2">
+              <div className="text-[0.625rem] text-sub">{L('ریسک‌های باز', 'Open risks')}</div>
+              <div className={cx('mt-0.5 text-sm font-semibold num', m.highRisks > 0 && 'text-bad')}>{m.openRisks ? fa(m.openRisks) : <span className="text-xs font-normal text-sub">{L('ندارد', 'None')}</span>}</div>
+            </div>
+            <div className="px-3 py-2">
+              <div className="text-[0.625rem] text-sub">{L('روند گزارش‌ها', 'Update trend')}</div>
+              <div className="mt-1">
+                {db.Updates.some((u) => u.project_id === p.id) ? <HealthTrend projectId={p.id} n={4} /> : <span className="text-xs text-sub">{L('بدون گزارش', 'No updates')}</span>}
+              </div>
+            </div>
           </div>
-        </div>
-        <div className="px-3 py-2">
-          <div className="text-[0.625rem] text-sub">{L('ریسک باز', 'Open risks')}</div>
-          <div className={cx('mt-0.5 text-sm font-semibold num', m.highRisks > 0 && 'text-bad')}>{fa(m.openRisks)}</div>
-        </div>
-        <div className="px-3 py-2">
-          <div className="text-[0.625rem] text-sub">{L('روند', 'Trend')}</div>
-          <div className="mt-1">
-            <HealthTrend projectId={p.id} n={4} />
-          </div>
-        </div>
-      </div>
+        </>
+      )}
 
       {issue && p.status === 'active' ? (
         <div className={cx('mt-4 flex items-start gap-2 rounded-xl px-3 py-2 text-[0.6875rem] leading-5', m.health === 'red' ? 'bg-bad/[0.07] text-bad' : 'bg-warn/[0.09] text-warn')}>
@@ -251,16 +270,20 @@ export function ProjectCard({ p }: { p: Project }) {
         </div>
       ) : m.nextMilestone ? (
         <div className="mt-4 rounded-xl bg-muted/70 px-3 py-2 text-[0.6875rem] text-sub">
-          {L('بعدی', 'Next')}: <span className="text-ink">{m.nextMilestone.title}</span> · {fmtDayMonth(m.nextMilestone.planned_date)}
+          {L('مایلستون بعدی', 'Next milestone')}: <span className="text-ink">{m.nextMilestone.title}</span> · {fmtDayMonth(m.nextMilestone.planned_date)}
         </div>
       ) : (
         <div className="mt-4" />
       )}
 
       <div className="mt-auto flex items-center justify-between pt-4 text-xs text-sub">
-        <span className="flex items-center gap-2">
-          <Avatar name={p.owner} size="xs" /> {p.owner}
-        </span>
+        {p.owner ? (
+          <span className="flex items-center gap-2">
+            <Avatar name={p.owner} size="xs" /> {p.owner}
+          </span>
+        ) : (
+          <span className="text-[0.6875rem]">{L('مدیر محصول تعیین نشده', 'No project PM yet')}</span>
+        )}
         <span className="text-[0.6875rem]">{lbl(PROJECT_STATUS, p.status)}</span>
       </div>
     </Link>

@@ -15,6 +15,7 @@ import Roadmap from './pages/Roadmap'
 import Sprints from './pages/Sprints'
 import Planning from './pages/Planning'
 import Contracts from './pages/Contracts'
+import TelegramPage from './pages/TelegramPage'
 import Tasks from './pages/Tasks'
 import FollowUps from './pages/FollowUps'
 import Risks from './pages/Risks'
@@ -134,6 +135,7 @@ export default function App() {
                 <Route path="/team" element={<Only rule="portfolio"><Team /></Only>} />
                 <Route path="/updates" element={<Updates />} />
                 <Route path="/report" element={<Only rule="portfolio"><Report /></Only>} />
+                <Route path="/telegram" element={<Only rule="backoffice"><TelegramPage /></Only>} />
                 <Route path="/contracts" element={<Only rule="contracts"><Contracts /></Only>} />
                 <Route path="/admin" element={<Only rule="backoffice"><Admin /></Only>} />
                 <Route path="/settings" element={<Only rule="backoffice"><Admin initial="settings" /></Only>} />
