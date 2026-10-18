@@ -8,11 +8,12 @@ import { ORG_KEYS, orgList, type OrgItem, type OrgKind } from '../lib/org'
 import { teamCodes } from '../lib/labels'
 import { TERMS, TERMS_KEY, termOverrides } from '../lib/terms'
 
-const TITLE: Record<OrgKind, T2> = { links: ['نوع لینک‌های پروژه', 'Project link types'], access: ['سطح دسترسی (فقط نام)', 'Access levels (names only)'], series: ['جلسه‌ها (عنوان سری‌ها)', 'Meeting series'], titles: ['سمت‌ها', 'Job titles'], teams: ['تیم‌ها', 'Teams'], sides: ['واحدها (پروداکت، دیزاین، تک…)', 'Units (product, design, tech…)'] }
+const TITLE: Record<OrgKind, T2> = { plans: ['هدف‌های برنامه‌ریزی', 'Planning purposes'], links: ['نوع لینک‌های پروژه', 'Project link types'], access: ['سطح دسترسی (فقط نام)', 'Access levels (names only)'], series: ['جلسه‌ها (عنوان سری‌ها)', 'Meeting series'], titles: ['سمت‌ها', 'Job titles'], teams: ['تیم‌ها', 'Teams'], sides: ['واحدها (پروداکت، دیزاین، تک…)', 'Units (product, design, tech…)'] }
 const HINT: Record<OrgKind, T2> = {
+  plans: ['برنامه‌ریزی برای چه؟ دمو، بستن رودمپ، اسپرینت، انتشار… هر هدف چک‌لیست آمادگی خودش را دارد.', 'What a planning session is for: a demo, the roadmap, a sprint, a release… each starts with its own checklist.'],
   links: ['لینک‌هایی که هر پروژه دارد: استیج، پروداکشن، فیگما، …', 'The links each project keeps: staging, production, Figma, …'],
   access: ['چهار سطح ثابت‌اند (همه‌چیز + بک‌آفیس، مدیرعامل، هد، عضو)؛ فقط اسمشان را عوض کنید.', 'The four levels are fixed (everything + back office, CEO, head, member); only rename them.'],
-  series: ['نام سری‌های جلسه؛ همه به‌جز «یک‌به‌یک» و «سایر» هفتگی تکرار می‌شوند.', 'Series names; all but one-on-one and other repeat weekly.'],
+  series: ['نام سری‌های جلسه؛ همه به‌جز «برنامه‌ریزی»، «یک‌به‌یک» و «سایر» هفتگی تکرار می‌شوند.', 'Series names; all but planning, one-on-one and other repeat weekly.'],
   titles: ['کد کوتاه انگلیسی (مثل CEO) روی کارت هر نفر دیده می‌شود.', 'The short code (e.g. CEO) shows on each person.'],
   teams: ['هر نفر می‌تواند عضو چند تیم باشد.', 'A person can be in several teams.'],
   sides: ['واحدها کار را به هم تحویل می‌دهند (رفت و برگشت)؛ هر تسک و هر نفر یک واحد دارد.', 'Units hand work to each other (and back); every task and person belongs to one.'],
@@ -26,7 +27,7 @@ export function OrgList({ kind, admin: canEdit, bare }: { kind: OrgKind; admin: 
   const [draft, setDraft] = useState<OrgItem>({ id: '', fa: '', en: '' })
   const save = (next: OrgItem[]) => setSetting(ORG_KEYS[kind], JSON.stringify(next))
   const used = (id: string) =>
-    kind === 'links' ? db.Projects.filter((p) => String(p.links || '').includes(`"${id}"`)).length : kind === 'access' ? db.Team.filter((m) => m.access === id).length : kind === 'series' ? db.Meetings.filter((m) => m.series === id).length : kind === 'titles' ? db.Team.filter((m) => m.role === id).length : kind === 'teams' ? db.Team.filter((m) => teamCodes(m.team, m.role, m.track).includes(id)).length : db.Team.filter((m) => m.track === id).length + db.Tasks.filter((t) => t.track === id).length
+    kind === 'links' ? db.Projects.filter((p) => String(p.links || '').includes(`"${id}"`)).length : kind === 'access' ? db.Team.filter((m) => m.access === id).length : kind === 'series' ? db.Meetings.filter((m) => m.series === id).length : kind === 'plans' ? db.Meetings.filter((m) => m.purpose === id).length : kind === 'titles' ? db.Team.filter((m) => m.role === id).length : kind === 'teams' ? db.Team.filter((m) => teamCodes(m.team, m.role, m.track).includes(id)).length : db.Team.filter((m) => m.track === id).length + db.Tasks.filter((t) => t.track === id).length
   const edit = (i: number, k: keyof OrgItem, v: string) => {
     if ((list[i][k] || '') === v) return
     save(list.map((x, j) => (j === i ? { ...x, [k]: v } : x)))
@@ -116,6 +117,7 @@ export function OrgPage({ admin }: { admin: boolean }) {
         <div className="space-y-6">
           <OrgList kind="links" admin={admin} />
           <OrgList kind="series" admin={admin} />
+          <OrgList kind="plans" admin={admin} />
         </div>
       </Card>
       <div className="@3xl:col-span-2">

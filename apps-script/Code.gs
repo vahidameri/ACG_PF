@@ -18,7 +18,7 @@
  *   viewer — read only (leadership)
  */
 
-var ATLAS_VERSION = '1.11.0'; // shown on the login page and by diagnose()
+var ATLAS_VERSION = '1.12.0'; // shown on the login page and by diagnose()
 
 var SCHEMA = {
   Projects: ['id', 'code', 'name', 'description', 'category', 'owner', 'client', 'liaison', 'liaison_contact', 'status', 'priority', 'phase', 'start_date', 'end_date', 'progress', 'health_override', 'objective', 'paused_at', 'pause_reason', 'delivery_day', 'last_delivery', 'archived', 'archived_at', 'links'],
@@ -43,7 +43,7 @@ var SCHEMA = {
   // Delivery plan. baseline_date = first committed date (kept when target_date moves → slippage).
   Deliverables: ['id', 'project_id', 'title', 'track', 'owner', 'target_date', 'baseline_date', 'delivered_date', 'status', 'confidence', 'notes'],
   // Weekly meetings. series: portfolio | product | tech | project | other. attendees comma-separated; decisions one per line.
-  Meetings: ['id', 'series', 'title', 'project_id', 'date', 'time', 'facilitator', 'attendees', 'status', 'notes', 'decisions', 'gcal_id', 'meet_url', 'duration', 'items', 'checklist', 'sprint_id'],
+  Meetings: ['id', 'series', 'title', 'project_id', 'date', 'time', 'facilitator', 'attendees', 'status', 'notes', 'decisions', 'gcal_id', 'meet_url', 'duration', 'purpose', 'items', 'checklist', 'sprint_id'],
   // Uploaded files live in a Drive folder; this tab is the index.
   Files: ['id', 'entity', 'entity_id', 'name', 'mime', 'size', 'url', 'uploaded_by', 'created_at'],
   // Shared settings (automation switches: auto.<id> = on/off). id = key.
@@ -1104,11 +1104,11 @@ function syncMeeting_(meetingId, user) {
   return out;
 }
 
-/** The demo / planning agenda: "T:id,D:id" items resolved to titles. */
+/** The planning agenda: "T:id,D:id,M:id" (task, output, milestone) resolved to titles. */
 function agendaOf_(m, data) {
   return String(m.items || '').split(',').map(function (x) { return x.trim(); }).filter(Boolean).map(function (ref) {
     var kind = ref.slice(0, 1), id = ref.slice(2);
-    var list = kind === 'D' ? data.Deliverables : data.Tasks;
+    var list = kind === 'D' ? data.Deliverables : kind === 'M' ? data.Milestones : data.Tasks;
     var row = (list || []).filter(function (r) { return String(r.id) === id; })[0];
     return row ? row.title || row.name : '';
   }).filter(Boolean);

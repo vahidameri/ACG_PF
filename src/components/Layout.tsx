@@ -3,7 +3,7 @@ import { NavLink, useLocation, useNavigate, Link } from 'react-router-dom'
 import {
   LayoutGrid, Briefcase, ListChecks, BellRing, ShieldAlert, FileText, Settings, Moon, Sun, Search, Plus, RefreshCw, Menu,
   Sparkles, CheckCircle2, AlertCircle, Bell, PanelLeftClose, PanelLeftOpen, Languages, Star, AtSign, Flag, Clock, CircleAlert, Ban, CalendarDays, Keyboard, PackageCheck, CalendarRange, Gauge, UserRound, LogOut,
-  Binoculars, Repeat, Map, Zap, Presentation,
+  Binoculars, Repeat, Map, Zap, Target, FileSignature,
 } from 'lucide-react'
 import { useStore, clearSnaps } from '../lib/store'
 import { useI18n, L } from '../lib/i18n'
@@ -21,6 +21,7 @@ import { useGoogle } from '../lib/google'
 import { APP_NAME, VERSION } from '../lib/brand'
 import { hubOf, type Hub } from './HubNav'
 import { can } from '../lib/access'
+import { isPlanning } from '../lib/planning'
 import { ACCESS, JOB_TITLE } from '../lib/labels'
 import { CommandPalette } from './CommandPalette'
 import { AcgMark } from './Brand'
@@ -96,7 +97,7 @@ export function Layout({ children }: { children: ReactNode }) {
 
   // agile layout: my work → planning → doing → watching
   const openTasks = db.Tasks.filter((t) => t.status !== 'done').length
-  const nextDemo = db.Meetings.filter((m) => ['planning', 'demo', 'retro'].includes(m.series) && m.status === 'scheduled' && m.date >= todayISOStr()).length
+  const nextPlans = db.Meetings.filter((m) => isPlanning(m) && m.status === 'scheduled' && m.date >= todayISOStr()).length
   const groups: { label: string; links: { to: string; label: string; icon: typeof LayoutGrid; badge?: number; count?: number; hub?: Hub }[] }[] = [
     {
       label: L('کار من', 'My work'),
@@ -111,7 +112,7 @@ export function Layout({ children }: { children: ReactNode }) {
       links: [
         ...(leader ? [{ to: '/roadmap', label: L('رودمپ', 'Roadmap'), icon: Map }] : []),
         { to: '/sprints', label: L('اسپرینت‌ها', 'Sprints'), icon: Zap },
-        { to: '/demos', label: L('دمو و برنامه‌ریزی', 'Demos & planning'), icon: Presentation, count: nextDemo },
+        { to: '/planning', label: L('جلسات برنامه‌ریزی', 'Planning sessions'), icon: Target, count: nextPlans },
         { to: '/plan', label: L('برنامه‌ی تحویل', 'Delivery plan'), icon: PackageCheck },
       ],
     },
@@ -119,7 +120,7 @@ export function Layout({ children }: { children: ReactNode }) {
       label: L('اجرا', 'Delivery'),
       links: [
         { to: '/projects', label: leader ? L('پروژه‌ها', 'Projects') : L('پروژه‌های من', 'My projects'), icon: Briefcase, count: db.Projects.filter((p) => p.status === 'active').length },
-        { to: '/tasks', label: L('تسک‌ها و بورد', 'Tasks & board'), icon: ListChecks, count: openTasks },
+        { to: '/tasks', label: L('تسک‌ها', 'Tasks'), icon: ListChecks, count: openTasks },
         { to: '/followups', label: L('پیگیری‌ها', 'Follow-ups'), icon: BellRing },
         ...(leader ? [{ to: '/teams', label: L('واحدها و تحویل‌ها', 'Units & hand-offs'), icon: Repeat }] : []),
       ],
@@ -128,15 +129,21 @@ export function Layout({ children }: { children: ReactNode }) {
       label: L('پایش', 'Watching'),
       links: [
         ...(leader ? [{ to: '/lookout', label: L('دیده‌بان', 'Lookout'), icon: Binoculars, badge: radarLate, hub: 'lookout' as Hub }] : []),
-        { to: '/updates', label: L('گزارش هفتگی', 'Weekly updates'), icon: FileText, badge: updatesMissing },
+        { to: '/updates', label: L('گزارش‌های هفتگی', 'Weekly updates'), icon: FileText, badge: updatesMissing },
         ...(leader ? [
           { to: '/team', label: L('ظرفیت و منابع', 'Capacity & resourcing'), icon: Gauge, badge: overCap },
-          { to: '/risks', label: L('ریسک و تصمیم', 'Risks & decisions'), icon: ShieldAlert },
+          { to: '/risks', label: L('ریسک‌ها و تصمیم‌ها', 'Risks & decisions'), icon: ShieldAlert },
         ] : []),
       ],
     },
-    ...(can.backoffice(access)
-      ? [{ label: L('مدیریت', 'Admin'), links: [{ to: '/admin', label: L('بک‌آفیس', 'Back office'), icon: Settings }] }]
+    ...(can.contracts(access)
+      ? [{
+          label: L('مدیریت', 'Admin'),
+          links: [
+            { to: '/contracts', label: L('قراردادها', 'Contracts'), icon: FileSignature },
+            ...(can.backoffice(access) ? [{ to: '/admin', label: L('بک‌آفیس', 'Back office'), icon: Settings }] : []),
+          ],
+        }]
       : []),
   ]
 

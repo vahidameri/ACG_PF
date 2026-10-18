@@ -13,7 +13,8 @@ import Projects from './pages/Projects'
 import ProjectDetail from './pages/ProjectDetail'
 import Roadmap from './pages/Roadmap'
 import Sprints from './pages/Sprints'
-import Demos from './pages/Demos'
+import Planning from './pages/Planning'
+import Contracts from './pages/Contracts'
 import Tasks from './pages/Tasks'
 import FollowUps from './pages/FollowUps'
 import Risks from './pages/Risks'
@@ -34,7 +35,7 @@ import { AcgLoader } from './components/Brand'
 import { usePref } from './lib/prefs'
 
 /** Portfolio-wide pages are for leadership; members land on their own desk. */
-function Only({ rule, children }: { rule: 'portfolio' | 'backoffice'; children: React.ReactNode }) {
+function Only({ rule, children }: { rule: 'portfolio' | 'backoffice' | 'contracts'; children: React.ReactNode }) {
   const { access } = useStore()
   return can[rule](access) ? <>{children}</> : <Navigate to="/my" replace />
 }
@@ -122,7 +123,8 @@ export default function App() {
                 <Route path="/people/:id" element={<Profile />} />
                 <Route path="/me" element={<Profile />} />
                 <Route path="/sprints" element={<Sprints />} />
-                <Route path="/demos" element={<Demos />} />
+                <Route path="/planning" element={<Planning />} />
+                <Route path="/demos" element={<Navigate to="/planning" replace />} />
                 <Route path="/tasks" element={<Tasks />} />
                 <Route path="/lookout" element={<Only rule="portfolio"><Lookout /></Only>} />
                 <Route path="/compass" element={<Navigate to="/lookout" replace />} />
@@ -132,6 +134,7 @@ export default function App() {
                 <Route path="/team" element={<Only rule="portfolio"><Team /></Only>} />
                 <Route path="/updates" element={<Updates />} />
                 <Route path="/report" element={<Only rule="portfolio"><Report /></Only>} />
+                <Route path="/contracts" element={<Only rule="contracts"><Contracts /></Only>} />
                 <Route path="/admin" element={<Only rule="backoffice"><Admin /></Only>} />
                 <Route path="/settings" element={<Only rule="backoffice"><Admin initial="settings" /></Only>} />
                 <Route path="*" element={<Home />} />

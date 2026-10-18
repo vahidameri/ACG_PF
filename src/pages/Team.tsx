@@ -58,7 +58,7 @@ export default function Team() {
   return (
     <>
       <Band
-        title={L('ظرفیت و تخصیص منابع', 'Capacity & resourcing')}
+        title={L('ظرفیت و منابع', 'Capacity & resourcing')}
         sub={sentence + '.'}
         actions={
           canEdit && (

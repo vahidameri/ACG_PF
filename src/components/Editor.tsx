@@ -12,7 +12,7 @@ import { todayISO } from '../lib/jalali'
 import { L, lbl, tr, type T2 } from '../lib/i18n'
 import { TRACK, TRACKS } from '../lib/tracks'
 import {
-  CHANNEL, CONFIDENCE, CONTRACT_KIND, CONTRACT_STATUS, DELIVERABLE_STATUS, MEETING_SERIES, MEETING_STATUS, FOLLOWUP_STATUS, HEALTH, MILESTONE_STATUS, PRIORITY, PROJECT_STATUS, RISK_STATUS, RISK_TYPE, SCOPE_STATUS, SPRINT_STATUS,
+  CHANNEL, CONFIDENCE, CONTRACT_KIND, CONTRACT_STATUS, DELIVERABLE_STATUS, MEETING_SERIES, MEETING_STATUS, PLAN_PURPOSE, AGILE_SERIES, FOLLOWUP_STATUS, HEALTH, MILESTONE_STATUS, PRIORITY, PROJECT_STATUS, RISK_STATUS, RISK_TYPE, SCOPE_STATUS, SPRINT_STATUS,
   ACCESS, JOB_TITLE_OPTIONS, TEAM_NAMES } from '../lib/labels'
 import { Sheet, cx } from './ui'
 import { DatePicker } from './DatePicker'
@@ -229,6 +229,7 @@ export const SCHEMAS: Record<EditableSheet, { title: T2; prefix: string; fields:
     fields: [
       { key: 'title', label: ['عنوان', 'Title'], type: 'text', required: true },
       { key: 'series', label: ['نوع / سری', 'Series'], type: 'select', options: MEETING_SERIES, half: true },
+      { key: 'purpose', label: ['برنامه‌ریزی برای', 'Planning for'], type: 'select', options: PLAN_PURPOSE, half: true },
       { key: 'project_id', label: ['پروژه', 'Project'], type: 'project', half: true },
       { key: 'date', label: ['تاریخ', 'Date'], type: 'date', half: true, required: true },
       { key: 'time', label: ['ساعت', 'Time'], type: 'text', half: true, placeholder: ['10:00', '10:00'] },
@@ -482,7 +483,9 @@ function EditorModal({ sheet, row, isNew, onClose }: { sheet: EditableSheet; row
   const owner = db.Team.find((m) => m.name === String(form.assignee || '').split(',')[0])
   const optional = new Set<string>(TASK_FIELDS)
   const schema =
-    sheet !== 'Tasks'
+    sheet === 'Meetings'
+      ? { ...base, fields: base.fields.filter((f) => f.key !== 'purpose' || AGILE_SERIES.includes(String(form.series))) }
+      : sheet !== 'Tasks'
       ? base
       : {
           ...base,

@@ -59,29 +59,30 @@ export function CommandPalette({ open, onClose }: { open: boolean; onClose: () =
     ]
     const navs: Item[] = (
       [
-        ['/my', L('میز کار من', 'My desk')],
+        ['/my', L('خانه', 'Home')],
         ['/calendar', L('تقویم', 'Calendar')],
         ['/lookout', L('دیده‌بان', 'Lookout')],
         ['/', L('وضعیت ACG', 'ACG status')],
-        ['/pulse', L('برد وضعیت ACG', 'Status board')],
+        ['/pulse', L('برد وضعیت', 'Status board')],
         ['/teams', L('واحدها و تحویل‌ها', 'Units & hand-offs')],
         ['/projects', L('پروژه‌ها', 'Projects')],
         ['/roadmap', L('رودمپ', 'Roadmap')],
-        ['/tasks', L('تسک‌ها', 'Tasks')],
+        ['/tasks', L('تسک‌ها و بورد', 'Tasks & board')],
         ['/followups', L('پیگیری‌ها', 'Follow-ups')],
         ['/sprints', L('اسپرینت‌ها', 'Sprints')],
-        ['/demos', L('دمو و برنامه‌ریزی اسپرینت', 'Demos & sprint planning')],
-        ['/risks', L('ریسک‌ها', 'Risks')],
-        ['/team', L('ظرفیت تیم و افراد', 'Team capacity')],
+        ['/planning', L('جلسات برنامه‌ریزی (دمو، رودمپ، اسپرینت)', 'Planning sessions (demo, roadmap, sprint)')],
+        ['/risks', L('ریسک‌ها و تصمیم‌ها', 'Risks & decisions')],
+        ['/team', L('ظرفیت و منابع', 'Capacity & resourcing')],
         ['/plan', L('برنامه‌ی تحویل', 'Delivery plan')],
-        ['/meetings', L('جلسات و اکشن پلن', 'Meetings & action plan')],
+        ['/meetings', L('جلسات و اکشن‌ها', 'Meetings & actions')],
         ['/me', L('پروفایل من', 'My profile')],
-        ['/updates', L('چرخه‌ی گزارش هفتگی', 'Weekly update cycle')],
+        ['/updates', L('گزارش‌های هفتگی', 'Weekly updates')],
         ['/report', L('گزارش مدیریتی', 'Executive report')],
+        ['/contracts', L('قراردادها', 'Contracts')],
         ['/admin', L('بک‌آفیس و تنظیمات', 'Back office & settings')],
       ] as const
     )
-      .filter(([to]) => (LEADER_ONLY.includes(to) ? can.portfolio(access) : to === '/admin' ? can.backoffice(access) : true))
+      .filter(([to]) => (LEADER_ONLY.includes(to) ? can.portfolio(access) : to === '/admin' ? can.backoffice(access) : to === '/contracts' ? can.contracts(access) : true))
       .map(([to, label]) => ({ key: `nav-${to}`, group: G.nav, label, icon: <ArrowRight size={16} className="rtl:-scale-x-100" />, run: () => navigate(to) }))
     const data: Item[] = [
       ...db.Projects.map((p) => ({ key: p.id, group: G.proj, label: p.name, sub: p.code, icon: <HealthDot h={projectMetrics(p, db).health} />, run: () => navigate(`/projects/${p.id}`) })),

@@ -30,7 +30,7 @@ export default function Risks() {
     <>
       <Band
         eyebrow={<span>RAID</span>}
-        title={L('ریسک‌ها، مسائل و تصمیم‌ها', 'Risks, issues & decisions')}
+        title={L('ریسک‌ها و تصمیم‌ها', 'Risks & decisions')}
         actions={
           canEdit && (
             <button className="btn h-10 bg-white text-band" onClick={() => open('Risks', { project_id: project })}>

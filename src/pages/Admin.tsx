@@ -4,7 +4,6 @@ import { Plus, Pencil, Lock } from 'lucide-react'
 import { useStore } from '../lib/store'
 import { useEditor } from '../components/Editor'
 import { Band, Card, Overlap, Segmented, StatStrip, Avatar, cx } from '../components/ui'
-import { ContractsList } from '../components/Contracts'
 import { PauseButton } from '../components/PauseButton'
 import Settings from './Settings'
 import { TelegramImport } from '../components/TelegramImport'
@@ -15,9 +14,10 @@ import { capOf, memberWeek } from '../lib/capacity'
 import { fa } from '../lib/jalali'
 import type { Access } from '../lib/types'
 
-type Tab = 'people' | 'org' | 'projects' | 'contracts' | 'telegram' | 'settings'
+type Tab = 'people' | 'org' | 'projects' | 'telegram' | 'settings'
 
-/** Back office — the program manager's control room: people & access, projects, contracts, settings. */
+/** Back office — the program manager's control room: people & access, organisation, projects, settings.
+ *  Contracts have their own page (/contracts) for the program manager and the CEO. */
 export default function Admin({ initial = 'people' }: { initial?: Tab }) {
   const { db, access } = useStore()
   const { open } = useEditor()
@@ -37,7 +37,6 @@ export default function Admin({ initial = 'people' }: { initial?: Tab }) {
                 { value: 'people', label: L('افراد و دسترسی', 'People & access') },
                 { value: 'org', label: L('سمت‌ها و سازمان', 'Titles & organisation') },
                 { value: 'projects', label: L('پروژه‌ها', 'Projects') },
-                { value: 'contracts', label: L('قراردادها', 'Contracts') },
                 { value: 'telegram', label: L('تلگرام', 'Telegram') },
                 { value: 'settings', label: L('تنظیمات', 'Settings') },
               ]}
@@ -57,11 +56,6 @@ export default function Admin({ initial = 'people' }: { initial?: Tab }) {
                 <Plus size={16} /> {L('پروژه‌ی جدید', 'New project')}
               </button>
             )}
-            {tab === 'contracts' && (
-              <button className="btn h-10 bg-white text-band" onClick={() => open('Contracts')}>
-                <Plus size={16} /> {L('قرارداد جدید', 'New contract')}
-              </button>
-            )}
           </>
         }
       >
@@ -69,7 +63,7 @@ export default function Admin({ initial = 'people' }: { initial?: Tab }) {
           items={[
             { label: L('افراد فعال', 'Active people'), value: fa(active.length) },
             { label: L('پروژه‌های جاری', 'Live projects'), value: fa(db.Projects.filter((p) => p.status === 'active').length), sub: L(`${fa(db.Projects.filter((p) => p.status === 'on_hold').length)} متوقف`, `${db.Projects.filter((p) => p.status === 'on_hold').length} paused`) },
-            { label: L('قراردادهای فعال', 'Active contracts'), value: fa(db.Contracts.filter((c) => c.status === 'active' || c.status === 'signed').length), sub: L(`${fa(db.Contracts.filter((c) => c.status === 'negotiation' || c.status === 'draft').length)} در جریان`, `${db.Contracts.filter((c) => c.status === 'negotiation' || c.status === 'draft').length} in progress`) },
+            { label: L('سمت‌ها', 'Job titles'), value: fa(new Set(db.Team.map((m) => m.role).filter(Boolean)).size) },
             { label: L('بدون ایمیل', 'No email'), value: fa(db.Team.filter((m) => !m.email).length), sub: L('فقط با نام کاربری وارد می‌شوند', 'username sign-in only') },
           ]}
         />
@@ -77,11 +71,6 @@ export default function Admin({ initial = 'people' }: { initial?: Tab }) {
       <Overlap>
         {tab === 'people' && <People />}
         {tab === 'projects' && <ProjectsAdmin />}
-        {tab === 'contracts' && (
-          <Card pad={false} eyebrow={L('محرمانه', 'Confidential')} title={L('قراردادهای همه‌ی پروژه‌ها', 'Contracts across projects')}>
-            <ContractsList />
-          </Card>
-        )}
         {tab === 'org' && <OrgPage admin={access === 'super'} />}
         {tab === 'telegram' && <TelegramImport />}
         {tab === 'settings' && <Settings embedded />}

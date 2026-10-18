@@ -18,11 +18,11 @@ export const HUBS = {
   plan: (): Tab[] => [
     { to: '/roadmap', label: L('رودمپ', 'Roadmap'), lead: true },
     { to: '/sprints', label: L('اسپرینت‌ها', 'Sprints') },
-    { to: '/demos', label: L('دمو و برنامه‌ریزی', 'Demos & planning') },
+    { to: '/planning', label: L('جلسات برنامه‌ریزی', 'Planning sessions') },
     { to: '/plan', label: L('برنامه‌ی تحویل', 'Delivery plan') },
   ],
   work: (): Tab[] => [
-    { to: '/tasks', label: L('تسک‌ها و بورد', 'Tasks & board') },
+    { to: '/tasks', label: L('تسک‌ها', 'Tasks') },
     { to: '/followups', label: L('پیگیری‌ها', 'Follow-ups') },
     { to: '/teams', label: L('واحدها و تحویل‌ها', 'Units & hand-offs'), lead: true },
   ],

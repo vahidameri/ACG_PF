@@ -43,7 +43,7 @@ export default function Report() {
   return (
     <>
       <Band nav={<HubNav hub="lookout" />}
-        title={L('گزارش مدیریتی ACG', 'ACG executive report')}
+        title={L('گزارش مدیریتی', 'Executive report')}
         actions={
           <>
             <button className="btn h-10 border border-white/15 text-white" onClick={copyText}>

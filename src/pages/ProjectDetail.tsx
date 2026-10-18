@@ -186,7 +186,7 @@ export default function ProjectDetail() {
                 { value: 'risks', label: L('ریسک‌ها', 'Risks'), count: m.openRisks },
                 { value: 'updates', label: L('گزارش‌ها', 'Updates'), count: updates.length },
                 { value: 'team', label: L('تیم', 'Team'), count: allocs.length },
-                ...(can.contracts(access) ? [{ value: 'contracts' as Tab, label: L('قرارداد', 'Contracts'), count: db.Contracts.filter((c) => c.project_id === p.id).length }] : []),
+                ...(can.contracts(access) ? [{ value: 'contracts' as Tab, label: L('قراردادها', 'Contracts'), count: db.Contracts.filter((c) => c.project_id === p.id).length }] : []),
               ]}
             />
           </div>

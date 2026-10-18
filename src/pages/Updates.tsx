@@ -59,7 +59,7 @@ export default function Updates() {
   return (
     <>
       <Band
-        title={L('چرخه‌ی گزارش هفتگی', 'Weekly update cycle')}
+        title={L('گزارش‌های هفتگی', 'Weekly updates')}
         actions={
           <>
             <WeekNav ws={ws} onChange={setWs} />

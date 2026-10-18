@@ -38,8 +38,6 @@ const seriesTone: Record<string, string> = {
   tech: 'bg-brand/10 text-brand dark:text-brand-soft',
   project: 'bg-warn/12 text-warn',
   planning: 'bg-brand/10 text-brand dark:text-brand-soft',
-  demo: 'bg-good/10 text-good',
-  retro: 'bg-[#be185d]/10 text-[#be185d] dark:text-[#f9a8d4]',
   one_on_one: 'bg-good/10 text-good',
   other: 'bg-muted text-sub',
 }

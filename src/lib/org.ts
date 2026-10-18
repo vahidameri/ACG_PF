@@ -2,8 +2,9 @@
 //   org.titles — job titles (code, Persian, English)
 //   org.teams  — teams a person can belong to
 //   org.sides  — the working sides that hand work to each other (default: product, design, tech)
+//   org.plans  — what a planning session can be for (demo, roadmap, sprint, …)
 // The label maps used across the app are updated in place, so every page follows the settings.
-import { ACCESS, AGILE_SERIES, JOB_TITLE, JOB_TITLE_OPTIONS, MEETING_SERIES, TEAM_NAMES } from './labels'
+import { ACCESS, JOB_TITLE, JOB_TITLE_OPTIONS, MEETING_SERIES, PLAN_PURPOSE, TEAM_NAMES } from './labels'
 import { TRACK, TRACKS, SIDE_COLOR } from './tracks'
 import type { T2 } from './i18n'
 
@@ -13,8 +14,8 @@ export interface OrgItem {
   en: string
   color?: string
 }
-export type OrgKind = 'titles' | 'teams' | 'sides' | 'series' | 'access' | 'links'
-export const ORG_KEYS: Record<OrgKind, string> = { titles: 'org.titles', teams: 'org.teams', sides: 'org.sides', series: 'org.series', access: 'org.access', links: 'org.links' }
+export type OrgKind = 'titles' | 'teams' | 'sides' | 'series' | 'access' | 'links' | 'plans'
+export const ORG_KEYS: Record<OrgKind, string> = { titles: 'org.titles', teams: 'org.teams', sides: 'org.sides', series: 'org.series', access: 'org.access', links: 'org.links', plans: 'org.plans' }
 
 const fromMap = (m: Record<string, T2>): OrgItem[] => Object.entries(m).map(([id, [fa, en]]) => ({ id, fa, en }))
 export const ORG_DEFAULT: Record<OrgKind, OrgItem[]> = {
@@ -22,6 +23,7 @@ export const ORG_DEFAULT: Record<OrgKind, OrgItem[]> = {
   teams: fromMap(TEAM_NAMES),
   series: fromMap(MEETING_SERIES),
   access: fromMap(ACCESS),
+  plans: fromMap(PLAN_PURPOSE),
   links: [
     { id: 'stage', fa: 'محیط استیج', en: 'Staging' },
     { id: 'prod', fa: 'محیط اصلی (پروداکشن)', en: 'Production' },
@@ -60,9 +62,10 @@ const refill = (target: Record<string, T2>, items: OrgItem[]) => {
   for (const i of items) target[i.id] = [i.fa, i.en]
 }
 
-function withAgile<X extends { id: string }>(list: X[]): X[] {
-  const add = ORG_DEFAULT.series.filter((d) => AGILE_SERIES.includes(d.id) && !list.some((x) => x.id === d.id)) as unknown as X[]
-  return add.length ? [...list, ...add] : list
+/** Planning sessions are part of the product, so a saved list always has them (1.11.0's demo/retro series are gone). */
+function withPlanning(list: OrgItem[]): OrgItem[] {
+  const kept = list.filter((x) => x.id !== 'demo' && x.id !== 'retro')
+  return kept.some((x) => x.id === 'planning') ? kept : [...kept, ORG_DEFAULT.series.find((d) => d.id === 'planning')!]
 }
 
 export function applyOrg(get: (k: string) => string | undefined) {
@@ -70,14 +73,15 @@ export function applyOrg(get: (k: string) => string | undefined) {
     titles: parse(get(ORG_KEYS.titles), ORG_DEFAULT.titles),
     teams: parse(get(ORG_KEYS.teams), ORG_DEFAULT.teams),
     sides: parse(get(ORG_KEYS.sides), ORG_DEFAULT.sides),
-    // sprint ceremonies (planning, demo, retro) are part of the product, so a saved list still gets them
-    series: withAgile(parse(get(ORG_KEYS.series), ORG_DEFAULT.series)),
+    series: withPlanning(parse(get(ORG_KEYS.series), ORG_DEFAULT.series)),
+    plans: parse(get(ORG_KEYS.plans), ORG_DEFAULT.plans),
     links: parse(get(ORG_KEYS.links), ORG_DEFAULT.links),
     // access levels are fixed (they decide what each person sees); only their names change
     access: ORG_DEFAULT.access.map((d) => parse(get(ORG_KEYS.access), ORG_DEFAULT.access).find((x) => x.id === d.id) || d),
   }
   refill(ACCESS, cur.access)
   refill(MEETING_SERIES as Record<string, T2>, cur.series)
+  refill(PLAN_PURPOSE, cur.plans)
   refill(JOB_TITLE, cur.titles)
   refill(JOB_TITLE_OPTIONS, cur.titles.map((t) => ({ ...t, fa: `${t.fa} · ${t.id.toUpperCase()}`, en: t.en.toUpperCase() === t.id.toUpperCase() ? t.en : `${t.en} · ${t.id.toUpperCase()}` })))
   refill(TEAM_NAMES, cur.teams)

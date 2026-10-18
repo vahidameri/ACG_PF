@@ -110,15 +110,22 @@ export const MEETING_SERIES: Record<MeetingSeries, T2> = {
   design: ['جلسه‌ی هفتگی دیزاین', 'Design weekly'],
   tech: ['جلسه‌ی هفتگی تک', 'Tech weekly'],
   project: ['جلسه‌ی هفتگی پروژه', 'Project weekly'],
-  planning: ['برنامه‌ریزی اسپرینت', 'Sprint planning'],
-  demo: ['دمو و ریویو', 'Demo & review'],
-  retro: ['رترو', 'Retro'],
+  planning: ['جلسه‌ی برنامه‌ریزی', 'Planning session'],
   one_on_one: ['جلسه‌ی یک‌به‌یک', 'One-on-one'],
   other: ['سایر جلسات', 'Other meetings'],
 }
-/** Sprint ceremonies are planned once per sprint, not copied every week. */
+/** Planning sessions are held once, for a purpose, not copied every week ('demo' and 'retro' are kept
+ *  only so meetings saved by 1.11.0 still read as planning sessions). */
 export const AGILE_SERIES = ['planning', 'demo', 'retro']
-/** Series that repeat every week (everything except sprint ceremonies, one-on-ones and other meetings). */
+/** What a planning session is for — names are editable in the back office (Config org.plans). */
+export const PLAN_PURPOSE: Record<string, T2> = {
+  demo: ['آماده‌سازی دمو', 'Demo prep'],
+  roadmap: ['بستن رودمپ', 'Roadmap'],
+  sprint: ['برنامه‌ریزی اسپرینت', 'Sprint planning'],
+  release: ['انتشار و تحویل', 'Release'],
+  other: ['سایر', 'Other'],
+}
+/** Series that repeat every week (everything except planning sessions, one-on-ones and other meetings). */
 export const isWeeklySeries = (s: string) => !!s && s !== 'one_on_one' && s !== 'other' && !AGILE_SERIES.includes(s)
 export const MEETING_STATUS: Record<Meeting['status'], T2> = {
   scheduled: ['برنامه‌ریزی‌شده', 'Scheduled'],

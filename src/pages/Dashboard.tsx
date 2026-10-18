@@ -44,7 +44,7 @@ export default function Dashboard() {
             <span className="num">{fmtDate(today, 'long')}</span>
           </>
         }
-        title={L('نمای کلی ACG', 'ACG overview')}
+        title={L('وضعیت ACG', 'ACG status')}
         actions={
           <>
             <Link to="/pulse" className="btn h-10 bg-white text-band">

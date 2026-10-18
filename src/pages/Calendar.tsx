@@ -92,7 +92,7 @@ export default function CalendarPage() {
   return (
     <>
       <Band
-        title={L('تقویم ACG', 'ACG calendar')}
+        title={L('تقویم', 'Calendar')}
         actions={
           <div className="flex items-center gap-1 rounded-full border border-white/10 bg-white/[0.04] p-1">
             <button className="icon-btn text-white/80 hover:bg-white/10 hover:text-white" onClick={() => move(-1)}>
